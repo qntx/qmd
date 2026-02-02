@@ -43,10 +43,8 @@ fn print_search_json(results: &[SearchResult], full: bool) {
             if let Some(ref ctx) = r.doc.context {
                 obj["context"] = serde_json::Value::String(ctx.clone());
             }
-            if full {
-                if let Some(ref body) = r.doc.body {
-                    obj["body"] = serde_json::Value::String(body.clone());
-                }
+            if full && let Some(ref body) = r.doc.body {
+                obj["body"] = serde_json::Value::String(body.clone());
             }
             obj
         })
@@ -134,10 +132,8 @@ fn print_search_md(results: &[SearchResult], full: bool) {
         if let Some(ref ctx) = r.doc.context {
             println!("**Context:** {ctx}\n");
         }
-        if full {
-            if let Some(ref body) = r.doc.body {
-                println!("```\n{body}\n```\n");
-            }
+        if full && let Some(ref body) = r.doc.body {
+            println!("```\n{body}\n```\n");
         }
     }
 }
@@ -172,10 +168,8 @@ fn print_search_xml(results: &[SearchResult], full: bool) {
         if let Some(ref ctx) = r.doc.context {
             println!("    <context>{}</context>", escape_xml(ctx));
         }
-        if full {
-            if let Some(ref body) = r.doc.body {
-                println!("    <body>{}</body>", escape_xml(body));
-            }
+        if full && let Some(ref body) = r.doc.body {
+            println!("    <body>{}</body>", escape_xml(body));
         }
         println!("  </result>");
     }
@@ -240,10 +234,8 @@ fn print_search_cli(results: &[SearchResult], full: bool) {
         if let Some(ref ctx) = r.doc.context {
             println!("  {}", format!("Context: {ctx}").dimmed());
         }
-        if full {
-            if let Some(ref body) = r.doc.body {
-                println!("\n{body}\n");
-            }
+        if full && let Some(ref body) = r.doc.body {
+            println!("\n{body}\n");
         }
         println!();
     }
@@ -270,6 +262,7 @@ fn print_docs_cli(docs: &[(DocumentResult, bool, Option<String>)]) {
 }
 
 /// Escape a string for CSV output.
+#[must_use]
 pub fn escape_csv(s: &str) -> String {
     if s.contains(',') || s.contains('"') || s.contains('\n') {
         format!("\"{}\"", s.replace('"', "\"\""))
@@ -279,6 +272,7 @@ pub fn escape_csv(s: &str) -> String {
 }
 
 /// Escape a string for XML output.
+#[must_use]
 pub fn escape_xml(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -288,6 +282,7 @@ pub fn escape_xml(s: &str) -> String {
 }
 
 /// Add line numbers to content.
+#[must_use]
 pub fn add_line_numbers(content: &str, start_line: usize) -> String {
     content
         .lines()
@@ -298,6 +293,7 @@ pub fn add_line_numbers(content: &str, start_line: usize) -> String {
 }
 
 /// Format bytes into human-readable size.
+#[must_use]
 pub fn format_bytes(bytes: usize) -> String {
     const KB: usize = 1024;
     const MB: usize = KB * 1024;
@@ -315,6 +311,7 @@ pub fn format_bytes(bytes: usize) -> String {
 }
 
 /// Format time ago.
+#[must_use]
 pub fn format_time_ago(timestamp: &str) -> String {
     let Ok(dt) = chrono::DateTime::parse_from_rfc3339(timestamp) else {
         return timestamp.to_string();
@@ -343,6 +340,7 @@ pub fn format_time_ago(timestamp: &str) -> String {
 }
 
 /// Format date/time like ls -l.
+#[must_use]
 pub fn format_ls_time(timestamp: &str) -> String {
     let Ok(dt) = chrono::DateTime::parse_from_rfc3339(timestamp) else {
         return timestamp.to_string();

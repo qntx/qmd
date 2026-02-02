@@ -724,14 +724,12 @@ impl Store {
     pub fn ensure_vector_table(&self, _dimensions: usize) -> Result<()> {
         // Create vectors_vec table for storing embeddings
         self.conn.execute(
-            &format!(
-                r"
+            r"
                 CREATE TABLE IF NOT EXISTS vectors_vec (
                     hash_seq TEXT PRIMARY KEY,
                     embedding BLOB NOT NULL
                 )
-                "
-            ),
+                ",
             [],
         )?;
         Ok(())
@@ -901,7 +899,7 @@ impl Store {
                         body_length,
                         body: None,
                     },
-                    score: similarity as f64,
+                    score: f64::from(similarity),
                     source: SearchSource::Vec,
                 });
             }
@@ -980,6 +978,7 @@ impl Store {
 }
 
 /// Check if a path should be excluded from indexing.
+#[must_use]
 pub fn should_exclude(path: &Path) -> bool {
     for component in path.components() {
         if let std::path::Component::Normal(name) = component {
@@ -993,12 +992,14 @@ pub fn should_exclude(path: &Path) -> bool {
 }
 
 /// Check if a string looks like a docid.
+#[must_use]
 pub fn is_docid(s: &str) -> bool {
     let clean = s.trim_start_matches('#');
     clean.len() == 6 && clean.chars().all(|c| c.is_ascii_hexdigit())
 }
 
-/// Parse a virtual path like "qmd://collection/path".
+/// Parse a virtual path like "<qmd://collection/path>".
+#[must_use]
 pub fn parse_virtual_path(path: &str) -> Option<(String, String)> {
     let normalized = normalize_virtual_path(path);
     let stripped = normalized.strip_prefix("qmd://")?;
@@ -1009,17 +1010,20 @@ pub fn parse_virtual_path(path: &str) -> Option<(String, String)> {
 }
 
 /// Build a virtual path from collection and path.
+#[must_use]
 pub fn build_virtual_path(collection: &str, path: &str) -> String {
     format!("qmd://{collection}/{path}")
 }
 
 /// Check if a path is a virtual path.
+#[must_use]
 pub fn is_virtual_path(path: &str) -> bool {
     let trimmed = path.trim();
     trimmed.starts_with("qmd:") || trimmed.starts_with("//")
 }
 
 /// Normalize virtual path format.
+#[must_use]
 pub fn normalize_virtual_path(input: &str) -> String {
     let path = input.trim();
 
@@ -1034,4 +1038,199 @@ pub fn normalize_virtual_path(input: &str) -> String {
     }
 
     path.to_string()
+}
+
+/// Find files similar to a query using fuzzy matching.
+///
+/// Uses the `SkimMatcherV2` algorithm for fuzzy string matching.
+///
+/// # Arguments
+/// * `store` - Store instance
+/// * `query` - Search query
+/// * `max_distance` - Maximum edit distance (unused, for API compat)
+/// * `limit` - Maximum results to return
+pub fn find_similar_files(
+    store: &Store,
+    query: &str,
+    _max_distance: usize,
+    limit: usize,
+) -> Result<Vec<(String, String, i64)>> {
+    use fuzzy_matcher::FuzzyMatcher;
+    use fuzzy_matcher::skim::SkimMatcherV2;
+
+    let matcher = SkimMatcherV2::default();
+    let query_lower = query.to_lowercase();
+
+    // Get all active file paths
+    let mut stmt = store.conn.prepare(
+        r"
+        SELECT collection, path
+        FROM documents
+        WHERE active = 1
+        ",
+    )?;
+
+    let files: Vec<(String, String)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .filter_map(std::result::Result::ok)
+        .collect();
+
+    // Score each file
+    let mut scored: Vec<(String, String, i64)> = files
+        .into_iter()
+        .filter_map(|(collection, path)| {
+            let display_path = build_virtual_path(&collection, &path);
+            let path_lower = path.to_lowercase();
+
+            // Match against path
+            matcher
+                .fuzzy_match(&path_lower, &query_lower)
+                .map(|score| (display_path, path, score))
+        })
+        .collect();
+
+    // Sort by score descending
+    scored.sort_by(|a, b| b.2.cmp(&a.2));
+    scored.truncate(limit);
+
+    Ok(scored)
+}
+
+/// Match files using glob pattern.
+pub fn match_files_by_glob(store: &Store, pattern: &str) -> Result<Vec<DocumentResult>> {
+    let glob_pattern = glob::Pattern::new(pattern).map_err(|e| QmdError::Config(e.to_string()))?;
+
+    let mut stmt = store.conn.prepare(
+        r"
+        SELECT d.collection, d.path, d.title, d.hash, d.modified_at, LENGTH(c.doc)
+        FROM documents d
+        JOIN content c ON d.hash = c.hash
+        WHERE d.active = 1
+        ",
+    )?;
+
+    let results: Vec<DocumentResult> = stmt
+        .query_map([], |row| {
+            let collection: String = row.get(0)?;
+            let path: String = row.get(1)?;
+            let title: String = row.get(2)?;
+            let hash: String = row.get(3)?;
+            let modified_at: String = row.get(4)?;
+            let body_length: i64 = row.get(5)?;
+
+            Ok((collection, path, title, hash, modified_at, body_length))
+        })?
+        .filter_map(std::result::Result::ok)
+        .filter(|(_, path, _, _, _, _)| glob_pattern.matches(path))
+        .map(
+            |(collection, path, title, hash, modified_at, body_length)| {
+                let display_path = build_virtual_path(&collection, &path);
+                let docid = Store::get_docid(&hash);
+                let context = find_context_for_path(&collection, &path).ok().flatten();
+
+                DocumentResult {
+                    filepath: display_path.clone(),
+                    display_path,
+                    title,
+                    context,
+                    hash,
+                    docid,
+                    collection_name: collection,
+                    path,
+                    modified_at,
+                    body_length: body_length as usize,
+                    body: None,
+                }
+            },
+        )
+        .collect();
+
+    Ok(results)
+}
+
+impl Store {
+    /// Get index health information.
+    pub fn get_index_health(&self) -> Result<crate::llm::IndexHealth> {
+        // Total documents
+        let total_docs: usize = self.conn.query_row(
+            "SELECT COUNT(*) FROM documents WHERE active = 1",
+            [],
+            |row| row.get::<_, i64>(0).map(|v| v as usize),
+        )?;
+
+        // Hashes needing embedding
+        let needs_embedding: usize = self.conn.query_row(
+            r"
+                SELECT COUNT(DISTINCT d.hash)
+                FROM documents d
+                LEFT JOIN content_vectors cv ON d.hash = cv.hash
+                WHERE d.active = 1 AND cv.hash IS NULL
+                ",
+            [],
+            |row| row.get::<_, i64>(0).map(|v| v as usize),
+        )?;
+
+        // Days since last update
+        let days_stale: Option<u64> = self
+            .conn
+            .query_row(
+                "SELECT MAX(modified_at) FROM documents WHERE active = 1",
+                [],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .ok()
+            .flatten()
+            .and_then(|ts| {
+                chrono::DateTime::parse_from_rfc3339(&ts).ok().map(|dt| {
+                    let now = chrono::Utc::now();
+                    let duration = now.signed_duration_since(dt);
+                    duration.num_days().max(0) as u64
+                })
+            });
+
+        Ok(crate::llm::IndexHealth {
+            needs_embedding,
+            total_docs,
+            days_stale,
+        })
+    }
+
+    /// Check index health and print warnings if needed.
+    pub fn check_and_warn_health(&self) {
+        if let Ok(health) = self.get_index_health()
+            && let Some(msg) = health.warning_message()
+        {
+            eprintln!("{}", colored::Colorize::yellow(msg.as_str()));
+        }
+    }
+
+    /// Get total document count.
+    pub fn get_document_count(&self) -> Result<usize> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM documents WHERE active = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count as usize)
+    }
+
+    /// Get total unique hash count.
+    pub fn get_unique_hash_count(&self) -> Result<usize> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(DISTINCT hash) FROM documents WHERE active = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count as usize)
+    }
+
+    /// Get embedded hash count.
+    pub fn get_embedded_hash_count(&self) -> Result<usize> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(DISTINCT hash) FROM content_vectors",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count as usize)
+    }
 }

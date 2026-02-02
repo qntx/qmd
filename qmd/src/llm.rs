@@ -3,28 +3,58 @@
 //! This module provides local LLM inference for:
 //! - Document embeddings using GGUF models
 //! - Vector similarity search
-//! - Query expansion (future)
+//! - Query expansion
+//! - Reranking
+//! - Automatic model download from `HuggingFace`
 
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
+use indicatif::{ProgressBar, ProgressStyle};
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel};
+use regex::Regex;
 
 use crate::config;
 
 /// Default embedding model (embeddinggemma-300M)
 pub const DEFAULT_EMBED_MODEL: &str = "embeddinggemma-300M-Q8_0.gguf";
 
-/// Chunk size in characters for document splitting
-pub const CHUNK_SIZE_CHARS: usize = 4000;
+/// Default rerank model
+pub const DEFAULT_RERANK_MODEL: &str = "qwen3-reranker-0.6b-q8_0.gguf";
+
+/// Default generation model for query expansion
+pub const DEFAULT_GENERATE_MODEL: &str = "qmd-query-expansion-1.7B-q4_k_m.gguf";
+
+/// HuggingFace model URI for default embedding model.
+pub const DEFAULT_EMBED_MODEL_URI: &str =
+    "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
+
+/// HuggingFace model URI for default rerank model.
+pub const DEFAULT_RERANK_MODEL_URI: &str =
+    "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf";
+
+/// HuggingFace model URI for default query expansion model.
+pub const DEFAULT_GENERATE_MODEL_URI: &str =
+    "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf";
+
+/// Chunk size in tokens for document splitting
+pub const CHUNK_SIZE_TOKENS: usize = 800;
+
+/// Overlap between chunks in tokens (15%)
+pub const CHUNK_OVERLAP_TOKENS: usize = 120;
+
+/// Chunk size in characters for document splitting (fallback)
+pub const CHUNK_SIZE_CHARS: usize = 3200;
 
 /// Overlap between chunks in characters
-pub const CHUNK_OVERLAP_CHARS: usize = 200;
+pub const CHUNK_OVERLAP_CHARS: usize = 480;
 
 /// Embedding engine for generating document vectors.
 #[derive(Debug)]
@@ -179,7 +209,7 @@ impl EmbeddingEngine {
 
     /// Get the embedding dimensions.
     #[must_use]
-    pub fn dimensions(&self) -> Option<usize> {
+    pub const fn dimensions(&self) -> Option<usize> {
         self.dimensions
     }
 }
@@ -230,7 +260,7 @@ pub fn list_cached_models() -> Vec<String> {
         return Vec::new();
     }
 
-    std::fs::read_dir(&cache_dir)
+    fs::read_dir(&cache_dir)
         .map(|entries| {
             entries
                 .filter_map(Result::ok)
@@ -287,10 +317,10 @@ pub fn chunk_document(content: &str, max_chars: usize, overlap_chars: usize) -> 
 
         // Move forward with overlap
         char_pos = actual_end.saturating_sub(overlap_chars);
-        if let Some(last) = chunks.last() {
-            if char_pos <= last.pos {
-                char_pos = actual_end;
-            }
+        if let Some(last) = chunks.last()
+            && char_pos <= last.pos
+        {
+            char_pos = actual_end;
         }
     }
 
@@ -344,6 +374,551 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
     }
 
     dot / (norm_a * norm_b)
+}
+
+/// Query type for different search backends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueryType {
+    /// Lexical (BM25) search.
+    Lex,
+    /// Vector (semantic) search.
+    Vec,
+    /// `HyDE` - Hypothetical Document Embedding.
+    Hyde,
+}
+
+/// A single query with its target backend type.
+#[derive(Debug, Clone)]
+pub struct Queryable {
+    /// Query type.
+    pub query_type: QueryType,
+    /// Query text.
+    pub text: String,
+}
+
+impl Queryable {
+    /// Create a new queryable.
+    #[must_use]
+    pub fn new(query_type: QueryType, text: impl Into<String>) -> Self {
+        Self {
+            query_type,
+            text: text.into(),
+        }
+    }
+
+    /// Create a lexical query.
+    #[must_use]
+    pub fn lex(text: impl Into<String>) -> Self {
+        Self::new(QueryType::Lex, text)
+    }
+
+    /// Create a vector query.
+    #[must_use]
+    pub fn vec(text: impl Into<String>) -> Self {
+        Self::new(QueryType::Vec, text)
+    }
+
+    /// Create a `HyDE` query.
+    #[must_use]
+    pub fn hyde(text: impl Into<String>) -> Self {
+        Self::new(QueryType::Hyde, text)
+    }
+}
+
+/// Document to be reranked.
+#[derive(Debug, Clone)]
+pub struct RerankDocument {
+    /// File path or identifier.
+    pub file: String,
+    /// Document text content.
+    pub text: String,
+    /// Optional title.
+    pub title: Option<String>,
+}
+
+/// Rerank result for a single document.
+#[derive(Debug, Clone)]
+pub struct RerankResult {
+    /// File path or identifier.
+    pub file: String,
+    /// Relevance score (higher is better).
+    pub score: f32,
+    /// Original index in input list.
+    pub index: usize,
+}
+
+/// Parsed `HuggingFace` model reference.
+#[derive(Debug, Clone)]
+struct HfRef {
+    /// Repository (e.g., "ggml-org/embeddinggemma-300M-GGUF").
+    repo: String,
+    /// File name (e.g., "embeddinggemma-300M-Q8_0.gguf").
+    file: String,
+}
+
+/// Parse a `HuggingFace` URI like "hf:user/repo/file.gguf".
+fn parse_hf_uri(uri: &str) -> Option<HfRef> {
+    if !uri.starts_with("hf:") {
+        return None;
+    }
+    let without_prefix = &uri[3..];
+    let parts: Vec<&str> = without_prefix.splitn(3, '/').collect();
+    if parts.len() < 3 {
+        return None;
+    }
+    Some(HfRef {
+        repo: format!("{}/{}", parts[0], parts[1]),
+        file: parts[2].to_string(),
+    })
+}
+
+/// Model pull result.
+#[derive(Debug, Clone)]
+pub struct PullResult {
+    /// Model URI or name.
+    pub model: String,
+    /// Local file path.
+    pub path: PathBuf,
+    /// File size in bytes.
+    pub size_bytes: u64,
+    /// Whether the model was refreshed (re-downloaded).
+    pub refreshed: bool,
+}
+
+/// Download a model from `HuggingFace`.
+///
+/// # Arguments
+/// * `model_uri` - Model URI (e.g., "hf:user/repo/file.gguf" or local filename)
+/// * `refresh` - Force re-download even if cached
+///
+/// # Errors
+/// Returns error if download fails.
+pub fn pull_model(model_uri: &str, refresh: bool) -> Result<PullResult> {
+    let cache_dir = config::get_model_cache_dir();
+    fs::create_dir_all(&cache_dir)?;
+
+    // Parse HuggingFace URI
+    let hf_ref = parse_hf_uri(model_uri);
+
+    let filename = if let Some(ref hf) = hf_ref {
+        hf.file.clone()
+    } else {
+        // Assume it's already a filename
+        model_uri.to_string()
+    };
+
+    let local_path = cache_dir.join(&filename);
+    let etag_path = cache_dir.join(format!("{filename}.etag"));
+
+    // Check if we need to download
+    let should_download = if refresh {
+        true
+    } else if !local_path.exists() {
+        true
+    } else if let Some(ref hf) = hf_ref {
+        // Check ETag for updates
+        let remote_etag = get_remote_etag(hf);
+        let local_etag = fs::read_to_string(&etag_path).ok();
+        remote_etag.is_some() && remote_etag != local_etag
+    } else {
+        false
+    };
+
+    if should_download {
+        if let Some(ref hf) = hf_ref {
+            download_from_hf(hf, &local_path, &etag_path)?;
+        } else {
+            bail!("Model not found and no HuggingFace URI provided: {model_uri}");
+        }
+    }
+
+    let size_bytes = fs::metadata(&local_path).map_or(0, |m| m.len());
+
+    Ok(PullResult {
+        model: model_uri.to_string(),
+        path: local_path,
+        size_bytes,
+        refreshed: should_download,
+    })
+}
+
+/// Get remote `ETag` from `HuggingFace` for cache validation.
+fn get_remote_etag(hf: &HfRef) -> Option<String> {
+    let url = format!(
+        "https://huggingface.co/{}/resolve/main/{}",
+        hf.repo, hf.file
+    );
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .ok()?;
+
+    let resp = client.head(&url).send().ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    resp.headers()
+        .get("etag")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim_matches('"').to_string())
+}
+
+/// Download a file from `HuggingFace` with progress bar.
+fn download_from_hf(hf: &HfRef, local_path: &Path, etag_path: &Path) -> Result<()> {
+    let url = format!(
+        "https://huggingface.co/{}/resolve/main/{}",
+        hf.repo, hf.file
+    );
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_hours(1))
+        .build()?;
+
+    let mut resp = client.get(&url).send()?;
+    if !resp.status().is_success() {
+        bail!("Failed to download {}: HTTP {}", url, resp.status());
+    }
+
+    let total_size = resp.content_length().unwrap_or(0);
+
+    // Create progress bar
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+            .expect("valid template")
+            .progress_chars("#>-"),
+    );
+    pb.set_message(format!("Downloading {}", hf.file));
+
+    // Download with progress
+    let mut file = File::create(local_path)?;
+    let mut downloaded: u64 = 0;
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let bytes_read = resp.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+        file.write_all(&buffer[..bytes_read])?;
+        downloaded += bytes_read as u64;
+        pb.set_position(downloaded);
+    }
+
+    pb.finish_with_message(format!("Downloaded {}", hf.file));
+
+    // Save ETag for cache validation
+    if let Some(etag) = resp.headers().get("etag")
+        && let Ok(etag_str) = etag.to_str()
+    {
+        let _ = fs::write(etag_path, etag_str.trim_matches('"'));
+    }
+
+    Ok(())
+}
+
+/// Pull multiple models.
+///
+/// # Errors
+/// Returns error if any download fails.
+pub fn pull_models(models: &[&str], refresh: bool) -> Result<Vec<PullResult>> {
+    models.iter().map(|m| pull_model(m, refresh)).collect()
+}
+
+/// Resolve a model URI to a local path, downloading if needed.
+///
+/// # Errors
+/// Returns error if model cannot be resolved.
+pub fn resolve_model(model_uri: &str) -> Result<PathBuf> {
+    let result = pull_model(model_uri, false)?;
+    Ok(result.path)
+}
+
+/// Expand a search query into multiple variations.
+///
+/// This is a simple implementation that generates variations without LLM.
+/// For full LLM-based expansion, use the generation model.
+#[must_use]
+pub fn expand_query_simple(query: &str) -> Vec<Queryable> {
+    let mut queries = Vec::new();
+
+    // Original query for all search types
+    queries.push(Queryable::lex(query));
+    queries.push(Queryable::vec(query));
+
+    // Generate simple HyDE-style expansion
+    let hyde_text = format!("Information about {query}");
+    queries.push(Queryable::hyde(hyde_text));
+
+    queries
+}
+
+/// Parse query expansion output from LLM.
+///
+/// Expected format:
+/// ```text
+/// lex: keyword search terms
+/// vec: semantic query
+/// hyde: hypothetical document
+/// ```
+#[must_use]
+pub fn parse_query_expansion(output: &str, original_query: &str) -> Vec<Queryable> {
+    let mut queries = Vec::new();
+    let query_lower = original_query.to_lowercase();
+
+    // Regex to match "type: content" lines
+    let line_re = Regex::new(r"^(lex|vec|hyde):\s*(.+)$").ok();
+
+    for line in output.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        if let Some(ref re) = line_re
+            && let Some(caps) = re.captures(line)
+        {
+            let query_type = match &caps[1] {
+                "lex" => QueryType::Lex,
+                "vec" => QueryType::Vec,
+                "hyde" => QueryType::Hyde,
+                _ => continue,
+            };
+            let text = caps[2].trim();
+
+            // Validate that expansion contains at least one term from original query
+            let text_lower = text.to_lowercase();
+            let has_query_term = query_lower
+                .split_whitespace()
+                .any(|term| term.len() >= 3 && text_lower.contains(term));
+
+            if has_query_term || query_lower.len() < 3 {
+                queries.push(Queryable::new(query_type, text));
+            }
+        }
+    }
+
+    // Fallback if no valid queries found
+    if queries.is_empty() {
+        return expand_query_simple(original_query);
+    }
+
+    queries
+}
+
+/// RRF result with merged score.
+#[derive(Debug, Clone)]
+pub struct RrfResult {
+    /// File path.
+    pub file: String,
+    /// Display path.
+    pub display_path: String,
+    /// Document title.
+    pub title: String,
+    /// Document body.
+    pub body: String,
+    /// Merged RRF score.
+    pub score: f64,
+    /// Best rank across all lists (0-indexed).
+    pub best_rank: usize,
+}
+
+/// Combine multiple ranked lists using Reciprocal Rank Fusion.
+///
+/// RRF score = sum(weight / (k + rank + 1)) across all lists where doc appears.
+/// k=60 is standard, provides good balance between top and lower ranks.
+///
+/// # Arguments
+/// * `result_lists` - Vector of ranked result lists (file, `display_path`, title, body)
+/// * `weights` - Optional weights for each list (default 1.0)
+/// * `k` - RRF parameter (default 60)
+#[must_use]
+pub fn reciprocal_rank_fusion(
+    result_lists: &[Vec<(String, String, String, String)>],
+    weights: Option<&[f64]>,
+    k: usize,
+) -> Vec<RrfResult> {
+    use std::collections::HashMap;
+
+    let mut scores: HashMap<String, (f64, String, String, String, usize)> = HashMap::new();
+
+    for (list_idx, results) in result_lists.iter().enumerate() {
+        let weight = weights
+            .and_then(|w| w.get(list_idx))
+            .copied()
+            .unwrap_or(1.0);
+
+        for (rank, (file, display_path, title, body)) in results.iter().enumerate() {
+            let rrf_score = weight / (k + rank + 1) as f64;
+
+            scores
+                .entry(file.clone())
+                .and_modify(|(score, _, _, _, best_rank)| {
+                    *score += rrf_score;
+                    *best_rank = (*best_rank).min(rank);
+                })
+                .or_insert((
+                    rrf_score,
+                    display_path.clone(),
+                    title.clone(),
+                    body.clone(),
+                    rank,
+                ));
+        }
+    }
+
+    // Convert to results and add bonus for best rank
+    let mut results: Vec<RrfResult> = scores
+        .into_iter()
+        .map(|(file, (score, display_path, title, body, best_rank))| {
+            // Add bonus for top-ranked documents to prevent dilution
+            let bonus = match best_rank {
+                0 => 0.05,     // Ranked #1 somewhere
+                1..=2 => 0.02, // Ranked top-3 somewhere
+                _ => 0.0,
+            };
+
+            RrfResult {
+                file,
+                display_path,
+                title,
+                body,
+                score: score + bonus,
+                best_rank,
+            }
+        })
+        .collect();
+
+    // Sort by score descending
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    results
+}
+
+/// Snippet extraction result.
+#[derive(Debug, Clone)]
+pub struct SnippetResult {
+    /// Extracted snippet text.
+    pub snippet: String,
+    /// Line number where snippet starts.
+    pub line: usize,
+}
+
+/// Extract a relevant snippet from document body.
+///
+/// # Arguments
+/// * `body` - Full document body
+/// * `query` - Search query for context
+/// * `max_chars` - Maximum snippet length
+/// * `chunk_pos` - Optional character position hint (from vector search)
+#[must_use]
+pub fn extract_snippet(
+    body: &str,
+    query: &str,
+    max_chars: usize,
+    chunk_pos: Option<usize>,
+) -> SnippetResult {
+    if body.len() <= max_chars {
+        return SnippetResult {
+            snippet: body.to_string(),
+            line: 1,
+        };
+    }
+
+    // Get query terms for matching
+    let terms: Vec<&str> = query.split_whitespace().filter(|t| t.len() >= 3).collect();
+
+    let body_lower = body.to_lowercase();
+
+    // Find best position based on term matches or chunk_pos
+    let start_pos = if let Some(pos) = chunk_pos {
+        pos.min(body.len().saturating_sub(max_chars))
+    } else {
+        // Find first occurrence of any query term
+        let mut best_pos = 0;
+        for term in &terms {
+            if let Some(pos) = body_lower.find(&term.to_lowercase()) {
+                best_pos = pos.saturating_sub(50); // Start 50 chars before match
+                break;
+            }
+        }
+        best_pos
+    };
+
+    // Extend to line boundaries
+    let line_start = body[..start_pos].rfind('\n').map_or(0, |p| p + 1);
+
+    let end_pos = (line_start + max_chars).min(body.len());
+    let line_end = body[end_pos..]
+        .find('\n')
+        .map_or(body.len(), |p| end_pos + p);
+
+    // Calculate line number
+    let line = body[..line_start].matches('\n').count() + 1;
+
+    let snippet = body[line_start..line_end].to_string();
+
+    SnippetResult { snippet, line }
+}
+
+/// Index health information.
+#[derive(Debug, Clone, Copy)]
+pub struct IndexHealth {
+    /// Number of documents needing embedding.
+    pub needs_embedding: usize,
+    /// Total number of documents.
+    pub total_docs: usize,
+    /// Days since last update (None if never updated).
+    pub days_stale: Option<u64>,
+}
+
+impl IndexHealth {
+    /// Check if index is healthy.
+    #[must_use]
+    pub fn is_healthy(&self) -> bool {
+        let embedding_ok = self.needs_embedding == 0
+            || (self.needs_embedding as f64 / self.total_docs.max(1) as f64) < 0.1;
+        let freshness_ok = self.days_stale.is_none() || self.days_stale < Some(14);
+        embedding_ok && freshness_ok
+    }
+
+    /// Get warning message if any issues.
+    #[must_use]
+    pub fn warning_message(&self) -> Option<String> {
+        let mut messages = Vec::new();
+
+        if self.needs_embedding > 0 {
+            let pct =
+                (self.needs_embedding as f64 / self.total_docs.max(1) as f64 * 100.0) as usize;
+            if pct >= 10 {
+                messages.push(format!(
+                    "{} documents ({}%) need embeddings. Run 'qmd embed' for better results.",
+                    self.needs_embedding, pct
+                ));
+            }
+        }
+
+        if let Some(days) = self.days_stale
+            && days >= 14
+        {
+            messages.push(format!(
+                "Index last updated {days} days ago. Run 'qmd update' to refresh."
+            ));
+        }
+
+        if messages.is_empty() {
+            None
+        } else {
+            Some(messages.join("\n"))
+        }
+    }
 }
 
 #[cfg(test)]

@@ -79,16 +79,16 @@ pub fn set_config_index_name(name: &str) {
 
 /// Get current index name.
 fn get_index_name() -> String {
-    INDEX_NAME
-        .read()
-        .map(|s| {
+    INDEX_NAME.read().map_or_else(
+        |_| "index".to_string(),
+        |s| {
             if s.is_empty() {
                 "index".to_string()
             } else {
                 s.clone()
             }
-        })
-        .unwrap_or_else(|_| "index".to_string())
+        },
+    )
 }
 
 /// Ensure config directory exists.
@@ -332,18 +332,21 @@ pub fn find_context_for_path(collection_name: &str, file_path: &str) -> Result<O
 }
 
 /// Get the config file path (useful for error messages).
+#[must_use]
 pub fn get_config_file_path() -> Option<std::path::PathBuf> {
     let index_name = get_index_name();
     get_config_path(&index_name)
 }
 
 /// Check if config file exists.
+#[must_use]
 pub fn config_exists() -> bool {
     get_config_file_path().is_some_and(|p| p.exists())
 }
 
 /// Validate a collection name.
 /// Collection names must be valid and not contain special characters.
+#[must_use]
 pub fn is_valid_collection_name(name: &str) -> bool {
     !name.is_empty()
         && name

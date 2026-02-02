@@ -95,8 +95,7 @@ fn handle_collection(cmd: CollectionCommands) -> Result<()> {
             let coll_name = name.unwrap_or_else(|| {
                 abs_path
                     .file_name()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "root".to_string())
+                    .map_or_else(|| "root".to_string(), |s| s.to_string_lossy().to_string())
             });
 
             // Check if collection exists.
@@ -114,7 +113,7 @@ fn handle_collection(cmd: CollectionCommands) -> Result<()> {
             yaml_add_collection(&coll_name, &abs_path_str, &mask)?;
 
             // Index files.
-            println!("Creating collection '{}'...", coll_name);
+            println!("Creating collection '{coll_name}'...");
             index_files(&abs_path_str, &mask, &coll_name)?;
             println!(
                 "{} Collection '{}' created successfully",
@@ -136,8 +135,7 @@ fn handle_collection(cmd: CollectionCommands) -> Result<()> {
                 let time_ago = coll
                     .last_modified
                     .as_ref()
-                    .map(|t| format_time_ago(t))
-                    .unwrap_or_else(|| "never".to_string());
+                    .map_or_else(|| "never".to_string(), |t| format_time_ago(t));
 
                 println!(
                     "{} {}",
@@ -162,9 +160,9 @@ fn handle_collection(cmd: CollectionCommands) -> Result<()> {
             yaml_remove_collection(&name)?;
 
             println!("{} Removed collection '{}'", "✓".green(), name);
-            println!("  Deleted {} documents", deleted_docs);
+            println!("  Deleted {deleted_docs} documents");
             if cleaned > 0 {
-                println!("  Cleaned up {} orphaned content hashes", cleaned);
+                println!("  Cleaned up {cleaned} orphaned content hashes");
             }
         }
         CollectionCommands::Rename { old_name, new_name } => {
@@ -414,7 +412,7 @@ fn handle_ls(path: Option<String>) -> Result<()> {
         let parts: Vec<&str> = path_arg.splitn(2, '/').collect();
         (
             parts[0].to_string(),
-            parts.get(1).map(|s| s.to_string()).unwrap_or_default(),
+            parts.get(1).map(ToString::to_string).unwrap_or_default(),
         )
     };
 
@@ -435,9 +433,9 @@ fn handle_ls(path: Option<String>) -> Result<()> {
 
     if files.is_empty() {
         if prefix.is_some() {
-            println!("No files found under qmd://{}/{}", coll_name, path_prefix);
+            println!("No files found under qmd://{coll_name}/{path_prefix}");
         } else {
-            println!("No files found in collection: {}", coll_name);
+            println!("No files found in collection: {coll_name}");
         }
         return Ok(());
     }
@@ -453,12 +451,11 @@ fn handle_ls(path: Option<String>) -> Result<()> {
         let size_str = format!("{:>width$}", format_bytes(size), width = max_size);
         let time_str = format_ls_time(&modified_at);
         println!(
-            "{}  {}  {}{}{}",
+            "{}  {}  {}{}",
             size_str,
             time_str,
             format!("qmd://{coll_name}/").dimmed(),
-            file_path.cyan(),
-            ""
+            file_path.cyan()
         );
     }
 
@@ -492,10 +489,10 @@ fn handle_get(
     let (collection, path) = if is_docid(input_path) {
         store
             .find_document_by_docid(input_path)?
-            .ok_or_else(|| anyhow::anyhow!("Document not found: {}", input_path))?
+            .ok_or_else(|| anyhow::anyhow!("Document not found: {input_path}"))?
     } else if is_virtual_path(input_path) {
         parse_virtual_path(input_path)
-            .ok_or_else(|| anyhow::anyhow!("Invalid virtual path: {}", input_path))?
+            .ok_or_else(|| anyhow::anyhow!("Invalid virtual path: {input_path}"))?
     } else {
         // Try as collection/path format.
         let parts: Vec<&str> = input_path.splitn(2, '/').collect();
@@ -503,15 +500,14 @@ fn handle_get(
             (parts[0].to_string(), parts[1].to_string())
         } else {
             return Err(anyhow::anyhow!(
-                "Could not resolve path: {}. Use qmd://collection/path format.",
-                input_path
+                "Could not resolve path: {input_path}. Use qmd://collection/path format."
             ));
         }
     };
 
     let doc = store
         .get_document(&collection, &path)?
-        .ok_or_else(|| anyhow::anyhow!("Document not found: qmd://{}/{}", collection, path))?;
+        .ok_or_else(|| anyhow::anyhow!("Document not found: qmd://{collection}/{path}"))?;
 
     let mut body = doc.body.unwrap_or_default();
     let start_line = from_line.unwrap_or(1);
@@ -555,19 +551,18 @@ fn handle_multi_get(
     if is_comma_list {
         for name in pattern.split(',').map(str::trim).filter(|s| !s.is_empty()) {
             let (collection, path) = if is_virtual_path(name) {
-                match parse_virtual_path(name) {
-                    Some(p) => p,
-                    None => {
-                        eprintln!("Invalid path: {}", name);
-                        continue;
-                    }
+                if let Some(p) = parse_virtual_path(name) {
+                    p
+                } else {
+                    eprintln!("Invalid path: {name}");
+                    continue;
                 }
             } else {
                 let parts: Vec<&str> = name.splitn(2, '/').collect();
                 if parts.len() == 2 {
                     (parts[0].to_string(), parts[1].to_string())
                 } else {
-                    eprintln!("Invalid path format: {}", name);
+                    eprintln!("Invalid path format: {name}");
                     continue;
                 }
             };
@@ -584,17 +579,17 @@ fn handle_multi_get(
                         results.push((doc, true, Some(reason)));
                     } else {
                         // Apply line limit.
-                        if let Some(limit) = max_lines {
-                            if let Some(ref mut body) = doc.body {
-                                let lines: Vec<&str> = body.lines().take(limit).collect();
-                                *body = lines.join("\n");
-                            }
+                        if let Some(limit) = max_lines
+                            && let Some(ref mut body) = doc.body
+                        {
+                            let lines: Vec<&str> = body.lines().take(limit).collect();
+                            *body = lines.join("\n");
                         }
                         results.push((doc, false, None));
                     }
                 }
                 None => {
-                    eprintln!("File not found: {}", name);
+                    eprintln!("File not found: {name}");
                 }
             }
         }
@@ -614,9 +609,7 @@ fn handle_status() -> Result<()> {
     let db_path = store.db_path().to_string_lossy().to_string();
 
     // Get database size.
-    let index_size = fs::metadata(store.db_path())
-        .map(|m| m.len() as usize)
-        .unwrap_or(0);
+    let index_size = fs::metadata(store.db_path()).map_or(0, |m| m.len() as usize);
 
     let status = store.get_status()?;
     let contexts = list_all_contexts()?;
@@ -635,15 +628,19 @@ fn handle_status() -> Result<()> {
         );
     }
 
-    if !status.collections.is_empty() {
+    if status.collections.is_empty() {
+        println!(
+            "\n{}",
+            "No collections. Run 'qmd collection add .' to index markdown files.".dimmed()
+        );
+    } else {
         println!("\n{}", "Collections".bold());
 
         for coll in &status.collections {
             let time_ago = coll
                 .last_modified
                 .as_ref()
-                .map(|t| format_time_ago(t))
-                .unwrap_or_else(|| "never".to_string());
+                .map_or_else(|| "never".to_string(), |t| format_time_ago(t));
 
             // Get contexts for this collection.
             let coll_contexts: Vec<_> = contexts
@@ -681,11 +678,6 @@ fn handle_status() -> Result<()> {
                 }
             }
         }
-    } else {
-        println!(
-            "\n{}",
-            "No collections. Run 'qmd collection add .' to index markdown files.".dimmed()
-        );
     }
 
     Ok(())
@@ -778,12 +770,11 @@ fn handle_search(
     // Load full body if requested.
     if full {
         for result in &mut results {
-            if result.doc.body.is_none() {
-                if let Ok(Some(doc)) =
+            if result.doc.body.is_none()
+                && let Ok(Some(doc)) =
                     store.get_document(&result.doc.collection_name, &result.doc.path)
-                {
-                    result.doc.body = doc.body;
-                }
+            {
+                result.doc.body = doc.body;
             }
         }
     }
@@ -810,21 +801,18 @@ fn handle_vsearch(
     // Load embedding model
     let mut engine = if let Some(path) = model_path {
         EmbeddingEngine::new(&PathBuf::from(path))?
+    } else if let Ok(e) = EmbeddingEngine::load_default() {
+        e
     } else {
-        match EmbeddingEngine::load_default() {
-            Ok(e) => e,
-            Err(_) => {
-                eprintln!(
-                    "{} Embedding model not found. Please specify --model or download a model.",
-                    "Error:".red()
-                );
-                eprintln!(
-                    "Place a GGUF embedding model in: {}",
-                    qmd::config::get_model_cache_dir().display()
-                );
-                std::process::exit(1);
-            }
-        }
+        eprintln!(
+            "{} Embedding model not found. Please specify --model or download a model.",
+            "Error:".red()
+        );
+        eprintln!(
+            "Place a GGUF embedding model in: {}",
+            qmd::config::get_model_cache_dir().display()
+        );
+        std::process::exit(1);
     };
 
     // Generate query embedding
@@ -847,12 +835,11 @@ fn handle_vsearch(
     // Load full body if requested
     if full {
         for result in &mut results {
-            if result.doc.body.is_none() {
-                if let Ok(Some(doc)) =
+            if result.doc.body.is_none()
+                && let Ok(Some(doc)) =
                     store.get_document(&result.doc.collection_name, &result.doc.path)
-                {
-                    result.doc.body = doc.body;
-                }
+            {
+                result.doc.body = doc.body;
             }
         }
     }
@@ -871,7 +858,7 @@ fn handle_embed(force: bool, model_path: Option<&str>) -> Result<()> {
     // Clear existing embeddings if force
     if force {
         let cleared = store.clear_embeddings()?;
-        println!("Cleared {} existing embeddings", cleared);
+        println!("Cleared {cleared} existing embeddings");
     }
 
     // Get documents needing embedding
@@ -890,21 +877,18 @@ fn handle_embed(force: bool, model_path: Option<&str>) -> Result<()> {
     // Load embedding model
     let mut engine = if let Some(path) = model_path {
         EmbeddingEngine::new(&PathBuf::from(path))?
+    } else if let Ok(e) = EmbeddingEngine::load_default() {
+        e
     } else {
-        match EmbeddingEngine::load_default() {
-            Ok(e) => e,
-            Err(_) => {
-                eprintln!(
-                    "{} Embedding model not found. Please specify --model or download a model.",
-                    "Error:".red()
-                );
-                eprintln!(
-                    "Place a GGUF embedding model in: {}",
-                    qmd::config::get_model_cache_dir().display()
-                );
-                std::process::exit(1);
-            }
-        }
+        eprintln!(
+            "{} Embedding model not found. Please specify --model or download a model.",
+            "Error:".red()
+        );
+        eprintln!(
+            "Place a GGUF embedding model in: {}",
+            qmd::config::get_model_cache_dir().display()
+        );
+        std::process::exit(1);
     };
 
     let now = chrono::Utc::now().to_rfc3339();
@@ -970,7 +954,7 @@ fn handle_models(cmd: ModelCommands) -> Result<()> {
                     if is_default {
                         println!("  {} {}", model, "(default)".green());
                     } else {
-                        println!("  {}", model);
+                        println!("  {model}");
                     }
                 }
             }
@@ -981,17 +965,56 @@ fn handle_models(cmd: ModelCommands) -> Result<()> {
             let model_path = cache_dir.join(model_name);
 
             println!("{}\n", "Model Info".bold());
-            println!("Name: {}", model_name);
+            println!("Name: {model_name}");
             println!("Path: {}", model_path.display());
 
             if model_path.exists() {
-                let size = fs::metadata(&model_path)
-                    .map(|m| format_bytes(m.len() as usize))
-                    .unwrap_or_else(|_| "unknown".to_string());
+                let size = fs::metadata(&model_path).map_or_else(
+                    |_| "unknown".to_string(),
+                    |m| format_bytes(m.len() as usize),
+                );
                 println!("Status: {} ({})", "Downloaded".green(), size);
             } else {
                 println!("Status: {}", "Not downloaded".red());
             }
+        }
+        ModelCommands::Pull { model, refresh } => {
+            use qmd::llm::{
+                DEFAULT_EMBED_MODEL_URI, DEFAULT_RERANK_MODEL_URI, pull_model, pull_models,
+            };
+
+            println!("{}\n", "Pulling Models".bold());
+
+            let results = if model == "all" {
+                // Pull default models
+                let default_models = [DEFAULT_EMBED_MODEL_URI, DEFAULT_RERANK_MODEL_URI];
+                println!("Downloading {} default models...\n", default_models.len());
+                pull_models(&default_models, refresh)?
+            } else {
+                // Pull single model
+                vec![pull_model(&model, refresh)?]
+            };
+
+            println!();
+            for result in &results {
+                let status = if result.refreshed {
+                    "Downloaded".green()
+                } else {
+                    "Cached".cyan()
+                };
+                println!(
+                    "{} {} ({})",
+                    status,
+                    result
+                        .path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy(),
+                    format_bytes(result.size_bytes as usize)
+                );
+            }
+
+            println!("\n{} {} model(s) ready", "✓".green(), results.len());
         }
     }
 
@@ -1009,9 +1032,9 @@ fn handle_db(cmd: DbCommands) -> Result<()> {
             let orphaned_vectors = store.cleanup_orphaned_vectors()?;
 
             println!("{} Database cleanup complete", "✓".green());
-            println!("  Removed {} inactive documents", inactive);
-            println!("  Removed {} orphaned content entries", orphaned_content);
-            println!("  Removed {} orphaned vector entries", orphaned_vectors);
+            println!("  Removed {inactive} inactive documents");
+            println!("  Removed {orphaned_content} orphaned content entries");
+            println!("  Removed {orphaned_vectors} orphaned vector entries");
         }
         DbCommands::Vacuum => {
             println!("Vacuuming database...");
@@ -1039,7 +1062,7 @@ fn index_files(pwd: &str, glob_pattern: &str, collection_name: &str) -> Result<(
     for entry in WalkDir::new(pwd)
         .follow_links(true)
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
     {
         let path = entry.path();
 
@@ -1080,7 +1103,7 @@ fn index_files(pwd: &str, glob_pattern: &str, collection_name: &str) -> Result<(
         let content = match fs::read_to_string(abs_path) {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("  Warning: Could not read {}: {}", rel_path, e);
+                eprintln!("  Warning: Could not read {rel_path}: {e}");
                 continue;
             }
         };
@@ -1124,8 +1147,7 @@ fn index_files(pwd: &str, glob_pattern: &str, collection_name: &str) -> Result<(
     }
 
     println!(
-        "  {} indexed, {} updated, {} unchanged, {} removed",
-        indexed, updated, unchanged, deactivated
+        "  {indexed} indexed, {updated} updated, {unchanged} unchanged, {deactivated} removed"
     );
 
     Ok(())

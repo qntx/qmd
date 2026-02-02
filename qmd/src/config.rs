@@ -32,6 +32,7 @@ pub const EXCLUDE_DIRS: &[&str] = &[
 /// Get the default database path.
 ///
 /// Returns `~/.cache/qmd/index.sqlite` on Unix-like systems.
+#[must_use]
 pub fn get_default_db_path(index_name: &str) -> Option<std::path::PathBuf> {
     let cache_dir = dirs::cache_dir()?;
     let qmd_cache = cache_dir.join("qmd");
@@ -42,6 +43,7 @@ pub fn get_default_db_path(index_name: &str) -> Option<std::path::PathBuf> {
 /// Get the default config directory.
 ///
 /// Returns `~/.config/qmd` on Unix-like systems.
+#[must_use]
 pub fn get_config_dir() -> Option<std::path::PathBuf> {
     if let Ok(dir) = std::env::var("QMD_CONFIG_DIR") {
         return Some(std::path::PathBuf::from(dir));
@@ -51,6 +53,7 @@ pub fn get_config_dir() -> Option<std::path::PathBuf> {
 }
 
 /// Get the config file path for a given index name.
+#[must_use]
 pub fn get_config_path(index_name: &str) -> Option<std::path::PathBuf> {
     let config_dir = get_config_dir()?;
     Some(config_dir.join(format!("{index_name}.yml")))

@@ -25,7 +25,7 @@ pub enum Commands {
 
     /// List collections or files in a collection.
     Ls {
-        /// Collection name or path (e.g., "notes" or "qmd://notes/path").
+        /// Collection name or path (e.g., "notes" or "<qmd://notes/path>").
         path: Option<String>,
     },
 
@@ -169,6 +169,17 @@ pub enum ModelCommands {
     Info {
         /// Model name.
         name: Option<String>,
+    },
+
+    /// Download models from `HuggingFace`.
+    Pull {
+        /// Model URI (e.g., "hf:user/repo/file.gguf") or "all" for default models.
+        #[arg(default_value = "all")]
+        model: String,
+
+        /// Force re-download even if cached.
+        #[arg(short, long)]
+        refresh: bool,
     },
 }
 
