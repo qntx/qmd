@@ -720,6 +720,221 @@ impl Store {
         Ok(())
     }
 
+    /// Ensure the vector table exists with the correct dimensions.
+    pub fn ensure_vector_table(&self, _dimensions: usize) -> Result<()> {
+        // Create vectors_vec table for storing embeddings
+        self.conn.execute(
+            &format!(
+                r"
+                CREATE TABLE IF NOT EXISTS vectors_vec (
+                    hash_seq TEXT PRIMARY KEY,
+                    embedding BLOB NOT NULL
+                )
+                "
+            ),
+            [],
+        )?;
+        Ok(())
+    }
+
+    /// Insert an embedding for a content hash.
+    pub fn insert_embedding(
+        &self,
+        hash: &str,
+        seq: usize,
+        pos: usize,
+        embedding: &[f32],
+        model: &str,
+        embedded_at: &str,
+    ) -> Result<()> {
+        // Insert metadata
+        self.conn.execute(
+            r"
+            INSERT OR REPLACE INTO content_vectors (hash, seq, pos, model, embedded_at)
+            VALUES (?1, ?2, ?3, ?4, ?5)
+            ",
+            params![hash, seq as i64, pos as i64, model, embedded_at],
+        )?;
+
+        // Insert vector data
+        let hash_seq = format!("{hash}_{seq}");
+        let embedding_bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+
+        self.conn.execute(
+            "INSERT OR REPLACE INTO vectors_vec (hash_seq, embedding) VALUES (?1, ?2)",
+            params![hash_seq, embedding_bytes],
+        )?;
+
+        Ok(())
+    }
+
+    /// Get hashes that need embedding.
+    pub fn get_hashes_needing_embedding(&self) -> Result<Vec<(String, String, String)>> {
+        let mut stmt = self.conn.prepare(
+            r"
+            SELECT DISTINCT d.hash, d.path, c.doc
+            FROM documents d
+            JOIN content c ON c.hash = d.hash
+            LEFT JOIN content_vectors v ON d.hash = v.hash AND v.seq = 0
+            WHERE d.active = 1 AND v.hash IS NULL
+            ",
+        )?;
+
+        let results = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        Ok(results)
+    }
+
+    /// Get embedding for a hash.
+    pub fn get_embedding(&self, hash: &str, seq: usize) -> Result<Option<Vec<f32>>> {
+        let hash_seq = format!("{hash}_{seq}");
+        let result: Option<Vec<u8>> = self
+            .conn
+            .query_row(
+                "SELECT embedding FROM vectors_vec WHERE hash_seq = ?1",
+                params![hash_seq],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        Ok(result.map(|bytes| {
+            bytes
+                .chunks_exact(4)
+                .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+                .collect()
+        }))
+    }
+
+    /// Vector similarity search.
+    pub fn search_vec(
+        &self,
+        query_embedding: &[f32],
+        limit: usize,
+        collection: Option<&str>,
+    ) -> Result<Vec<SearchResult>> {
+        // Get all embeddings and compute similarity
+        let sql = if collection.is_some() {
+            r"
+            SELECT DISTINCT
+                d.collection,
+                d.path,
+                d.title,
+                d.hash,
+                d.modified_at,
+                LENGTH(c.doc) as body_length,
+                v.hash_seq
+            FROM documents d
+            JOIN content c ON c.hash = d.hash
+            JOIN vectors_vec v ON v.hash_seq = d.hash || '_0'
+            WHERE d.active = 1 AND d.collection = ?1
+            "
+        } else {
+            r"
+            SELECT DISTINCT
+                d.collection,
+                d.path,
+                d.title,
+                d.hash,
+                d.modified_at,
+                LENGTH(c.doc) as body_length,
+                v.hash_seq
+            FROM documents d
+            JOIN content c ON c.hash = d.hash
+            JOIN vectors_vec v ON v.hash_seq = d.hash || '_0'
+            WHERE d.active = 1
+            "
+        };
+
+        let mut stmt = self.conn.prepare(sql)?;
+
+        let rows: Vec<(String, String, String, String, String, usize, String)> =
+            if let Some(coll) = collection {
+                stmt.query_map(params![coll], |row| {
+                    let body_length: i64 = row.get(5)?;
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        body_length as usize,
+                        row.get(6)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            } else {
+                stmt.query_map([], |row| {
+                    let body_length: i64 = row.get(5)?;
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        body_length as usize,
+                        row.get(6)?,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?
+            };
+
+        // Compute similarities
+        let mut results: Vec<SearchResult> = Vec::new();
+
+        for (collection_name, path, title, hash, modified_at, body_length, _hash_seq) in rows {
+            if let Some(doc_embedding) = self.get_embedding(&hash, 0)? {
+                let similarity = crate::llm::cosine_similarity(query_embedding, &doc_embedding);
+
+                results.push(SearchResult {
+                    doc: DocumentResult {
+                        filepath: format!("qmd://{collection_name}/{path}"),
+                        display_path: format!("{collection_name}/{path}"),
+                        title,
+                        context: None,
+                        hash: hash.clone(),
+                        docid: Self::get_docid(&hash),
+                        collection_name: collection_name.clone(),
+                        path: path.clone(),
+                        modified_at,
+                        body_length,
+                        body: None,
+                    },
+                    score: similarity as f64,
+                    source: SearchSource::Vec,
+                });
+            }
+        }
+
+        // Sort by similarity (descending) and limit
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        results.truncate(limit);
+
+        // Add context
+        let results_with_context: Vec<SearchResult> = results
+            .into_iter()
+            .map(|mut r| {
+                r.doc.context =
+                    find_context_for_path(&r.doc.collection_name, &r.doc.path).unwrap_or(None);
+                r
+            })
+            .collect();
+
+        Ok(results_with_context)
+    }
+
+    /// Clear all embeddings.
+    pub fn clear_embeddings(&self) -> Result<usize> {
+        let changes1 = self.conn.execute("DELETE FROM content_vectors", [])?;
+        let _ = self.conn.execute("DELETE FROM vectors_vec", []);
+        Ok(changes1)
+    }
+
     /// List files in a collection.
     pub fn list_files(
         &self,

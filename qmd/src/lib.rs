@@ -8,6 +8,7 @@ pub mod collections;
 pub mod config;
 pub mod error;
 pub mod formatter;
+pub mod llm;
 pub mod store;
 
 pub use cli::{Cli, Commands};

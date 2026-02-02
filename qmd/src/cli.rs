@@ -105,9 +105,71 @@ pub enum Commands {
         format: OutputFormat,
     },
 
+    /// Vector semantic search.
+    Vsearch {
+        /// Search query.
+        query: String,
+
+        /// Restrict to a collection.
+        #[arg(short, long)]
+        collection: Option<String>,
+
+        /// Number of results.
+        #[arg(short = 'n', long, default_value = "10")]
+        limit: usize,
+
+        /// Minimum score threshold.
+        #[arg(long)]
+        min_score: Option<f64>,
+
+        /// Show full document content.
+        #[arg(long)]
+        full: bool,
+
+        /// Add line numbers to output.
+        #[arg(long)]
+        line_numbers: bool,
+
+        /// Output format.
+        #[arg(long, value_enum, default_value = "cli")]
+        format: OutputFormat,
+
+        /// Embedding model path.
+        #[arg(long)]
+        model: Option<String>,
+    },
+
+    /// Generate embeddings for all documents.
+    Embed {
+        /// Force re-embedding of all documents.
+        #[arg(long)]
+        force: bool,
+
+        /// Model path (GGUF file).
+        #[arg(long)]
+        model: Option<String>,
+    },
+
+    /// Model management commands.
+    #[command(subcommand)]
+    Models(ModelCommands),
+
     /// Database maintenance commands.
     #[command(subcommand)]
     Db(DbCommands),
+}
+
+/// Model management commands.
+#[derive(Subcommand, Debug)]
+pub enum ModelCommands {
+    /// List available models.
+    List,
+
+    /// Show model info and download status.
+    Info {
+        /// Model name.
+        name: Option<String>,
+    },
 }
 
 /// Collection management commands.

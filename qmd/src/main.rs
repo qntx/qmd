@@ -5,7 +5,9 @@
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
-use qmd::cli::{Cli, CollectionCommands, Commands, ContextCommands, DbCommands, OutputFormat};
+use qmd::cli::{
+    Cli, CollectionCommands, Commands, ContextCommands, DbCommands, ModelCommands, OutputFormat,
+};
 use qmd::collections::{
     add_collection as yaml_add_collection, add_context, get_collection, list_all_contexts,
     list_collections as yaml_list_collections, remove_collection as yaml_remove_collection,
@@ -58,6 +60,26 @@ fn main() -> Result<()> {
             full,
             &format,
         ),
+        Commands::Vsearch {
+            query,
+            collection,
+            limit,
+            min_score,
+            full,
+            line_numbers: _,
+            format,
+            model,
+        } => handle_vsearch(
+            &query,
+            collection.as_deref(),
+            limit,
+            min_score,
+            full,
+            &format,
+            model.as_deref(),
+        ),
+        Commands::Embed { force, model } => handle_embed(force, model.as_deref()),
+        Commands::Models(cmd) => handle_models(cmd),
         Commands::Db(cmd) => handle_db(cmd),
     }
 }
@@ -767,6 +789,212 @@ fn handle_search(
     }
 
     format_search_results(&results, format, full);
+    Ok(())
+}
+
+/// Handle vector search command.
+fn handle_vsearch(
+    query: &str,
+    collection: Option<&str>,
+    limit: usize,
+    min_score: Option<f64>,
+    full: bool,
+    format: &OutputFormat,
+    model_path: Option<&str>,
+) -> Result<()> {
+    use qmd::llm::EmbeddingEngine;
+    use std::path::PathBuf;
+
+    let store = Store::new()?;
+
+    // Load embedding model
+    let mut engine = if let Some(path) = model_path {
+        EmbeddingEngine::new(&PathBuf::from(path))?
+    } else {
+        match EmbeddingEngine::load_default() {
+            Ok(e) => e,
+            Err(_) => {
+                eprintln!(
+                    "{} Embedding model not found. Please specify --model or download a model.",
+                    "Error:".red()
+                );
+                eprintln!(
+                    "Place a GGUF embedding model in: {}",
+                    qmd::config::get_model_cache_dir().display()
+                );
+                std::process::exit(1);
+            }
+        }
+    };
+
+    // Generate query embedding
+    println!("Generating query embedding...");
+    let query_result = engine.embed_query(query)?;
+
+    // Search
+    let mut results = store.search_vec(&query_result.embedding, limit, collection)?;
+
+    // Apply minimum score filter
+    if let Some(min) = min_score {
+        results.retain(|r| r.score >= min);
+    }
+
+    if results.is_empty() {
+        println!("No results found. Run 'qmd embed' to generate embeddings first.");
+        return Ok(());
+    }
+
+    // Load full body if requested
+    if full {
+        for result in &mut results {
+            if result.doc.body.is_none() {
+                if let Ok(Some(doc)) =
+                    store.get_document(&result.doc.collection_name, &result.doc.path)
+                {
+                    result.doc.body = doc.body;
+                }
+            }
+        }
+    }
+
+    format_search_results(&results, format, full);
+    Ok(())
+}
+
+/// Handle embed command.
+fn handle_embed(force: bool, model_path: Option<&str>) -> Result<()> {
+    use qmd::llm::EmbeddingEngine;
+    use std::path::PathBuf;
+
+    let store = Store::new()?;
+
+    // Clear existing embeddings if force
+    if force {
+        let cleared = store.clear_embeddings()?;
+        println!("Cleared {} existing embeddings", cleared);
+    }
+
+    // Get documents needing embedding
+    let pending = store.get_hashes_needing_embedding()?;
+
+    if pending.is_empty() {
+        println!("{} All documents already have embeddings.", "✓".green());
+        return Ok(());
+    }
+
+    println!(
+        "{}",
+        format!("Generating embeddings for {} documents...", pending.len()).bold()
+    );
+
+    // Load embedding model
+    let mut engine = if let Some(path) = model_path {
+        EmbeddingEngine::new(&PathBuf::from(path))?
+    } else {
+        match EmbeddingEngine::load_default() {
+            Ok(e) => e,
+            Err(_) => {
+                eprintln!(
+                    "{} Embedding model not found. Please specify --model or download a model.",
+                    "Error:".red()
+                );
+                eprintln!(
+                    "Place a GGUF embedding model in: {}",
+                    qmd::config::get_model_cache_dir().display()
+                );
+                std::process::exit(1);
+            }
+        }
+    };
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut success = 0;
+    let mut failed = 0;
+
+    // Ensure vector table exists
+    store.ensure_vector_table(768)?; // Common embedding dimension
+
+    for (i, (hash, path, content)) in pending.iter().enumerate() {
+        print!("\r  [{}/{}] Processing {}...", i + 1, pending.len(), path);
+
+        match engine.embed(content) {
+            Ok(result) => {
+                store.insert_embedding(hash, 0, 0, &result.embedding, &result.model, &now)?;
+                success += 1;
+            }
+            Err(e) => {
+                eprintln!(
+                    "\n  {} Failed to embed {}: {}",
+                    "Warning:".yellow(),
+                    path,
+                    e
+                );
+                failed += 1;
+            }
+        }
+    }
+
+    println!(
+        "\n{} Embedded {} documents ({} failed)",
+        "✓".green(),
+        success,
+        failed
+    );
+    Ok(())
+}
+
+/// Handle models subcommand.
+fn handle_models(cmd: ModelCommands) -> Result<()> {
+    use qmd::llm::{DEFAULT_EMBED_MODEL, list_cached_models};
+
+    match cmd {
+        ModelCommands::List => {
+            let models = list_cached_models();
+            let cache_dir = qmd::config::get_model_cache_dir();
+
+            println!("{}\n", "Available Models".bold());
+            println!("Cache directory: {}\n", cache_dir.display());
+
+            if models.is_empty() {
+                println!("No models found in cache.");
+                println!(
+                    "\n{}",
+                    "To use vector search, download a GGUF embedding model:".dimmed()
+                );
+                println!("  1. Download a model (e.g., embeddinggemma-300M-Q8_0.gguf)");
+                println!("  2. Place it in: {}", cache_dir.display());
+            } else {
+                println!("{}", "Cached models:".cyan());
+                for model in &models {
+                    let is_default = model == DEFAULT_EMBED_MODEL;
+                    if is_default {
+                        println!("  {} {}", model, "(default)".green());
+                    } else {
+                        println!("  {}", model);
+                    }
+                }
+            }
+        }
+        ModelCommands::Info { name } => {
+            let model_name = name.as_deref().unwrap_or(DEFAULT_EMBED_MODEL);
+            let cache_dir = qmd::config::get_model_cache_dir();
+            let model_path = cache_dir.join(model_name);
+
+            println!("{}\n", "Model Info".bold());
+            println!("Name: {}", model_name);
+            println!("Path: {}", model_path.display());
+
+            if model_path.exists() {
+                let size = fs::metadata(&model_path)
+                    .map(|m| format_bytes(m.len() as usize))
+                    .unwrap_or_else(|_| "unknown".to_string());
+                println!("Status: {} ({})", "Downloaded".green(), size);
+            } else {
+                println!("Status: {}", "Not downloaded".red());
+            }
+        }
+    }
+
     Ok(())
 }
 

@@ -55,3 +55,14 @@ pub fn get_config_path(index_name: &str) -> Option<std::path::PathBuf> {
     let config_dir = get_config_dir()?;
     Some(config_dir.join(format!("{index_name}.yml")))
 }
+
+/// Get the model cache directory.
+///
+/// Returns `~/.cache/qmd/models` on Unix-like systems.
+#[must_use]
+pub fn get_model_cache_dir() -> std::path::PathBuf {
+    let cache_dir = dirs::cache_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    let model_dir = cache_dir.join("qmd").join("models");
+    let _ = std::fs::create_dir_all(&model_dir);
+    model_dir
+}
