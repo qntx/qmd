@@ -4,7 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Query Markdown Documents - Full-text search for markdown files"
+readme = "../README.md"
+authors = ["QNTX <x@qntx.fun>"]
+description = "Lightweight SOTA local search engine for AI agents in Rust."
+keywords = ["markdown", "search", "cli", "fts5"]
+categories = ["command-line-utilities", "text-processing"]
 
 [[bin]]
 name = "qmd"
