@@ -299,7 +299,7 @@ fn handle_multi_get(pattern: &str, max_lines: Option<usize>, max_bytes: usize, f
             }
         }
     }
-    format_documents(&results, format);
+    println!("{}", format_documents(&results, format));
     Ok(())
 }
 
@@ -382,7 +382,7 @@ fn handle_search(query: &str, collection: Option<&str>, limit: usize, min_score:
             if result.doc.body.is_none() { if let Ok(Some(doc)) = store.get_document(&result.doc.collection_name, &result.doc.path) { result.doc.body = doc.body; }}
         }
     }
-    format_search_results(&results, format, full);
+    println!("{}", format_search_results(&results, format, full));
     Ok(())
 }
 
@@ -408,7 +408,7 @@ fn handle_vsearch(query: &str, collection: Option<&str>, limit: usize, min_score
             if result.doc.body.is_none() { if let Ok(Some(doc)) = store.get_document(&result.doc.collection_name, &result.doc.path) { result.doc.body = doc.body; }}
         }
     }
-    format_search_results(&results, format, full);
+    println!("{}", format_search_results(&results, format, full));
     Ok(())
 }
 
@@ -599,7 +599,7 @@ fn handle_qsearch(query: &str, collection: Option<&str>, limit: usize, full: boo
         let (collection_name, path) = if parts.len() == 2 { (parts[0].to_string(), parts[1].to_string()) } else { (String::new(), r.file.clone()) };
         qmd::SearchResult { doc: qmd::DocumentResult { filepath: r.file.clone(), display_path: r.display_path.clone(), title: r.title.clone(), context: None, hash: String::new(), docid: String::new(), collection_name, path, modified_at: String::new(), body_length: r.body.len(), body: if full { Some(r.body.clone()) } else { None } }, score: r.score, source: qmd::SearchSource::Fts, chunk_pos: None }
     }).collect();
-    format_search_results(&search_results, format, full);
+    println!("{}", format_search_results(&search_results, format, full));
     Ok(())
 }
 

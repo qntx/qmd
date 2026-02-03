@@ -44,7 +44,10 @@ fn main() -> Result<()> {
 
     // JSON output
     println!("\nJSON format:");
-    format_search_results(&results, &OutputFormat::Json, false);
+    println!(
+        "{}",
+        format_search_results(&results, &OutputFormat::Json, false)
+    );
 
     let _ = std::fs::remove_file(&db_path);
     Ok(())

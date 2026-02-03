@@ -1207,7 +1207,7 @@ dependencies = [
 
 [[package]]
 name = "qmd"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1232,7 +1232,7 @@ dependencies = [
 
 [[package]]
 name = "qmd-cli"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "chrono",

@@ -22,32 +22,41 @@ pub enum OutputFormat {
     Files,
 }
 
-/// Format search results for output.
-pub fn format_search_results(results: &[SearchResult], format: &OutputFormat, full: bool) {
+/// Format search results and return as string.
+#[must_use]
+pub fn format_search_results(
+    results: &[SearchResult],
+    format: &OutputFormat,
+    full: bool,
+) -> String {
     match format {
-        OutputFormat::Json => print_search_json(results, full),
-        OutputFormat::Csv => print_search_csv(results),
-        OutputFormat::Md => print_search_md(results, full),
-        OutputFormat::Xml => print_search_xml(results, full),
-        OutputFormat::Files => print_search_files(results),
-        OutputFormat::Cli => print_search_cli(results, full),
+        OutputFormat::Json => format_search_json(results, full),
+        OutputFormat::Csv => format_search_csv(results),
+        OutputFormat::Md => format_search_md(results, full),
+        OutputFormat::Xml => format_search_xml(results, full),
+        OutputFormat::Files => format_search_files(results),
+        OutputFormat::Cli => format_search_cli(results, full),
     }
 }
 
-/// Format documents for output.
-pub fn format_documents(docs: &[(DocumentResult, bool, Option<String>)], format: &OutputFormat) {
+/// Format documents and return as string.
+#[must_use]
+pub fn format_documents(
+    docs: &[(DocumentResult, bool, Option<String>)],
+    format: &OutputFormat,
+) -> String {
     match format {
-        OutputFormat::Json => print_docs_json(docs),
-        OutputFormat::Csv => print_docs_csv(docs),
-        OutputFormat::Md => print_docs_md(docs),
-        OutputFormat::Xml => print_docs_xml(docs),
-        OutputFormat::Files => print_docs_files(docs),
-        OutputFormat::Cli => print_docs_cli(docs),
+        OutputFormat::Json => format_docs_json(docs),
+        OutputFormat::Csv => format_docs_csv(docs),
+        OutputFormat::Md => format_docs_md(docs),
+        OutputFormat::Xml => format_docs_xml(docs),
+        OutputFormat::Files => format_docs_files(docs),
+        OutputFormat::Cli => format_docs_cli(docs),
     }
 }
 
 // JSON output.
-fn print_search_json(results: &[SearchResult], full: bool) {
+fn format_search_json(results: &[SearchResult], full: bool) -> String {
     let output: Vec<serde_json::Value> = results
         .iter()
         .map(|r| {
@@ -66,13 +75,10 @@ fn print_search_json(results: &[SearchResult], full: bool) {
             obj
         })
         .collect();
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&output).unwrap_or_default()
-    );
+    serde_json::to_string_pretty(&output).unwrap_or_default()
 }
 
-fn print_docs_json(docs: &[(DocumentResult, bool, Option<String>)]) {
+fn format_docs_json(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
     let output: Vec<serde_json::Value> = docs
         .iter()
         .map(|(doc, skipped, skip_reason)| {
@@ -97,185 +103,220 @@ fn print_docs_json(docs: &[(DocumentResult, bool, Option<String>)]) {
             }
         })
         .collect();
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&output).unwrap_or_default()
-    );
+    serde_json::to_string_pretty(&output).unwrap_or_default()
 }
 
 // CSV output.
-fn print_search_csv(results: &[SearchResult]) {
-    println!("docid,score,file,title,context");
+fn format_search_csv(results: &[SearchResult]) -> String {
+    let mut lines = vec!["docid,score,file,title,context".to_string()];
     for r in results {
-        println!(
+        lines.push(format!(
             "{},{:.4},{},{},{}",
             escape_csv(&format!("#{}", r.doc.docid)),
             r.score,
             escape_csv(&r.doc.display_path),
             escape_csv(&r.doc.title),
             escape_csv(r.doc.context.as_deref().unwrap_or(""))
-        );
+        ));
     }
+    lines.join("\n")
 }
 
-fn print_docs_csv(docs: &[(DocumentResult, bool, Option<String>)]) {
-    println!("file,title,context,skipped,body");
+fn format_docs_csv(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
+    let mut lines = vec!["file,title,context,skipped,body".to_string()];
     for (doc, skipped, skip_reason) in docs {
         if *skipped {
-            println!(
+            lines.push(format!(
                 "{},{},{},true,{}",
                 escape_csv(&doc.display_path),
                 escape_csv(&doc.title),
                 escape_csv(doc.context.as_deref().unwrap_or("")),
                 escape_csv(skip_reason.as_deref().unwrap_or(""))
-            );
+            ));
         } else {
-            println!(
+            lines.push(format!(
                 "{},{},{},false,{}",
                 escape_csv(&doc.display_path),
                 escape_csv(&doc.title),
                 escape_csv(doc.context.as_deref().unwrap_or("")),
                 escape_csv(doc.body.as_deref().unwrap_or(""))
-            );
+            ));
         }
     }
+    lines.join("\n")
 }
 
 // Markdown output.
-fn print_search_md(results: &[SearchResult], full: bool) {
+fn format_search_md(results: &[SearchResult], full: bool) -> String {
+    let mut out = String::new();
     for r in results {
-        println!("## {} (score: {:.4})\n", r.doc.display_path, r.score);
-        println!("**Title:** {}\n", r.doc.title);
+        out.push_str(&format!(
+            "## {} (score: {:.4})\n\n",
+            r.doc.display_path, r.score
+        ));
+        out.push_str(&format!("**Title:** {}\n\n", r.doc.title));
         if let Some(ref ctx) = r.doc.context {
-            println!("**Context:** {ctx}\n");
+            out.push_str(&format!("**Context:** {ctx}\n\n"));
         }
         if full && let Some(ref body) = r.doc.body {
-            println!("```\n{body}\n```\n");
+            out.push_str(&format!("```\n{body}\n```\n\n"));
         }
     }
+    out
 }
 
-fn print_docs_md(docs: &[(DocumentResult, bool, Option<String>)]) {
+fn format_docs_md(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
+    let mut out = String::new();
     for (doc, skipped, skip_reason) in docs {
-        println!("## {}\n", doc.display_path);
+        out.push_str(&format!("## {}\n\n", doc.display_path));
         if !doc.title.is_empty() && doc.title != doc.display_path {
-            println!("**Title:** {}\n", doc.title);
+            out.push_str(&format!("**Title:** {}\n\n", doc.title));
         }
         if let Some(ref ctx) = doc.context {
-            println!("**Context:** {ctx}\n");
+            out.push_str(&format!("**Context:** {ctx}\n\n"));
         }
         if *skipped {
-            println!("> {}\n", skip_reason.as_deref().unwrap_or("Skipped"));
+            out.push_str(&format!(
+                "> {}\n\n",
+                skip_reason.as_deref().unwrap_or("Skipped")
+            ));
         } else if let Some(ref body) = doc.body {
-            println!("```\n{body}\n```\n");
+            out.push_str(&format!("```\n{body}\n```\n\n"));
         }
     }
+    out
 }
 
 // XML output.
-fn print_search_xml(results: &[SearchResult], full: bool) {
-    println!(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
-    println!("<results>");
+fn format_search_xml(results: &[SearchResult], full: bool) -> String {
+    let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<results>\n");
     for r in results {
-        println!("  <result>");
-        println!("    <docid>#{}</docid>", escape_xml(&r.doc.docid));
-        println!("    <score>{:.4}</score>", r.score);
-        println!("    <file>{}</file>", escape_xml(&r.doc.display_path));
-        println!("    <title>{}</title>", escape_xml(&r.doc.title));
+        out.push_str("  <result>\n");
+        out.push_str(&format!(
+            "    <docid>#{}</docid>\n",
+            escape_xml(&r.doc.docid)
+        ));
+        out.push_str(&format!("    <score>{:.4}</score>\n", r.score));
+        out.push_str(&format!(
+            "    <file>{}</file>\n",
+            escape_xml(&r.doc.display_path)
+        ));
+        out.push_str(&format!(
+            "    <title>{}</title>\n",
+            escape_xml(&r.doc.title)
+        ));
         if let Some(ref ctx) = r.doc.context {
-            println!("    <context>{}</context>", escape_xml(ctx));
+            out.push_str(&format!("    <context>{}</context>\n", escape_xml(ctx)));
         }
         if full && let Some(ref body) = r.doc.body {
-            println!("    <body>{}</body>", escape_xml(body));
+            out.push_str(&format!("    <body>{}</body>\n", escape_xml(body)));
         }
-        println!("  </result>");
+        out.push_str("  </result>\n");
     }
-    println!("</results>");
+    out.push_str("</results>");
+    out
 }
 
-fn print_docs_xml(docs: &[(DocumentResult, bool, Option<String>)]) {
-    println!(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
-    println!("<documents>");
+fn format_docs_xml(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
+    let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<documents>\n");
     for (doc, skipped, skip_reason) in docs {
-        println!("  <document>");
-        println!("    <file>{}</file>", escape_xml(&doc.display_path));
-        println!("    <title>{}</title>", escape_xml(&doc.title));
+        out.push_str("  <document>\n");
+        out.push_str(&format!(
+            "    <file>{}</file>\n",
+            escape_xml(&doc.display_path)
+        ));
+        out.push_str(&format!("    <title>{}</title>\n", escape_xml(&doc.title)));
         if let Some(ref ctx) = doc.context {
-            println!("    <context>{}</context>", escape_xml(ctx));
+            out.push_str(&format!("    <context>{}</context>\n", escape_xml(ctx)));
         }
         if *skipped {
-            println!("    <skipped>true</skipped>");
-            println!(
-                "    <reason>{}</reason>",
+            out.push_str("    <skipped>true</skipped>\n");
+            out.push_str(&format!(
+                "    <reason>{}</reason>\n",
                 escape_xml(skip_reason.as_deref().unwrap_or(""))
-            );
+            ));
         } else if let Some(ref body) = doc.body {
-            println!("    <body>{}</body>", escape_xml(body));
+            out.push_str(&format!("    <body>{}</body>\n", escape_xml(body)));
         }
-        println!("  </document>");
+        out.push_str("  </document>\n");
     }
-    println!("</documents>");
+    out.push_str("</documents>");
+    out
 }
 
 // Files output (just paths).
-fn print_search_files(results: &[SearchResult]) {
-    for r in results {
-        println!("{}", r.doc.display_path);
-    }
+fn format_search_files(results: &[SearchResult]) -> String {
+    results
+        .iter()
+        .map(|r| r.doc.display_path.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
-fn print_docs_files(docs: &[(DocumentResult, bool, Option<String>)]) {
-    for (doc, skipped, _) in docs {
-        let status = if *skipped { " [SKIPPED]" } else { "" };
-        println!("{}{status}", doc.display_path);
-    }
+fn format_docs_files(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
+    docs.iter()
+        .map(|(doc, skipped, _)| {
+            if *skipped {
+                format!("{} [SKIPPED]", doc.display_path)
+            } else {
+                doc.display_path.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 // CLI output (colored, human-friendly).
-fn print_search_cli(results: &[SearchResult], full: bool) {
+fn format_search_cli(results: &[SearchResult], full: bool) -> String {
     if results.is_empty() {
-        println!("{}", "No results found.".dimmed());
-        return;
+        return "No results found.".dimmed().to_string();
     }
 
+    let mut out = String::new();
     for r in results {
-        println!(
-            "{} {} {}",
+        out.push_str(&format!(
+            "{} {} {}\n",
             format!("#{}", r.doc.docid).cyan(),
             format!("{:.2}", r.score).dimmed(),
             r.doc.display_path.bold()
-        );
+        ));
         if !r.doc.title.is_empty() {
-            println!("  {}", r.doc.title);
+            out.push_str(&format!("  {}\n", r.doc.title));
         }
         if let Some(ref ctx) = r.doc.context {
-            println!("  {}", format!("Context: {ctx}").dimmed());
+            out.push_str(&format!("  {}\n", format!("Context: {ctx}").dimmed()));
         }
         if full && let Some(ref body) = r.doc.body {
-            println!("\n{body}\n");
+            out.push_str(&format!("\n{body}\n"));
         }
-        println!();
+        out.push('\n');
     }
+    out
 }
 
-fn print_docs_cli(docs: &[(DocumentResult, bool, Option<String>)]) {
+fn format_docs_cli(docs: &[(DocumentResult, bool, Option<String>)]) -> String {
+    let mut out = String::new();
     for (doc, skipped, skip_reason) in docs {
-        println!("\n{}", "=".repeat(60));
-        println!("File: {}", doc.display_path);
-        println!("{}\n", "=".repeat(60));
+        out.push_str(&format!("\n{}\n", "=".repeat(60)));
+        out.push_str(&format!("File: {}\n", doc.display_path));
+        out.push_str(&format!("{}\n\n", "=".repeat(60)));
 
         if *skipped {
-            println!("[SKIPPED: {}]", skip_reason.as_deref().unwrap_or("unknown"));
+            out.push_str(&format!(
+                "[SKIPPED: {}]\n",
+                skip_reason.as_deref().unwrap_or("unknown")
+            ));
             continue;
         }
 
         if let Some(ref ctx) = doc.context {
-            println!("Folder Context: {ctx}\n---\n");
+            out.push_str(&format!("Folder Context: {ctx}\n---\n\n"));
         }
         if let Some(ref body) = doc.body {
-            println!("{body}");
+            out.push_str(&format!("{body}\n"));
         }
     }
+    out
 }
 
 /// Escape a string for CSV output.
