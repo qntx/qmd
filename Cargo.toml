@@ -4,13 +4,13 @@ default-members = ["qmd"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/qntx/qmd"
 
 [workspace.dependencies]
-qmd = { version = "0.3.0", path = "qmd" }
+qmd = { version = "0.3.1", path = "qmd" }
 
 anyhow = "1.0"
 axum = "0.8"
