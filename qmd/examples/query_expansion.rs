@@ -1,18 +1,32 @@
-//! Query expansion for improved search coverage - self-contained example.
+//! Query expansion for improved search coverage - fully self-contained.
 //!
 //! Run: `cargo run --example query_expansion`
 
-mod common;
-
 use anyhow::Result;
-use qmd::{GenerationEngine, QueryType, Queryable, expand_query_simple};
+use qmd::{GenerationEngine, QueryType, Queryable, Store, expand_query_simple};
+
+const SAMPLE_DOCS: &[(&str, &str)] = &[
+    ("rust-basics.md", include_str!("data/rust-basics.md")),
+    ("error-handling.md", include_str!("data/error-handling.md")),
+];
 
 fn main() -> Result<()> {
-    let store = common::create_sample_store()?;
-    let query = "rust error handling";
+    let db_path = std::env::temp_dir().join("qmd_expansion.db");
+    let _ = std::fs::remove_file(&db_path);
+    let store = Store::open(&db_path)?;
 
-    // Simple expansion (no LLM needed)
+    let now = chrono::Utc::now().to_rfc3339();
+    for (name, content) in SAMPLE_DOCS {
+        let hash = Store::hash_content(content);
+        let title = Store::extract_title(content);
+        store.insert_content(&hash, content, &now)?;
+        store.insert_document("samples", name, &title, &hash, &now, &now)?;
+    }
+
+    let query = "rust error handling";
     println!("Query: '{}'\n", query);
+
+    // Simple expansion
     println!("Simple expansion:");
     for q in expand_query_simple(query) {
         let t = match q.query_type {
@@ -23,16 +37,16 @@ fn main() -> Result<()> {
         println!("  [{}] {}", t, q.text);
     }
 
-    // Use expanded queries for search
-    println!("\nSearch with expanded queries:");
+    // Search with expanded queries
+    println!("\nSearch results:");
     for q in expand_query_simple(query) {
         if q.query_type == QueryType::Lex {
-            let results = store.search_fts(&q.text, 3, None)?;
-            println!("  '{}': {} results", q.text, results.len());
+            let n = store.search_fts(&q.text, 5, None)?.len();
+            println!("  '{}': {} results", q.text, n);
         }
     }
 
-    // LLM expansion (if available)
+    // LLM expansion
     println!("\nLLM expansion:");
     if GenerationEngine::is_available() {
         let engine = GenerationEngine::load_default()?;
@@ -40,20 +54,18 @@ fn main() -> Result<()> {
             println!("  [{:?}] {}", q.query_type, q.text);
         }
     } else {
-        println!("  (GenerationEngine not available - run `qmd model pull all`)");
+        println!("  (not available)");
     }
 
-    // Manual query construction
-    println!("\nManual Queryable:");
-    let queries = [
+    // Manual construction
+    println!("\nManual:");
+    for q in [
         Queryable::lex("rust error"),
-        Queryable::vec("exception handling patterns"),
-        Queryable::hyde("Rust uses Result type for error handling..."),
-    ];
-    for q in &queries {
+        Queryable::vec("exception handling"),
+    ] {
         println!("  [{:?}] {}", q.query_type, q.text);
     }
 
-    common::cleanup();
+    let _ = std::fs::remove_file(&db_path);
     Ok(())
 }

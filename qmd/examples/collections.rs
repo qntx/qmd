@@ -1,39 +1,42 @@
-//! Collection management operations - self-contained example.
+//! Collection management operations - fully self-contained.
 //!
 //! Run: `cargo run --example collections`
 
-mod common;
-
 use anyhow::Result;
-use qmd::{is_virtual_path, parse_virtual_path};
+use qmd::{Store, is_virtual_path, parse_virtual_path};
+
+const SAMPLE_DOCS: &[(&str, &str)] = &[
+    ("rust-basics.md", include_str!("data/rust-basics.md")),
+    ("error-handling.md", include_str!("data/error-handling.md")),
+    ("async-await.md", include_str!("data/async-await.md")),
+];
 
 fn main() -> Result<()> {
-    let store = common::create_sample_store()?;
-    let status = store.get_status()?;
+    let db_path = std::env::temp_dir().join("qmd_collections.db");
+    let _ = std::fs::remove_file(&db_path);
+    let store = Store::open(&db_path)?;
 
-    // Collection stats
-    println!("Collections:");
-    for c in &status.collections {
-        println!("  {}: {} docs ({})", c.name, c.active_count, c.glob_pattern);
+    let now = chrono::Utc::now().to_rfc3339();
+    for (name, content) in SAMPLE_DOCS {
+        let hash = Store::hash_content(content);
+        let title = Store::extract_title(content);
+        store.insert_content(&hash, content, &now)?;
+        store.insert_document("samples", name, &title, &hash, &now, &now)?;
     }
 
-    // List files in collection
-    if let Some(coll) = status.collections.first() {
-        println!("\nFiles in '{}':", coll.name);
-        let files = store.list_files(&coll.name, None)?;
-        for (path, title, _, size) in files.iter().take(5) {
-            println!("  {} - {} ({} bytes)", path, title, size);
-        }
+    // List files
+    println!("Files in 'samples':");
+    for (path, title, _, size) in store.list_files("samples", None)? {
+        println!("  {} - {} ({} bytes)", path, title, size);
     }
 
-    // Virtual path utilities
+    // Virtual path parsing
     println!("\nVirtual path parsing:");
-    let paths = [
+    for path in [
         "qmd://samples/rust-basics.md",
         "/local/file.md",
         "relative.md",
-    ];
-    for path in paths {
+    ] {
         if is_virtual_path(path) {
             if let Some((coll, file)) = parse_virtual_path(path) {
                 println!("  {} -> [{}] {}", path, coll, file);
@@ -43,6 +46,6 @@ fn main() -> Result<()> {
         }
     }
 
-    common::cleanup();
+    let _ = std::fs::remove_file(&db_path);
     Ok(())
 }

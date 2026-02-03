@@ -1,49 +1,51 @@
-//! Database maintenance and health checks - self-contained example.
+//! Database maintenance and health checks - fully self-contained.
 //!
 //! Run: `cargo run --example maintenance`
 
-mod common;
-
 use anyhow::Result;
-use qmd::format_bytes;
+use qmd::{Store, format_bytes};
+
+const SAMPLE_DOCS: &[(&str, &str)] = &[
+    ("rust-basics.md", include_str!("data/rust-basics.md")),
+    ("error-handling.md", include_str!("data/error-handling.md")),
+];
 
 fn main() -> Result<()> {
-    let store = common::create_sample_store()?;
-    let status = store.get_status()?;
+    let db_path = std::env::temp_dir().join("qmd_maintenance.db");
+    let _ = std::fs::remove_file(&db_path);
+    let store = Store::open(&db_path)?;
 
-    // Database info
-    let db_path = store.db_path();
-    let size = std::fs::metadata(db_path).map(|m| m.len()).unwrap_or(0);
+    let now = chrono::Utc::now().to_rfc3339();
+    for (name, content) in SAMPLE_DOCS {
+        let hash = Store::hash_content(content);
+        let title = Store::extract_title(content);
+        store.insert_content(&hash, content, &now)?;
+        store.insert_document("samples", name, &title, &hash, &now, &now)?;
+    }
+
+    let status = store.get_status()?;
+    let size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
+
     println!("Database: {}", db_path.display());
     println!("Size: {}", format_bytes(size as usize));
 
-    // Status
     println!("\nStatus:");
     println!("  Documents: {}", status.total_documents);
     println!("  Needs embedding: {}", status.needs_embedding);
     println!("  Vector index: {}", status.has_vector_index);
-    println!("  Collections: {}", status.collections.len());
 
-    // Pending embeddings
-    let pending = store.get_hashes_needing_embedding()?;
-    println!("\nPending embeddings: {}", pending.len());
-
-    // Cleanup operations demo
-    println!("\nCleanup demo:");
-    let cleared = store.clear_cache()?;
-    println!("  Cleared cache: {} entries", cleared);
-
-    let orphaned = store.cleanup_orphaned_content()?;
-    println!("  Orphaned content: {} removed", orphaned);
-
+    // Cleanup demo
+    println!("\nCleanup:");
+    println!("  Cache cleared: {}", store.clear_cache()?);
+    println!("  Orphaned removed: {}", store.cleanup_orphaned_content()?);
     store.vacuum()?;
-    let new_size = std::fs::metadata(db_path).map(|m| m.len()).unwrap_or(0);
+    let new_size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
     println!(
         "  Vacuum: {} -> {}",
         format_bytes(size as usize),
         format_bytes(new_size as usize)
     );
 
-    common::cleanup();
+    let _ = std::fs::remove_file(&db_path);
     Ok(())
 }

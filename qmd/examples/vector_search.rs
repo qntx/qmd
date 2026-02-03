@@ -1,28 +1,42 @@
-//! Vector semantic search using embeddings - self-contained example.
+//! Vector semantic search using embeddings - fully self-contained.
 //!
 //! Run: `cargo run --example vector_search`
 
-mod common;
-
 use anyhow::Result;
-use qmd::{EmbeddingEngine, llm::DEFAULT_EMBED_MODEL_URI, pull_model};
+use qmd::{EmbeddingEngine, Store, llm::DEFAULT_EMBED_MODEL_URI, pull_model};
+
+const SAMPLE_DOCS: &[(&str, &str)] = &[
+    ("rust-basics.md", include_str!("data/rust-basics.md")),
+    ("error-handling.md", include_str!("data/error-handling.md")),
+    ("async-await.md", include_str!("data/async-await.md")),
+    ("ownership.md", include_str!("data/ownership.md")),
+];
 
 fn main() -> Result<()> {
-    let store = common::create_sample_store()?;
+    let db_path = std::env::temp_dir().join("qmd_vector.db");
+    let _ = std::fs::remove_file(&db_path);
+    let store = Store::open(&db_path)?;
 
-    // Download embedding model (auto-cached)
+    // Index documents
+    let now = chrono::Utc::now().to_rfc3339();
+    for (name, content) in SAMPLE_DOCS {
+        let hash = Store::hash_content(content);
+        let title = Store::extract_title(content);
+        store.insert_content(&hash, content, &now)?;
+        store.insert_document("samples", name, &title, &hash, &now, &now)?;
+    }
+
+    // Load embedding model
     println!("Loading embedding model...");
     let model = pull_model(DEFAULT_EMBED_MODEL_URI, false)?;
     let mut engine = EmbeddingEngine::new(&model.path)?;
 
-    // Generate embeddings for all documents
+    // Generate embeddings
     println!("Generating embeddings...");
-    let now = chrono::Utc::now().to_rfc3339();
     store.ensure_vector_table(768)?;
-
-    for (filename, content) in common::SAMPLE_DOCS {
-        let hash = qmd::Store::hash_content(content);
-        let emb = engine.embed_document(content, Some(filename))?;
+    for (name, content) in SAMPLE_DOCS {
+        let hash = Store::hash_content(content);
+        let emb = engine.embed_document(content, Some(name))?;
         store.insert_embedding(&hash, 0, 0, &emb.embedding, &emb.model, &now)?;
     }
 
@@ -38,11 +52,10 @@ fn main() -> Result<()> {
 
     // Compare with FTS
     println!("\nFTS comparison:");
-    let fts = store.search_fts(query, 5, None)?;
-    for r in &fts {
+    for r in store.search_fts(query, 3, None)? {
         println!("[{:.2}] {}", r.score, r.doc.path);
     }
 
-    common::cleanup();
+    let _ = std::fs::remove_file(&db_path);
     Ok(())
 }
