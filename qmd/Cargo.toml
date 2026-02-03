@@ -7,17 +7,16 @@ repository.workspace = true
 readme = "../README.md"
 authors = ["QNTX <x@qntx.fun>"]
 description = "Lightweight SOTA local search engine for AI agents in Rust."
-keywords = ["markdown", "search", "cli", "fts5"]
-categories = ["command-line-utilities", "text-processing"]
+keywords = ["markdown", "search", "embedding", "fts5", "ai"]
+categories = ["text-processing", "database"]
 
-[[bin]]
+[lib]
 name = "qmd"
-path = "src/main.rs"
+path = "src/lib.rs"
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-clap.workspace = true
 colored.workspace = true
 dirs.workspace = true
 fuzzy-matcher.workspace = true

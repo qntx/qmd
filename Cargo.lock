@@ -1207,11 +1207,10 @@ dependencies = [
 
 [[package]]
 name = "qmd"
-version = "0.1.2"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "clap",
  "colored",
  "dirs",
  "fuzzy-matcher",
@@ -1229,6 +1228,20 @@ dependencies = [
  "tokio",
  "walkdir",
  "zerocopy",
+]
+
+[[package]]
+name = "qmd-cli"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "colored",
+ "glob",
+ "qmd",
+ "serde_json",
+ "walkdir",
 ]
 
 [[package]]

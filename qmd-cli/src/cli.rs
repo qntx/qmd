@@ -1,4 +1,4 @@
-//! Command-line interface definitions.
+//! Command-line interface definitions for qmd-cli.
 
 use clap::{Parser, Subcommand, ValueEnum};
 
@@ -62,7 +62,7 @@ pub enum Commands {
 
         /// Output format.
         #[arg(long, value_enum, default_value = "cli")]
-        format: OutputFormat,
+        format: CliOutputFormat,
     },
 
     /// Show index status and collections.
@@ -102,7 +102,7 @@ pub enum Commands {
 
         /// Output format.
         #[arg(long, value_enum, default_value = "cli")]
-        format: OutputFormat,
+        format: CliOutputFormat,
     },
 
     /// Vector semantic search.
@@ -132,7 +132,7 @@ pub enum Commands {
 
         /// Output format.
         #[arg(long, value_enum, default_value = "cli")]
-        format: OutputFormat,
+        format: CliOutputFormat,
 
         /// Embedding model path.
         #[arg(long)]
@@ -185,7 +185,7 @@ pub enum Commands {
 
         /// Output format.
         #[arg(long, value_enum, default_value = "cli")]
-        format: OutputFormat,
+        format: CliOutputFormat,
     },
 
     /// Expand a query using LLM.
@@ -212,7 +212,7 @@ pub enum Commands {
 
         /// Output format.
         #[arg(long, value_enum, default_value = "cli")]
-        format: OutputFormat,
+        format: CliOutputFormat,
     },
 
     /// Ask a question and get an answer from relevant documents.
@@ -341,9 +341,9 @@ pub enum DbCommands {
     ClearCache,
 }
 
-/// Output format options.
+/// CLI output format options (wraps qmd::OutputFormat for clap integration).
 #[derive(ValueEnum, Clone, Copy, Debug, Default)]
-pub enum OutputFormat {
+pub enum CliOutputFormat {
     /// CLI-friendly output.
     #[default]
     Cli,
@@ -357,4 +357,17 @@ pub enum OutputFormat {
     Xml,
     /// Just file paths.
     Files,
+}
+
+impl From<CliOutputFormat> for qmd::OutputFormat {
+    fn from(fmt: CliOutputFormat) -> Self {
+        match fmt {
+            CliOutputFormat::Cli => Self::Cli,
+            CliOutputFormat::Json => Self::Json,
+            CliOutputFormat::Csv => Self::Csv,
+            CliOutputFormat::Md => Self::Md,
+            CliOutputFormat::Xml => Self::Xml,
+            CliOutputFormat::Files => Self::Files,
+        }
+    }
 }

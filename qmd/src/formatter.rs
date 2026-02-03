@@ -1,9 +1,26 @@
 //! Output formatting utilities.
 
-use crate::cli::OutputFormat;
 use crate::store::{DocumentResult, SearchResult};
 use chrono::{Datelike, Timelike};
 use colored::Colorize;
+
+/// Output format options.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OutputFormat {
+    /// CLI-friendly output with colors.
+    #[default]
+    Cli,
+    /// JSON output.
+    Json,
+    /// CSV output.
+    Csv,
+    /// Markdown output.
+    Md,
+    /// XML output.
+    Xml,
+    /// Just file paths (one per line).
+    Files,
+}
 
 /// Format search results for output.
 pub fn format_search_results(results: &[SearchResult], format: &OutputFormat, full: bool) {
