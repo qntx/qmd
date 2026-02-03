@@ -268,14 +268,7 @@ impl EmbeddingEngine {
 
     /// Raw embedding generation.
     fn embed_raw(&mut self, text: &str) -> Result<EmbeddingResult> {
-        let ctx_params = LlamaContextParams::default().with_embeddings(true);
-
-        let mut ctx = self
-            .model
-            .new_context(&self.backend, ctx_params)
-            .context("Failed to create context")?;
-
-        // Tokenize input
+        // Tokenize input first to determine required context size
         let tokens = self
             .model
             .str_to_token(text, AddBos::Always)
@@ -284,6 +277,20 @@ impl EmbeddingEngine {
         if tokens.is_empty() {
             bail!("Empty token sequence");
         }
+
+        // Set context size based on token count (n_ubatch must be >= n_tokens for encoder models)
+        // Add padding to handle BOS token and ensure sufficient capacity
+        let n_ctx = std::cmp::max(tokens.len() + 64, 512);
+        let ctx_params = LlamaContextParams::default()
+            .with_embeddings(true)
+            .with_n_ctx(std::num::NonZero::new(n_ctx as u32))
+            .with_n_batch(n_ctx as u32)
+            .with_n_ubatch(n_ctx as u32);
+
+        let mut ctx = self
+            .model
+            .new_context(&self.backend, ctx_params)
+            .context("Failed to create context")?;
 
         // Create batch and add tokens
         let mut batch = LlamaBatch::new(tokens.len(), 1);
