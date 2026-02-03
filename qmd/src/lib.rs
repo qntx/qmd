@@ -15,7 +15,8 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use qmd::{Store, EmbeddingEngine, Result};
+//! use qmd::{Store, EmbeddingEngine};
+//! use anyhow::Result;
 //!
 //! fn main() -> Result<()> {
 //!     // Open the document store
