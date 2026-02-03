@@ -15,7 +15,7 @@ name = "qmd"
 path = "src/main.rs"
 
 [dependencies]
-qmd = { path = "../qmd" }
+qmd.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
