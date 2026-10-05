@@ -1,0 +1,17 @@
+[package]
+name                   = "qmd"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+description            = "On-device hybrid search for markdown: BM25, vectors and LLM reranking. Rust port of tobi/qmd."
+keywords               = ["search", "markdown", "embedding", "fts5", "rag"]
+categories             = ["text-processing", "database"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lints]
+workspace = true
