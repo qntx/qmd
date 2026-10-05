@@ -1,0 +1,22 @@
+[package]
+name                   = "qmd-cli"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+description            = "Command-line interface for qmd."
+keywords               = ["search", "markdown", "cli", "rag"]
+categories             = ["command-line-utilities"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[bin]]
+name = "qmd"
+path = "src/main.rs"
+doc  = false   # bin `qmd` and lib `qmd` would collide under target/doc/
+
+[lints]
+workspace = true
