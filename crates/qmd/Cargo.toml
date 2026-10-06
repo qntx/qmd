@@ -13,5 +13,18 @@ categories             = ["text-processing", "database"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[dependencies]
+rusqlite      = { version = "0.40.2", features = ["bundled"] }
+sqlite-vec    = "=0.1.9"
+serde         = { version = "1.0.229", features = ["derive"] }
+serde_yaml_bw = "2.5.8"
+serde_json    = "1.0.151"
+indexmap      = { version = "2.14.2", features = ["serde"] }
+thiserror     = "2.0.21"
+sha2          = "0.11.0"
+
+[dev-dependencies]
+tempfile = "3.23.0"
+
 [lints]
 workspace = true

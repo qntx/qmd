@@ -58,6 +58,14 @@ doc-valid-idents = [
     "OpenAPI",
     "TODO",
     "FIXME",
+    # qmd domain vocabulary (added on top of the r402 list).
+    "SQLite",
+    "YAML",
+    "BM25",
+    "FTS5",
+    "WAL",
+    "CJK",
+    "Markdown",
     "..",
 ]
 
