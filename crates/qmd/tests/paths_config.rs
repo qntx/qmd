@@ -83,10 +83,10 @@ fn find_local_config_walks_upward() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let qmd_dir = tmp.path().join("proj/sub/.qmd");
     std::fs::create_dir_all(&qmd_dir).expect("mkdir");
-    // .qmd/qmd.yml lives in proj/, not in proj/sub/
+    // .qmd/index.yml lives in proj/, not in proj/sub/
     let root_cfg = tmp.path().join("proj/.qmd");
     std::fs::create_dir_all(&root_cfg).expect("mkdir");
-    let cfg_file = root_cfg.join("qmd.yml");
+    let cfg_file = root_cfg.join("index.yml");
     std::fs::write(&cfg_file, "collections: {}\n").expect("write");
 
     let start = tmp.path().join("proj/sub/deep");
@@ -96,6 +96,25 @@ fn find_local_config_walks_upward() {
         Some(cfg_file.as_path())
     );
     assert_eq!(paths::find_local_config(tmp.path()), None);
+}
+
+#[test]
+fn find_local_config_prefers_yaml_over_yml() {
+    // Upstream checks `.qmd/index.yaml` first, then `.qmd/index.yml`.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let qmd_dir = tmp.path().join("proj/.qmd");
+    std::fs::create_dir_all(&qmd_dir).expect("mkdir");
+    let yaml = qmd_dir.join("index.yaml");
+    let yml = qmd_dir.join("index.yml");
+    std::fs::write(&yaml, "collections: {}\n").expect("write yaml");
+    std::fs::write(&yml, "collections: {}\n").expect("write yml");
+
+    let start = tmp.path().join("proj").join("deeper");
+    std::fs::create_dir_all(&start).expect("mkdir");
+    assert_eq!(
+        paths::find_local_config(&start).as_deref(),
+        Some(yaml.as_path())
+    );
 }
 
 #[test]

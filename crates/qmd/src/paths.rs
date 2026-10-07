@@ -12,7 +12,9 @@ use crate::env::Environment;
 pub const DEFAULT_BUSY_TIMEOUT_MS: u64 = 120_000;
 
 const LOCAL_CONFIG_DIR: &str = ".qmd";
-const LOCAL_CONFIG_FILE: &str = "qmd.yml";
+/// Upstream checks `index.yaml` first, then `index.yml`
+/// (`collections.ts:141-156`).
+const LOCAL_CONFIG_FILES: [&str; 2] = ["index.yaml", "index.yml"];
 const LOCAL_DB_FILE: &str = "index-rs.sqlite";
 
 /// Upstream `qmdHomedir()`: `HOME` -> `USERPROFILE` -> OS home -> `/tmp`.
@@ -77,8 +79,8 @@ pub fn default_db_path(env: &Environment, index_name: &str) -> PathBuf {
     cache_dir(env).join(format!("{index_name}-rs.sqlite"))
 }
 
-/// Database path for a project-local config: `.qmd/index-rs.sqlite` next to
-/// `.qmd/qmd.yml`.
+/// Database path for a project-local config: `.qmd/index-rs.sqlite` next
+/// to `.qmd/index.yaml` / `.qmd/index.yml`.
 #[must_use]
 pub fn local_db_path(config_path: &Path) -> PathBuf {
     config_path
@@ -87,15 +89,18 @@ pub fn local_db_path(config_path: &Path) -> PathBuf {
         .join(LOCAL_DB_FILE)
 }
 
-/// Search upward from `start` for `.qmd/qmd.yml`, like upstream
-/// `findLocalConfigPath()`.
+/// Search upward from `start` for `.qmd/index.yaml` or `.qmd/index.yml`
+/// (yaml wins when both exist), like upstream `findLocalConfigPath()`.
 #[must_use]
 pub fn find_local_config(start: &Path) -> Option<PathBuf> {
     let mut dir = start.to_path_buf();
     loop {
-        let candidate = dir.join(LOCAL_CONFIG_DIR).join(LOCAL_CONFIG_FILE);
-        if candidate.is_file() {
-            return Some(candidate);
+        let qmd_dir = dir.join(LOCAL_CONFIG_DIR);
+        for name in LOCAL_CONFIG_FILES {
+            let candidate = qmd_dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
         }
         if !dir.pop() {
             return None;
@@ -204,4 +209,23 @@ pub fn expand_home(path: &str, env: &Environment) -> PathBuf {
         return home_dir(env).join(rest);
     }
     PathBuf::from(path)
+}
+
+/// Upstream `isPathInsideDir` (store.ts:681-691): `true` when `target` is
+/// `dir` or a descendant after resolving symlinks. When `target` cannot
+/// be canonicalized (unreadable or dangling), upstream falls back to a
+/// lexical comparison so a mode-0 file inside the collection is not
+/// treated as an escape.
+pub(crate) fn is_path_inside_dir(dir: &Path, target: &Path) -> bool {
+    let real_dir = std::fs::canonicalize(dir).unwrap_or_else(|_| lexical_normalize(dir));
+    std::fs::canonicalize(target).map_or_else(
+        // Mirror upstream's catch branch: the dir side is *not*
+        // canonicalized here — `resolve(dir)` is lexical only.
+        |_| {
+            let t = lexical_normalize(target);
+            let d = lexical_normalize(dir);
+            t == d || t.starts_with(&d)
+        },
+        |real| real == real_dir || real.starts_with(&real_dir),
+    )
 }

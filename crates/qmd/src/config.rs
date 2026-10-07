@@ -126,7 +126,7 @@ impl Collection {
     }
 }
 
-/// Root configuration (`qmd.yml` / `index-<name>.yml`).
+/// Root configuration (`.qmd/index.yaml` / `index-<name>.yml`).
 ///
 /// Upstream accepts all four `editor_uri` spellings; each is stored in its
 /// own field and written back under its original spelling.

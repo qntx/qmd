@@ -19,7 +19,7 @@ use crate::store;
 /// How the [`Qmd`] handle resolves its configuration.
 #[derive(Debug)]
 enum ConfigSource {
-    /// Load and persist `index-<name>.yml` / `qmd.yml`.
+    /// Load and persist `index-<name>.yml` / `.qmd/index.yaml`.
     File(PathBuf),
     /// Caller-supplied config, mutated in memory only.
     Inline(Box<Config>),
@@ -112,6 +112,53 @@ pub struct CollectionPath {
     pub name: String,
     /// Path relative to the collection root.
     pub relative_path: String,
+}
+
+/// Options for [`Qmd::update`], mirroring upstream `UpdateOptions`
+/// (index.ts:536-561).
+#[derive(Debug, Clone, Default)]
+pub struct UpdateOptions {
+    /// Restrict the update to these collection names; `None` or empty
+    /// updates all collections. Unknown names are ignored, like
+    /// upstream's `includes()` filter.
+    pub collections: Option<Vec<String>>,
+}
+
+/// One progress event from [`Qmd::update`], mirroring upstream
+/// `UpdateProgress`.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct UpdateProgress {
+    /// Collection currently being indexed.
+    pub collection: String,
+    /// Relative file path, `/`-separated.
+    pub file: String,
+    /// Files processed in this collection so far (including this one).
+    pub current: usize,
+    /// Total files in this collection's scan.
+    pub total: usize,
+}
+
+/// Aggregate result of [`Qmd::update`], mirroring upstream
+/// `UpdateResult` minus per-collection detail.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct UpdateReport {
+    /// Collections processed.
+    pub collections: usize,
+    /// Newly indexed files.
+    pub indexed: usize,
+    /// Re-indexed files whose hash or title changed.
+    pub updated: usize,
+    /// Files already up to date.
+    pub unchanged: usize,
+    /// Documents deactivated because the file vanished.
+    pub removed: usize,
+    /// Files skipped (unreadable, out of root, ...).
+    pub skipped: usize,
+    /// Distinct active content hashes with no vector rows; the embedding
+    /// pipeline arrives in P2, so every active hash counts for now.
+    pub needs_embedding: usize,
 }
 
 /// Open handle to a qmd index.
@@ -553,6 +600,79 @@ impl Qmd {
             }
         }
         Ok(best)
+    }
+
+    /// Re-index collections: upstream `update` (index.ts:536-561).
+    ///
+    /// Collections come from the `store_collections` mirror (like
+    /// upstream, not the config file), `llm_cache` is cleared first, then
+    /// each collection runs `reindexCollection`. `progress` fires once
+    /// per file, skipped files included.
+    ///
+    /// # Errors
+    /// Propagates glob, I/O and database errors.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard is held for the whole update pass"
+    )]
+    pub fn update(
+        &self,
+        opts: &UpdateOptions,
+        progress: &mut dyn FnMut(&UpdateProgress),
+    ) -> Result<UpdateReport> {
+        let mut conn = lock(&self.conn);
+        let cols = store::get_store_collections(&conn)?;
+        let filtered: Vec<_> = match &opts.collections {
+            Some(names) if !names.is_empty() => cols
+                .into_iter()
+                .filter(|c| names.contains(&c.name))
+                .collect(),
+            _ => cols,
+        };
+
+        store::documents::clear_llm_cache(&conn)?;
+
+        let mut report = UpdateReport {
+            collections: filtered.len(),
+            indexed: 0,
+            updated: 0,
+            unchanged: 0,
+            removed: 0,
+            skipped: 0,
+            needs_embedding: 0,
+        };
+        for col in &filtered {
+            let ignore = col.ignore.clone().unwrap_or_default();
+            let pattern = if col.pattern.is_empty() {
+                crate::config::DEFAULT_PATTERN
+            } else {
+                &col.pattern
+            };
+            let name = col.name.clone();
+            let mut on_file = |fp: &crate::collection::index::FileProgress<'_>| {
+                progress(&UpdateProgress {
+                    collection: name.clone(),
+                    file: fp.file.to_owned(),
+                    current: fp.current,
+                    total: fp.total,
+                });
+            };
+            let r = crate::collection::index::reindex_collection(
+                &mut conn,
+                Path::new(&col.path),
+                pattern,
+                &col.name,
+                &ignore,
+                &mut on_file,
+            )?;
+            report.indexed += r.indexed;
+            report.updated += r.updated;
+            report.unchanged += r.unchanged;
+            report.removed += r.removed;
+            report.skipped += r.skipped_files.len();
+        }
+        report.needs_embedding = store::documents::hashes_needing_embedding(&conn)?;
+        Ok(report)
     }
 
     #[allow(
