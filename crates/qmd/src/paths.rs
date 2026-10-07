@@ -210,3 +210,22 @@ pub fn expand_home(path: &str, env: &Environment) -> PathBuf {
     }
     PathBuf::from(path)
 }
+
+/// Upstream `isPathInsideDir` (store.ts:681-691): `true` when `target` is
+/// `dir` or a descendant after resolving symlinks. When `target` cannot
+/// be canonicalized (unreadable or dangling), upstream falls back to a
+/// lexical comparison so a mode-0 file inside the collection is not
+/// treated as an escape.
+pub(crate) fn is_path_inside_dir(dir: &Path, target: &Path) -> bool {
+    let real_dir = std::fs::canonicalize(dir).unwrap_or_else(|_| lexical_normalize(dir));
+    std::fs::canonicalize(target).map_or_else(
+        // Mirror upstream's catch branch: the dir side is *not*
+        // canonicalized here — `resolve(dir)` is lexical only.
+        |_| {
+            let t = lexical_normalize(target);
+            let d = lexical_normalize(dir);
+            t == d || t.starts_with(&d)
+        },
+        |real| real == real_dir || real.starts_with(&real_dir),
+    )
+}

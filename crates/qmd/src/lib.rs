@@ -2,13 +2,14 @@
 //!
 //! Rust port of [tobi/qmd](https://github.com/tobi/qmd) (v2.8.3).
 //!
-//! # P1.1 surface
+//! # P1.2 surface
 //!
-//! Storage and configuration foundation: [`Qmd::builder`] opens a SQLite
-//! index (WAL, busy timeout, schema versioning, sqlite-vec), configuration
-//! comes from a YAML file, an inline [`Config`], or the database mirror.
-//! Collection and context management follow upstream CLI semantics.
-//! Indexing (P1.2) and search (P1.3) are not implemented yet.
+//! Storage and configuration foundation plus incremental indexing:
+//! [`Qmd::builder`] opens a SQLite index (WAL, busy timeout, schema
+//! versioning, sqlite-vec), configuration comes from a YAML file, an
+//! inline [`Config`], or the database mirror, and [`Qmd::update`] scans
+//! collections into `documents`/`content`/`documents_fts`.
+//! Search (P1.3) is not implemented yet.
 //!
 //! ```
 //! # fn main() -> qmd::Result<()> {
@@ -35,6 +36,7 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+pub mod collection;
 pub mod config;
 mod env;
 mod error;
@@ -42,10 +44,12 @@ pub mod paths;
 mod qmd;
 mod store;
 
+pub use collection::split_glob_mask;
 pub use config::{Collection, Config, EmbedPooling, ModelsConfig};
 pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
-    ContextEntry, Qmd, QmdBuilder,
+    ContextEntry, Qmd, QmdBuilder, UpdateOptions, UpdateProgress, UpdateReport,
 };
+pub use store::documents::extract_title;

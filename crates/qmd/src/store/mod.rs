@@ -16,6 +16,8 @@
 //! databases (including upstream `qmd` indexes) before any write.
 
 pub(crate) mod collections;
+pub(crate) mod documents;
+pub(crate) mod fts;
 pub(crate) mod vec;
 
 use std::path::Path;
@@ -51,8 +53,8 @@ CREATE TABLE IF NOT EXISTS documents (
   active INTEGER NOT NULL DEFAULT 1,
   UNIQUE(collection, path)
 );
-CREATE INDEX IF NOT EXISTS idx_documents_collection ON documents(collection);
-CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(path);
+CREATE INDEX IF NOT EXISTS idx_documents_collection ON documents(collection, active);
+CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(path, active);
 CREATE INDEX IF NOT EXISTS idx_documents_hash ON documents(hash);
 
 CREATE TABLE IF NOT EXISTS content (
@@ -69,7 +71,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
 );
 
 CREATE TABLE IF NOT EXISTS llm_cache (
-  cachekey TEXT PRIMARY KEY,
+  hash TEXT PRIMARY KEY,
   result TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
