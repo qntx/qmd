@@ -229,7 +229,7 @@ pub(crate) fn update_document(
 }
 
 /// Upstream `deactivateDocument` (store.ts:3131-3135) plus the FTS-row
-/// removal upstream performs via trigger.
+/// removal upstream performs via the `documents_au` UPDATE trigger.
 pub(crate) fn deactivate_document(conn: &Connection, collection: &str, path: &str) -> Result<()> {
     conn.execute(
         "DELETE FROM documents_fts WHERE rowid IN \

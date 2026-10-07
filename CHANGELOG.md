@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
+- `qmd` crate BM25 full-text search (P1.3): `Qmd::search_lex` with `LexOptions`; FTS5 query builder (`build_fts5_query`, phrase/negation/compound/CJK terms); `validate_lex_query`/`validate_semantic_query`; `SearchResult`/`SearchSource`/`get_docid`; `extract_snippet`/`add_line_numbers`.
 - `qmd` crate collection scanning and incremental indexing (P1.2): `Qmd::update` with `UpdateOptions`/`UpdateProgress`/`UpdateReport`; `split_glob_mask`; mask/ignore/hidden/excluded-dir filtering; file-symlink boundary checks; sha256 content-addressed storage; write-side FTS5 maintenance with CJK normalization; `extract_title`.
 - `qmd` crate storage and configuration foundation (P1.1): `Qmd` handle and builder; file / inline / DB-only config sources; YAML config model preserving unknown keys, key order and `editor_uri` aliases; injectable `Environment`; path helpers (`<index>-rs.sqlite`, `.qmd/` discovery); SQLite store with busy timeout, WAL, three-layer versioning, `application_id` foreign-index guard and sqlite-vec; collection and context management with CLI semantics.
 

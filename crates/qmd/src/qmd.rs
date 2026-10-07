@@ -15,6 +15,7 @@ use crate::config::{Collection, Config};
 use crate::env::Environment;
 use crate::error::{Error, Result};
 use crate::store;
+use crate::store::search::SearchResult;
 
 /// How the [`Qmd`] handle resolves its configuration.
 #[derive(Debug)]
@@ -121,6 +122,20 @@ pub struct UpdateOptions {
     /// Restrict the update to these collection names; `None` or empty
     /// updates all collections. Unknown names are ignored, like
     /// upstream's `includes()` filter.
+    pub collections: Option<Vec<String>>,
+}
+
+/// Options for [`Qmd::search_lex`], mirroring the `limit` and
+/// `collection` fields of upstream `searchLex` options
+/// (index.ts:474-477). The upstream `filter` field is metadata-based and
+/// arrives with P3.
+#[derive(Debug, Clone, Default)]
+pub struct LexOptions {
+    /// Maximum results (upstream default: 20).
+    pub limit: Option<usize>,
+    /// Restrict the search to these collection names; `None` or empty
+    /// searches all collections. Several names are queried separately
+    /// and merged by score (upstream #775).
     pub collections: Option<Vec<String>>,
 }
 
@@ -673,6 +688,22 @@ impl Qmd {
         }
         report.needs_embedding = store::documents::hashes_needing_embedding(&conn)?;
         Ok(report)
+    }
+
+    /// Full-text keyword search: upstream `searchLex` → `searchFTS`
+    /// (index.ts:474, store.ts:4081-4180). Returns BM25-ranked hits;
+    /// an empty result is produced for queries with no positive terms.
+    ///
+    /// # Errors
+    /// Propagates database errors (including malformed FTS5 syntax).
+    pub fn search_lex(&self, query: &str, opts: &LexOptions) -> Result<Vec<SearchResult>> {
+        let conn = lock(&self.conn);
+        store::search::search_fts(
+            &conn,
+            query,
+            opts.limit.unwrap_or(20),
+            opts.collections.clone(),
+        )
     }
 
     #[allow(

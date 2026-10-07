@@ -18,6 +18,7 @@
 pub(crate) mod collections;
 pub(crate) mod documents;
 pub(crate) mod fts;
+pub(crate) mod search;
 pub(crate) mod vec;
 
 use std::path::Path;
