@@ -160,7 +160,7 @@ return_self_not_must_use           = "warn"
 exhaustive_enums                   = "allow"
 exhaustive_structs                 = "allow"
 # Nightly suggestion is `[] as [T; 0]`, which is `trivial_casts`.
-const_is_empty                     = "allow"
+assert_is_empty                    = "allow"
 # serde `Deserialize` on `struct Extra {}` expands to an empty enum.
 empty_enums                        = "allow"
 module_name_repetitions            = "allow"
