@@ -1,0 +1,369 @@
+{
+  "collection": "docs",
+  "documents": [
+    {
+      "path": "perf.md",
+      "title": "Performance Guide",
+      "body": "# Performance Guide\n\nTuning and optimizing query performance.\nPerformance improves with better indexes.\n"
+    },
+    {
+      "path": "hello.md",
+      "title": "Hello World",
+      "body": "# Hello World\n\nhello world, this is a greeting document.\n"
+    },
+    {
+      "path": "ticket.md",
+      "title": "Ticket Notes",
+      "body": "# Ticket Notes\n\nDEC-0054 tracks the search regression.\n"
+    },
+    {
+      "path": "i18n.md",
+      "title": "i18n Module",
+      "body": "# i18n Module\n\nThe file src/lib/i18n.ts holds locale logic.\n"
+    },
+    {
+      "path": "agents.md",
+      "title": "Agents",
+      "body": "# Agents\n\nmulti-agent memory sharing across workers.\n"
+    },
+    {
+      "path": "secrets.md",
+      "title": "Secrets",
+      "body": "# Secrets\n\nDon't forget apply_secrets before deploy.\n"
+    },
+    {
+      "path": "release.md",
+      "title": "Release",
+      "body": "# Release\n\nVersion 2026.4.10 ships bugfixes.\n"
+    },
+    {
+      "path": "sports.md",
+      "title": "Sports",
+      "body": "# Sports\n\nA note about sports and games entirely.\n"
+    }
+  ],
+  "queries": [
+    {
+      "query": "hello",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.7521447461306845
+        }
+      ]
+    },
+    {
+      "query": "performance",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/perf.md",
+          "displayPath": "docs/perf.md",
+          "title": "Performance Guide",
+          "score": 0.7456467656991838
+        }
+      ]
+    },
+    {
+      "query": "perform",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/perf.md",
+          "displayPath": "docs/perf.md",
+          "title": "Performance Guide",
+          "score": 0.7456467656991838
+        }
+      ]
+    },
+    {
+      "query": "\"hello world\"",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.7455409685798676
+        }
+      ]
+    },
+    {
+      "query": "hello -sports",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.7521447461306845
+        }
+      ]
+    },
+    {
+      "query": "DEC-0054",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/ticket.md",
+          "displayPath": "docs/ticket.md",
+          "title": "Ticket Notes",
+          "score": 0.6186055368750185
+        }
+      ]
+    },
+    {
+      "query": "dec-0054",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/ticket.md",
+          "displayPath": "docs/ticket.md",
+          "title": "Ticket Notes",
+          "score": 0.6186055368750185
+        }
+      ]
+    },
+    {
+      "query": "src/lib/i18n.ts",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/i18n.md",
+          "displayPath": "docs/i18n.md",
+          "title": "i18n Module",
+          "score": 0.5973395259145459
+        }
+      ]
+    },
+    {
+      "query": "i18n",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/i18n.md",
+          "displayPath": "docs/i18n.md",
+          "title": "i18n Module",
+          "score": 0.7492618202006394
+        }
+      ]
+    },
+    {
+      "query": "multi-agent",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/agents.md",
+          "displayPath": "docs/agents.md",
+          "title": "Agents",
+          "score": 0.6336445459872745
+        }
+      ]
+    },
+    {
+      "query": "-multi-agent",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": []
+    },
+    {
+      "query": "memory -agents",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": []
+    },
+    {
+      "query": "\"DEC-0054\"",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/ticket.md",
+          "displayPath": "docs/ticket.md",
+          "title": "Ticket Notes",
+          "score": 0.6186055368750185
+        }
+      ]
+    },
+    {
+      "query": "HELLO",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.7521447461306845
+        }
+      ]
+    },
+    {
+      "query": "2026.4.10",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/release.md",
+          "displayPath": "docs/release.md",
+          "title": "Release",
+          "score": 0.6336445459872745
+        }
+      ]
+    },
+    {
+      "query": "don't",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/secrets.md",
+          "displayPath": "docs/secrets.md",
+          "title": "Secrets",
+          "score": 0.6260347352701912
+        }
+      ]
+    },
+    {
+      "query": "apply_secrets",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/secrets.md",
+          "displayPath": "docs/secrets.md",
+          "title": "Secrets",
+          "score": 0.6260347352701912
+        }
+      ]
+    },
+    {
+      "query": "nosuchterm",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": []
+    },
+    {
+      "query": "hello world",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.85641505767109
+        }
+      ]
+    },
+    {
+      "query": "!!!",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": []
+    },
+    {
+      "query": "-sports",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": []
+    },
+    {
+      "query": "\"sports\"",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/sports.md",
+          "displayPath": "docs/sports.md",
+          "title": "Sports",
+          "score": 0.7550499429528517
+        }
+      ]
+    },
+    {
+      "query": "release version",
+      "limit": 20,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/release.md",
+          "displayPath": "docs/release.md",
+          "title": "Release",
+          "score": 0.8269618369657045
+        }
+      ]
+    },
+    {
+      "query": "performance",
+      "limit": 1,
+      "collection": null,
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/perf.md",
+          "displayPath": "docs/perf.md",
+          "title": "Performance Guide",
+          "score": 0.7456467656991838
+        }
+      ]
+    },
+    {
+      "query": "hello",
+      "limit": 20,
+      "collection": "docs",
+      "lex_validation": null,
+      "results": [
+        {
+          "filepath": "qmd://docs/hello.md",
+          "displayPath": "docs/hello.md",
+          "title": "Hello World",
+          "score": 0.7521447461306845
+        }
+      ]
+    },
+    {
+      "query": "hello",
+      "limit": 20,
+      "collection": "nosuch",
+      "lex_validation": null,
+      "results": []
+    }
+  ]
+}

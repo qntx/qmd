@@ -229,3 +229,63 @@ pub(crate) fn is_path_inside_dir(dir: &Path, target: &Path) -> bool {
         |real| real == real_dir || real.starts_with(&real_dir),
     )
 }
+
+/// Components of a `qmd://collection/path` URI — upstream
+/// `VirtualPath` (store.ts:698-702). `index` is the `?index=` override.
+#[derive(Debug)]
+pub(crate) struct VirtualPath {
+    /// Collection name.
+    pub(crate) collection_name: String,
+    /// Path relative to the collection root (empty for collection root).
+    pub(crate) path: String,
+    /// `?index=` override, when present.
+    #[allow(
+        dead_code,
+        reason = "read by `get`/`multi_get` virtual-path consumers in P1.4"
+    )]
+    pub(crate) index_name: Option<String>,
+}
+
+/// Upstream `normalizeVirtualPath` (store.ts:711-735): normalize
+/// `qmd:`, `qmd://` and `//collection/path` spellings to `qmd://`.
+#[must_use]
+pub(crate) fn normalize_virtual_path(input: &str) -> String {
+    let path = input.trim();
+    if let Some(rest) = path.strip_prefix("qmd:") {
+        let rest = rest.trim_start_matches('/');
+        return format!("qmd://{rest}");
+    }
+    if let Some(rest) = path.strip_prefix("//") {
+        let rest = rest.trim_start_matches('/');
+        return format!("qmd://{rest}");
+    }
+    path.to_owned()
+}
+
+/// Upstream `parseVirtualPath` (store.ts:742-757): `qmd://name[/path]`
+/// into components, with an optional `?index=` parameter.
+#[must_use]
+pub(crate) fn parse_virtual_path(virtual_path: &str) -> Option<VirtualPath> {
+    let normalized = normalize_virtual_path(virtual_path);
+    let (path_part, query_string) = normalized
+        .split_once('?')
+        .map_or((normalized.as_str(), ""), |(p, q)| (p, q));
+    let rest = path_part.strip_prefix("qmd://")?;
+    let (collection_name, path) = rest
+        .find('/')
+        .map_or((rest, ""), |i| (&rest[..i], &rest[i + 1..]));
+    if collection_name.is_empty() {
+        return None;
+    }
+    let index_name = query_string
+        .split('&')
+        .filter_map(|kv| kv.split_once('='))
+        .find(|(k, _)| *k == "index")
+        .map(|(_, v)| v.trim().to_owned())
+        .filter(|v| !v.is_empty());
+    Some(VirtualPath {
+        collection_name: collection_name.to_owned(),
+        path: path.to_owned(),
+        index_name,
+    })
+}

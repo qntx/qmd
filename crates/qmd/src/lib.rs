@@ -2,14 +2,15 @@
 //!
 //! Rust port of [tobi/qmd](https://github.com/tobi/qmd) (v2.8.3).
 //!
-//! # P1.2 surface
+//! # P1.3 surface
 //!
-//! Storage and configuration foundation plus incremental indexing:
-//! [`Qmd::builder`] opens a SQLite index (WAL, busy timeout, schema
-//! versioning, sqlite-vec), configuration comes from a YAML file, an
-//! inline [`Config`], or the database mirror, and [`Qmd::update`] scans
-//! collections into `documents`/`content`/`documents_fts`.
-//! Search (P1.3) is not implemented yet.
+//! Storage and configuration foundation, incremental indexing, and BM25
+//! full-text search: [`Qmd::builder`] opens a SQLite index (WAL, busy
+//! timeout, schema versioning, sqlite-vec), configuration comes from a
+//! YAML file, an inline [`Config`], or the database mirror,
+//! [`Qmd::update`] scans collections into
+//! `documents`/`content`/`documents_fts`, and [`Qmd::search_lex`]
+//! answers BM25-ranked keyword queries with [`extract_snippet`] excerpts.
 //!
 //! ```
 //! # fn main() -> qmd::Result<()> {
@@ -42,6 +43,7 @@ mod env;
 mod error;
 pub mod paths;
 mod qmd;
+pub mod snippet;
 mod store;
 
 pub use collection::split_glob_mask;
@@ -50,6 +52,11 @@ pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
-    ContextEntry, Qmd, QmdBuilder, UpdateOptions, UpdateProgress, UpdateReport,
+    ContextEntry, LexOptions, Qmd, QmdBuilder, UpdateOptions, UpdateProgress, UpdateReport,
 };
+pub use snippet::{SnippetResult, add_line_numbers, extract_snippet};
 pub use store::documents::extract_title;
+pub use store::fts::{
+    build_fts5_query, sanitize_fts5_term, validate_lex_query, validate_semantic_query,
+};
+pub use store::search::{SearchResult, SearchSource, get_docid};
