@@ -19,7 +19,7 @@ use crate::store;
 /// How the [`Qmd`] handle resolves its configuration.
 #[derive(Debug)]
 enum ConfigSource {
-    /// Load and persist `index-<name>.yml` / `qmd.yml`.
+    /// Load and persist `index-<name>.yml` / `.qmd/index.yaml`.
     File(PathBuf),
     /// Caller-supplied config, mutated in memory only.
     Inline(Box<Config>),

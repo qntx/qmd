@@ -404,13 +404,13 @@ fn detect_collection_by_path() {
 
 #[test]
 fn local_config_discovery_flow() {
-    // Mirrors `qmd init` semantics: a `.qmd/qmd.yml` found by walking up,
-    // DB lives next to it as `index-rs.sqlite`.
+    // Mirrors `qmd init` semantics: a `.qmd/index.yaml` found by walking
+    // up, DB lives next to it as `index-rs.sqlite`.
     let tmp = tempfile::tempdir().expect("tempdir");
     let proj = tmp.path().join("proj");
     let qmd_dir = proj.join(".qmd");
     std::fs::create_dir_all(&qmd_dir).expect("mkdir");
-    let cfg_path = qmd_dir.join("qmd.yml");
+    let cfg_path = qmd_dir.join("index.yaml");
     std::fs::write(&cfg_path, "collections: {}\n").expect("write");
 
     let deep = proj.join("a/b/c");
