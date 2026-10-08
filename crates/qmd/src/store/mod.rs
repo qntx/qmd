@@ -16,9 +16,12 @@
 //! databases (including upstream `qmd` indexes) before any write.
 
 pub(crate) mod collections;
+pub(crate) mod document;
 pub(crate) mod documents;
 pub(crate) mod fts;
+pub(crate) mod maintenance;
 pub(crate) mod search;
+pub(crate) mod status;
 pub(crate) mod vec;
 
 use std::path::Path;
@@ -37,8 +40,10 @@ const APPLICATION_ID: i64 = 0x516D_6452;
 /// Structural schema version for this implementation (independent from
 /// upstream's 15).
 const SCHEMA_VERSION: &str = "1";
-/// Vector schema version for this implementation.
-const VECTOR_SCHEMA_VERSION: &str = "1";
+/// Vector schema version for this implementation. `2` adds
+/// `embed_fingerprint`/`total_chunks` to `content_vectors` so
+/// `getHashesNeedingEmbedding` matches upstream (P1.4).
+const VECTOR_SCHEMA_VERSION: &str = "2";
 
 /// Full structural DDL, applied to fresh databases and on
 /// `schema_version` mismatch rebuilds.
@@ -78,17 +83,22 @@ CREATE TABLE IF NOT EXISTS llm_cache (
 );
 ";
 
-/// Vector-layer DDL.
+/// Vector-layer DDL, matching upstream's post-migration
+/// `content_vectors` shape (store.ts:1247-1257, 1865-1867).
 const VECTOR_DDL: &str = "
 CREATE TABLE IF NOT EXISTS content_vectors (
   hash TEXT NOT NULL,
   seq INTEGER NOT NULL DEFAULT 0,
   pos INTEGER NOT NULL DEFAULT 0,
   model TEXT NOT NULL,
+  embed_fingerprint TEXT NOT NULL DEFAULT '',
+  total_chunks INTEGER NOT NULL DEFAULT 1,
   embedded_at TEXT NOT NULL,
   PRIMARY KEY (hash, seq)
 );
 CREATE INDEX IF NOT EXISTS idx_vectors_model ON content_vectors(model);
+CREATE INDEX IF NOT EXISTS idx_content_vectors_model_fingerprint
+  ON content_vectors(model, embed_fingerprint, hash, total_chunks);
 ";
 
 /// Structural tables dropped on a `schema_version` mismatch.

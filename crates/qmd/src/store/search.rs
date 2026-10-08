@@ -12,15 +12,9 @@ use rusqlite::{Connection, OptionalExtension, params_from_iter};
 
 use super::collections::{DbCollection, get_store_collections, get_store_global_context};
 use super::fts::build_fts5_query;
+use crate::docid::get_docid;
 use crate::error::{DbError, Result};
-use crate::paths::parse_virtual_path;
-
-/// Upstream `getDocid` (store.ts:2364-2366): first 6 characters of the
-/// content hash, without the `#` prefix.
-#[must_use]
-pub fn get_docid(hash: &str) -> String {
-    hash.get(..6).unwrap_or(hash).to_owned()
-}
+use crate::vpath::parse_virtual_path;
 
 /// A ranked FTS search hit — upstream `SearchResult`/`DocumentResult`
 /// (store.ts:2348-2363, 2441-2446).

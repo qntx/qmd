@@ -12,8 +12,10 @@ use std::sync::{Mutex, MutexGuard};
 use rusqlite::Connection;
 
 use crate::config::{Collection, Config};
+use crate::document::{Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions};
 use crate::env::Environment;
 use crate::error::{Error, Result};
+use crate::maintenance::Maintenance;
 use crate::store;
 use crate::store::search::SearchResult;
 
@@ -125,6 +127,61 @@ pub struct UpdateOptions {
     pub collections: Option<Vec<String>>,
 }
 
+/// One collection row of [`Qmd::status`] — upstream `CollectionInfo`
+/// (store.ts:2525-2531).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct StatusCollection {
+    /// Collection name.
+    pub name: String,
+    /// Filesystem path (`None` when only document rows exist).
+    pub path: Option<String>,
+    /// Glob pattern, if known.
+    pub pattern: Option<String>,
+    /// Active document count.
+    pub documents: usize,
+    /// Latest `modified_at` (current time when the collection is empty).
+    pub last_updated: String,
+}
+
+/// [`Qmd::status`] result — upstream `IndexStatus` (store.ts:2533-2540)
+/// plus the CLI `status` aggregates (cli/qmd.ts:540-583) and the
+/// `reindex_required` flag (P1-D2). `pending_metadata` arrives with P3.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct Status {
+    /// Active documents.
+    pub total_documents: usize,
+    /// Distinct active content hashes lacking vectors for the resolved
+    /// embed model.
+    pub needs_embedding: usize,
+    /// Whether the `vectors_vec` table exists.
+    pub has_vector_index: bool,
+    /// Total `content_vectors` rows.
+    pub vector_count: usize,
+    /// `content_vectors` rows referenced by no active document.
+    pub orphaned_vectors: usize,
+    /// `MAX(modified_at)` of active documents.
+    pub latest_modified: Option<String>,
+    /// Schema rebuild requires re-indexing before search works.
+    pub reindex_required: bool,
+    /// Per-collection rows, most recently updated first.
+    pub collections: Vec<StatusCollection>,
+}
+
+/// [`Qmd::index_health`] result — upstream `IndexHealthInfo`
+/// (store.ts:2568-2572).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct IndexHealth {
+    /// Distinct active content hashes lacking current vectors.
+    pub needs_embedding: usize,
+    /// Active document count.
+    pub total_docs: usize,
+    /// Whole days since the newest `modified_at` (`None` when empty).
+    pub days_stale: Option<i64>,
+}
+
 /// Options for [`Qmd::search_lex`], mirroring the `limit` and
 /// `collection` fields of upstream `searchLex` options
 /// (index.ts:474-477). The upstream `filter` field is metadata-based and
@@ -185,6 +242,7 @@ pub struct Qmd {
     conn: Mutex<Connection>,
     config: Mutex<ConfigSource>,
     db_path: PathBuf,
+    env: Environment,
 }
 
 impl std::fmt::Debug for Qmd {
@@ -255,6 +313,7 @@ impl QmdBuilder {
             conn: Mutex::new(conn),
             config: Mutex::new(source),
             db_path: self.db_path,
+            env: self.env,
         })
     }
 }
@@ -273,6 +332,17 @@ impl Qmd {
     #[must_use]
     pub fn db_path(&self) -> &Path {
         &self.db_path
+    }
+
+    /// Connection guard for [`Maintenance`] and internal helpers.
+    pub(crate) fn lock_conn(&self) -> MutexGuard<'_, Connection> {
+        lock(&self.conn)
+    }
+
+    /// The resolved embed model: `models.embed` → `QMD_EMBED_MODEL` →
+    /// upstream default (llm.ts:303-305).
+    fn embed_model(&self, config: &Config) -> String {
+        crate::llm::resolve_embed_model(config.models.as_ref(), &self.env)
     }
 
     /// Close the handle, surfacing connection errors that `Drop` would
@@ -635,6 +705,12 @@ impl Qmd {
         opts: &UpdateOptions,
         progress: &mut dyn FnMut(&UpdateProgress),
     ) -> Result<UpdateReport> {
+        // Resolve before locking conn: `load_config` may itself lock it
+        // (DbOnly mode) and `Mutex` is not reentrant.
+        let model = {
+            let guard = lock(&self.config);
+            self.embed_model(&self.load_config(&guard)?)
+        };
         let mut conn = lock(&self.conn);
         let cols = store::get_store_collections(&conn)?;
         let filtered: Vec<_> = match &opts.collections {
@@ -645,7 +721,7 @@ impl Qmd {
             _ => cols,
         };
 
-        store::documents::clear_llm_cache(&conn)?;
+        store::maintenance::delete_llm_cache(&conn)?;
 
         let mut report = UpdateReport {
             collections: filtered.len(),
@@ -686,8 +762,143 @@ impl Qmd {
             report.removed += r.removed;
             report.skipped += r.skipped_files.len();
         }
-        report.needs_embedding = store::documents::hashes_needing_embedding(&conn)?;
+        report.needs_embedding = store::status::hashes_needing_embedding(&conn, None, &model)?;
         Ok(report)
+    }
+
+    /// Fetch a single document by `qmd://` URI, filesystem path,
+    /// `#docid`/`docid`, or partial path — upstream `findDocument`
+    /// (store.ts:4851-4957) via the SDK `get` (index.ts:483).
+    ///
+    /// A trailing `:N` is stripped before lookup, as upstream.
+    ///
+    /// # Errors
+    /// [`Error::DocumentNotFound`] (with `similar_files` suggestions) or
+    /// [`Error::ExcludedByIgnore`] when the path matches an ignore rule;
+    /// [`Error::Db`] on query failure.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard must live until the lookup completes"
+    )]
+    pub fn get(&self, path_or_docid: &str, opts: GetOptions) -> Result<Document> {
+        let conn = lock(&self.conn);
+        store::document::find_document(&conn, &self.env, path_or_docid, opts.include_body)
+    }
+
+    /// Body of a document, optionally sliced to a 1-based line window —
+    /// upstream SDK `getDocumentBody` (index.ts:484-488, store.ts:4963).
+    /// Returns `Ok(None)` when the lookup fails, like upstream's `null`.
+    ///
+    /// # Errors
+    /// [`Error::Db`] on query failure; lookup misses return `Ok(None)`.
+    pub fn document_body(&self, path_or_docid: &str, lines: LineRange) -> Result<Option<String>> {
+        let conn = lock(&self.conn);
+        store::document::get_document_body(
+            &conn,
+            &self.env,
+            path_or_docid,
+            lines.from_line,
+            lines.max_lines,
+        )
+    }
+
+    /// Fetch multiple documents by comma-separated names or a glob
+    /// pattern — upstream `findDocuments` / `multiGet`
+    /// (store.ts:5135-5233, index.ts:489). Per-name failures land in
+    /// [`MultiGet::errors`]; oversized bodies become
+    /// [`crate::document::MultiGetEntry::Skipped`].
+    ///
+    /// # Errors
+    /// [`Error::Db`] on query failure, [`Error::InvalidInput`] on a
+    /// malformed glob pattern.
+    pub fn multi_get(&self, pattern: &str, opts: &MultiGetOptions) -> Result<MultiGet> {
+        let conn = lock(&self.conn);
+        store::document::find_documents(&conn, pattern, opts.include_body, opts.max_bytes)
+    }
+
+    /// Documents of one collection under an optional path prefix — the
+    /// `qmd ls` listing (cli/qmd.ts:1712-1738), ordered by path.
+    ///
+    /// # Errors
+    /// [`Error::CollectionNotFound`] when `collection` is unknown;
+    /// [`Error::Db`] on query failure.
+    pub fn list_documents(
+        &self,
+        collection: &str,
+        prefix: Option<&str>,
+    ) -> Result<Vec<DocumentEntry>> {
+        let conn = lock(&self.conn);
+        store::document::list_documents(&conn, collection, prefix)
+    }
+
+    /// Resolve a `qmd://` URI to an absolute filesystem path inside the
+    /// collection — upstream `resolveVirtualPath` (store.ts:791-801).
+    /// `Ok(None)` for non-virtual input, unknown collections, or paths
+    /// escaping the collection root.
+    ///
+    /// # Errors
+    /// [`Error::Db`] on query failure.
+    pub fn resolve_virtual_path(&self, uri: &str) -> Result<Option<PathBuf>> {
+        let conn = lock(&self.conn);
+        store::document::resolve_virtual_path(&conn, uri)
+    }
+
+    /// Index status — upstream `getStatus` (store.ts:5239-5284) plus the
+    /// CLI `status` aggregates and `reindex_required`.
+    ///
+    /// # Errors
+    /// Propagates config load and database errors.
+    pub fn status(&self) -> Result<Status> {
+        let config = self.config()?;
+        let model = self.embed_model(&config);
+        let conn = lock(&self.conn);
+        let row = store::status::get_status(&conn, &model)?;
+        drop(conn);
+        Ok(Status {
+            total_documents: row.total_documents,
+            needs_embedding: row.needs_embedding,
+            has_vector_index: row.has_vector_index,
+            vector_count: row.vector_count,
+            orphaned_vectors: row.orphaned_vectors,
+            latest_modified: row.latest_modified,
+            reindex_required: row.reindex_required,
+            collections: row
+                .collections
+                .into_iter()
+                .map(|c| StatusCollection {
+                    name: c.name,
+                    path: c.path,
+                    pattern: c.pattern,
+                    documents: c.documents,
+                    last_updated: c.last_updated,
+                })
+                .collect(),
+        })
+    }
+
+    /// Embedding staleness summary — upstream `getIndexHealth`
+    /// (store.ts:2656-2668).
+    ///
+    /// # Errors
+    /// Propagates config load and database errors.
+    pub fn index_health(&self) -> Result<IndexHealth> {
+        let config = self.config()?;
+        let model = self.embed_model(&config);
+        let conn = lock(&self.conn);
+        let row = store::status::get_index_health(&conn, &model)?;
+        drop(conn);
+        Ok(IndexHealth {
+            needs_embedding: row.needs_embedding,
+            total_docs: row.total_docs,
+            days_stale: row.days_stale,
+        })
+    }
+
+    /// `qmd cleanup` operations — upstream `Maintenance`
+    /// (maintenance.ts:22-76). The handle borrows `self`.
+    #[must_use]
+    pub const fn maintenance(&self) -> Maintenance<'_> {
+        Maintenance { qmd: self }
     }
 
     /// Full-text keyword search: upstream `searchLex` → `searchFTS`

@@ -1,0 +1,586 @@
+{
+  "normalize": [
+    [
+      "qmd://notes/a.md",
+      "qmd://notes/a.md"
+    ],
+    [
+      "qmd:////notes/a.md",
+      "qmd://notes/a.md"
+    ],
+    [
+      "qmd:notes/a.md",
+      "qmd://notes/a.md"
+    ],
+    [
+      "//notes/a.md",
+      "qmd://notes/a.md"
+    ],
+    [
+      "  qmd://notes/a.md  ",
+      "qmd://notes/a.md"
+    ],
+    [
+      "notes/a.md",
+      "notes/a.md"
+    ],
+    [
+      "/abs/a.md",
+      "/abs/a.md"
+    ],
+    [
+      "qmd://notes",
+      "qmd://notes"
+    ],
+    [
+      "qmd://notes/",
+      "qmd://notes/"
+    ],
+    [
+      "qmd://",
+      "qmd://"
+    ],
+    [
+      "qmd:///a.md",
+      "qmd://a.md"
+    ],
+    [
+      "qmd://notes/a.md?index=main",
+      "qmd://notes/a.md?index=main"
+    ],
+    [
+      "qmd://notes/a.md?index=my%20idx",
+      "qmd://notes/a.md?index=my%20idx"
+    ],
+    [
+      "qmd://notes/a.md?index=a+b",
+      "qmd://notes/a.md?index=a+b"
+    ],
+    [
+      "qmd://notes/a.md?other=1&index=i",
+      "qmd://notes/a.md?other=1&index=i"
+    ],
+    [
+      "qmd://notes/a.md?index=",
+      "qmd://notes/a.md?index="
+    ],
+    [
+      "a.md:10",
+      "a.md:10"
+    ],
+    [
+      "a.md:10:20",
+      "a.md:10:20"
+    ]
+  ],
+  "is_virtual": [
+    [
+      "qmd://notes/a.md",
+      true
+    ],
+    [
+      "qmd:////notes/a.md",
+      true
+    ],
+    [
+      "qmd:notes/a.md",
+      true
+    ],
+    [
+      "//notes/a.md",
+      true
+    ],
+    [
+      "  qmd://notes/a.md  ",
+      true
+    ],
+    [
+      "notes/a.md",
+      false
+    ],
+    [
+      "/abs/a.md",
+      false
+    ],
+    [
+      "qmd://notes",
+      true
+    ],
+    [
+      "qmd://notes/",
+      true
+    ],
+    [
+      "qmd://",
+      true
+    ],
+    [
+      "qmd:///a.md",
+      true
+    ],
+    [
+      "qmd://notes/a.md?index=main",
+      true
+    ],
+    [
+      "qmd://notes/a.md?index=my%20idx",
+      true
+    ],
+    [
+      "qmd://notes/a.md?index=a+b",
+      true
+    ],
+    [
+      "qmd://notes/a.md?other=1&index=i",
+      true
+    ],
+    [
+      "qmd://notes/a.md?index=",
+      true
+    ],
+    [
+      "a.md:10",
+      false
+    ],
+    [
+      "a.md:10:20",
+      false
+    ]
+  ],
+  "parse": [
+    [
+      "qmd://notes/a.md",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "qmd:////notes/a.md",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "qmd:notes/a.md",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "//notes/a.md",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "  qmd://notes/a.md  ",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "notes/a.md",
+      null
+    ],
+    [
+      "/abs/a.md",
+      null
+    ],
+    [
+      "qmd://notes",
+      {
+        "collectionName": "notes",
+        "path": ""
+      }
+    ],
+    [
+      "qmd://notes/",
+      {
+        "collectionName": "notes",
+        "path": ""
+      }
+    ],
+    [
+      "qmd://",
+      null
+    ],
+    [
+      "qmd:///a.md",
+      {
+        "collectionName": "a.md",
+        "path": ""
+      }
+    ],
+    [
+      "qmd://notes/a.md?index=main",
+      {
+        "collectionName": "notes",
+        "path": "a.md",
+        "indexName": "main"
+      }
+    ],
+    [
+      "qmd://notes/a.md?index=my%20idx",
+      {
+        "collectionName": "notes",
+        "path": "a.md",
+        "indexName": "my idx"
+      }
+    ],
+    [
+      "qmd://notes/a.md?index=a+b",
+      {
+        "collectionName": "notes",
+        "path": "a.md",
+        "indexName": "a b"
+      }
+    ],
+    [
+      "qmd://notes/a.md?other=1&index=i",
+      {
+        "collectionName": "notes",
+        "path": "a.md",
+        "indexName": "i"
+      }
+    ],
+    [
+      "qmd://notes/a.md?index=",
+      {
+        "collectionName": "notes",
+        "path": "a.md"
+      }
+    ],
+    [
+      "a.md:10",
+      null
+    ],
+    [
+      "a.md:10:20",
+      null
+    ]
+  ],
+  "build": [
+    [
+      [
+        "notes",
+        "a.md",
+        null
+      ],
+      "qmd://notes/a.md"
+    ],
+    [
+      [
+        "notes",
+        "a.md",
+        "main"
+      ],
+      "qmd://notes/a.md?index=main"
+    ],
+    [
+      [
+        "notes",
+        "a.md",
+        "i j"
+      ],
+      "qmd://notes/a.md?index=i%20j"
+    ],
+    [
+      [
+        "notes",
+        "a.md",
+        "a'b(c)"
+      ],
+      "qmd://notes/a.md?index=a'b(c)"
+    ]
+  ],
+  "docid": [
+    [
+      "#abc123",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "abc123",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "\"abc123\"",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "'abc123'",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "\"#abc123\"",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "  #abc123  ",
+      {
+        "normalized": "abc123",
+        "is_docid": true
+      }
+    ],
+    [
+      "abc12",
+      {
+        "normalized": "abc12",
+        "is_docid": false
+      }
+    ],
+    [
+      "abcdefg",
+      {
+        "normalized": "abcdefg",
+        "is_docid": false
+      }
+    ],
+    [
+      "#",
+      {
+        "normalized": "",
+        "is_docid": false
+      }
+    ],
+    [
+      "",
+      {
+        "normalized": "",
+        "is_docid": false
+      }
+    ],
+    [
+      "a.md",
+      {
+        "normalized": "a.md",
+        "is_docid": false
+      }
+    ],
+    [
+      "docs/a.md",
+      {
+        "normalized": "docs/a.md",
+        "is_docid": false
+      }
+    ]
+  ],
+  "get_docid": [
+    [
+      "0123456789abcdef",
+      "012345"
+    ],
+    [
+      "abc",
+      "abc"
+    ],
+    [
+      "",
+      ""
+    ]
+  ],
+  "line_suffix": [
+    [
+      "a.md",
+      {
+        "path": "a.md",
+        "from_line": null,
+        "max_lines": null
+      }
+    ],
+    [
+      "a.md:100",
+      {
+        "path": "a.md",
+        "from_line": 100,
+        "max_lines": null
+      }
+    ],
+    [
+      "a.md:100:40",
+      {
+        "path": "a.md",
+        "from_line": 100,
+        "max_lines": 40
+      }
+    ],
+    [
+      "a.md:10:x",
+      {
+        "path": "a.md:10:x",
+        "from_line": null,
+        "max_lines": null
+      }
+    ],
+    [
+      "qmd://notes/a.md:5",
+      {
+        "path": "qmd://notes/a.md",
+        "from_line": 5,
+        "max_lines": null
+      }
+    ],
+    [
+      "qmd://notes/a.md:5:6",
+      {
+        "path": "qmd://notes/a.md",
+        "from_line": 5,
+        "max_lines": 6
+      }
+    ]
+  ],
+  "glob": [
+    [
+      "**/*.md",
+      [
+        "qmd://docs/hello.md",
+        "qmd://docs/sub/b.md",
+        "qmd://docs/sub/deep/c.md",
+        "qmd://docs/SYNTAX.md",
+        "qmd://blog/same.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "*.md",
+      [
+        "qmd://docs/hello.md",
+        "qmd://docs/SYNTAX.md",
+        "qmd://blog/same.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "sub/**",
+      [
+        "qmd://docs/sub/b.md",
+        "qmd://docs/sub/deep/c.md"
+      ]
+    ],
+    [
+      "**/b.md",
+      [
+        "qmd://docs/sub/b.md"
+      ]
+    ],
+    [
+      "docs/*.md",
+      [
+        "qmd://docs/hello.md",
+        "qmd://docs/SYNTAX.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "qmd://docs/*.md",
+      [
+        "qmd://docs/hello.md",
+        "qmd://docs/SYNTAX.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "same.md",
+      [
+        "qmd://blog/same.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "!hello.md",
+      [
+        "qmd://docs/hello.md",
+        "qmd://docs/sub/b.md",
+        "qmd://docs/sub/deep/c.md",
+        "qmd://docs/SYNTAX.md",
+        "qmd://blog/same.md",
+        "qmd://docs/same.md"
+      ]
+    ],
+    [
+      "**/*.xyz",
+      []
+    ]
+  ],
+  "comma_resolve": [
+    [
+      "hello.md",
+      {
+        "ok": "qmd://docs/hello.md"
+      }
+    ],
+    [
+      "docs/hello.md",
+      {
+        "ok": "qmd://docs/hello.md"
+      }
+    ],
+    [
+      "qmd://docs/hello.md",
+      {
+        "ok": "qmd://docs/hello.md"
+      }
+    ],
+    [
+      "b.md",
+      {
+        "ok": "qmd://docs/sub/b.md"
+      }
+    ],
+    [
+      "NTAX.md",
+      {
+        "err": "File not found: NTAX.md (did you mean: SYNTAX.md, same.md, same.md?)"
+      }
+    ],
+    [
+      "same.md",
+      {
+        "err": "Ambiguous path same.md: qmd://blog/same.md, qmd://docs/same.md"
+      }
+    ],
+    [
+      "docs/same.md",
+      {
+        "ok": "qmd://docs/same.md"
+      }
+    ],
+    [
+      "sub/b.md",
+      {
+        "ok": "qmd://docs/sub/b.md"
+      }
+    ],
+    [
+      "nope.md",
+      {
+        "err": "File not found: nope.md (did you mean: same.md, same.md, SYNTAX.md?)"
+      }
+    ],
+    [
+      "#90f8ec",
+      {
+        "ok": "qmd://docs/hello.md"
+      }
+    ]
+  ]
+}

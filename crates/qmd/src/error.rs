@@ -100,6 +100,31 @@ pub enum Error {
         existing: String,
     },
 
+    /// No document matched the lookup — upstream `DocumentNotFound`
+    /// (`store.ts:2496-2501`).
+    #[error("document not found: {query}")]
+    DocumentNotFound {
+        /// The original lookup string.
+        query: String,
+        /// Close matches (`findSimilarFiles`) for a "did you mean" hint.
+        similar_files: Vec<String>,
+    },
+
+    /// The path exists on disk but an ignore rule of its collection
+    /// excludes it — upstream `DocumentExcludedByIgnore`
+    /// (`store.ts:2503-2509`).
+    #[error("document '{query}' is excluded by ignore rule '{rule}' of collection '{collection}'")]
+    ExcludedByIgnore {
+        /// The original lookup string.
+        query: String,
+        /// Collection owning the rule.
+        collection: String,
+        /// Collection-relative path that matched.
+        path: String,
+        /// The ignore rule that matched.
+        rule: String,
+    },
+
     /// The database file exists but was not created by this application
     /// (e.g. it is an upstream `qmd` index). Refusing to touch it protects
     /// the data from an accidental rebuild.

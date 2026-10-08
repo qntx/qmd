@@ -330,6 +330,37 @@ fn bare_dir_ignore_pattern_excludes_subtree() {
     assert_eq!(report.indexed, 1);
 }
 
+#[test]
+#[cfg(unix)]
+fn dir_glob_ignore_pattern_prunes_subtree() {
+    // `dir/**` must match the directory itself, not just its contents:
+    // globset's `dir/**` compiles to `^dir/.*$`, so `keep_entry` tests
+    // `dir/` too. An unreadable ignored dir proves the walker prunes it
+    // instead of descending (which would error out the whole update).
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = tmp.path().join("docs");
+    write(&docs, "keep.md", "# Keep");
+    write(&docs, "blocked/a.md", "# A");
+    let blocked = docs.join("blocked");
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000)).unwrap();
+    let db = tmp.path().join("i.sqlite");
+    let qmd = open(&db);
+    qmd.add_collection(
+        "docs",
+        &CollectionSpec {
+            path: docs.to_string_lossy().into_owned(),
+            ignore: vec!["blocked/**".to_owned()],
+            ..CollectionSpec::default()
+        },
+    )
+    .unwrap();
+
+    let report = update(&qmd);
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(report.indexed, 1);
+}
+
 // --- path fidelity & file-state edge cases --------------------------------
 
 #[test]
