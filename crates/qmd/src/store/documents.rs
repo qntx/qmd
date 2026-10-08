@@ -268,28 +268,3 @@ pub(crate) fn cleanup_orphaned_content(conn: &Connection) -> Result<usize> {
     )
     .map_err(|e| DbError::from(e).into())
 }
-
-/// Upstream `clearCache` (store.ts:2700-2702): `update` wipes the LLM
-/// cache before re-indexing.
-pub(crate) fn clear_llm_cache(conn: &Connection) -> Result<()> {
-    conn.execute_batch("DELETE FROM llm_cache")
-        .map_err(|e| DbError::from(e).into())
-}
-
-/// Count of distinct active content hashes with no vector rows.
-///
-/// Simplified version of upstream `getHashesNeedingEmbedding`
-/// (store.ts:2800-2820): model and embedding-fingerprint filtering arrive
-/// with the embedding pipeline in P2, so for now every active hash counts
-/// as needing embedding.
-pub(crate) fn hashes_needing_embedding(conn: &Connection) -> Result<usize> {
-    conn.query_row(
-        "SELECT COUNT(DISTINCT d.hash) FROM documents d \
-         WHERE d.active = 1 AND NOT EXISTS \
-           (SELECT 1 FROM content_vectors cv WHERE cv.hash = d.hash)",
-        [],
-        |r| r.get::<_, i64>(0),
-    )
-    .map(|n| usize::try_from(n).unwrap_or(0))
-    .map_err(|e| DbError::from(e).into())
-}

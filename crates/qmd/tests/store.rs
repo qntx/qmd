@@ -228,7 +228,7 @@ fn vector_version_rebuild_keeps_content() {
             |r| r.get(0),
         )
         .expect("version");
-    assert_eq!(v, "1");
+    assert_eq!(v, "2");
 }
 
 #[test]

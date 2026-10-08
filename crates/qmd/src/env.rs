@@ -33,6 +33,12 @@ pub struct Environment {
     /// `$PWD` — used to resolve relative `--index` names, mirroring
     /// `process.env.PWD ?? process.cwd()`.
     pub pwd: Option<PathBuf>,
+    /// `$QMD_EMBED_MODEL` — embed model URI override (llm.ts:303).
+    pub qmd_embed_model: Option<String>,
+    /// `$QMD_GENERATE_MODEL` — generation model URI override (llm.ts:307).
+    pub qmd_generate_model: Option<String>,
+    /// `$QMD_RERANK_MODEL` — reranker model URI override (llm.ts:311).
+    pub qmd_rerank_model: Option<String>,
 }
 
 impl Environment {
@@ -52,6 +58,10 @@ impl Environment {
             qmd_sqlite_busy_timeout: var_os("QMD_SQLITE_BUSY_TIMEOUT")
                 .and_then(|v| v.into_string().ok()),
             pwd: var_os("PWD").map(PathBuf::from),
+            qmd_embed_model: var_os("QMD_EMBED_MODEL").map(|v| v.to_string_lossy().into_owned()),
+            qmd_generate_model: var_os("QMD_GENERATE_MODEL")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_rerank_model: var_os("QMD_RERANK_MODEL").map(|v| v.to_string_lossy().into_owned()),
         }
     }
 }

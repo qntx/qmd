@@ -8,7 +8,7 @@
 
 use std::path::Path;
 
-use globset::{Glob, GlobSet, GlobSetBuilder};
+use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use walkdir::{DirEntry, WalkDir};
 
 use crate::error::{Error, Result};
@@ -70,9 +70,13 @@ pub fn split_glob_mask(mask: &str) -> Vec<String> {
 fn build_globset(patterns: &[String]) -> Result<GlobSet> {
     let mut builder = GlobSetBuilder::new();
     for pattern in patterns {
-        let glob = Glob::new(pattern).map_err(|e| Error::InvalidInput {
-            reason: format!("invalid glob pattern '{pattern}': {e}"),
-        })?;
+        // `literal_separator`: picomatch `*`/`?` never cross `/`.
+        let glob = GlobBuilder::new(pattern)
+            .literal_separator(true)
+            .build()
+            .map_err(|e| Error::InvalidInput {
+                reason: format!("invalid glob pattern '{pattern}': {e}"),
+            })?;
         builder.add(glob);
     }
     builder.build().map_err(|e| Error::InvalidInput {
@@ -84,7 +88,8 @@ fn build_globset(patterns: &[String]) -> Result<GlobSet> {
 /// the any-segment filter), excluded directory names are pruned rather
 /// than matched inside, and directories matching a user `ignore` pattern
 /// are pruned too — upstream `fast-glob` evaluates ignores against every
-/// entry, so a bare `ignore: ["dirname"]` excludes its whole subtree.
+/// entry, so a bare `ignore: ["dirname"]` or `dirname/**` excludes its
+/// whole subtree.
 fn keep_entry(entry: &DirEntry, root: &Path, ignore: &GlobSet) -> bool {
     if entry.depth() == 0 {
         return true;
@@ -97,7 +102,16 @@ fn keep_entry(entry: &DirEntry, root: &Path, ignore: &GlobSet) -> bool {
     if ft.is_dir() && EXCLUDE_DIRS.contains(&name.as_ref()) {
         return false;
     }
-    if (ft.is_dir() || ft.is_symlink())
+    if ft.is_dir() {
+        let Ok(rel) = entry.path().strip_prefix(root) else {
+            return true;
+        };
+        let rel_slash = to_slash_path(rel);
+        // `dir/**` compiles to `^dir/.*$`: the directory itself only
+        // matches with a trailing `/`, so test both forms.
+        return !ignore.is_match(&rel_slash) && !ignore.is_match(format!("{rel_slash}/"));
+    }
+    if ft.is_symlink()
         && let Ok(rel) = entry.path().strip_prefix(root)
     {
         return !ignore.is_match(to_slash_path(rel));
