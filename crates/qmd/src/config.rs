@@ -53,6 +53,20 @@ pub enum EmbedPooling {
     FullSequence,
 }
 
+impl EmbedPooling {
+    /// The extra line this mode contributes to
+    /// [`crate::llm::embedding_fingerprint`] (architecture §8.3):
+    /// `UpstreamTail` is upstream-identical (`None`); `FullSequence`
+    /// switches the fingerprint so toggling it triggers re-embedding.
+    #[must_use]
+    pub const fn fingerprint_extra(self) -> Option<&'static str> {
+        match self {
+            Self::UpstreamTail => None,
+            Self::FullSequence => Some("pooling:full"),
+        }
+    }
+}
+
 /// Model selection overrides (`models:` block).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelsConfig {

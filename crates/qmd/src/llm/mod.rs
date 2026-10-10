@@ -1,13 +1,15 @@
-//! Model identity and embedding input formatting — the pure part of
-//! upstream `src/llm.ts` (90-119, 275-321) plus `getEmbeddingFingerprint`
-//! (`src/store.ts:108-131`).
+//! Model identity, embedding input formatting, and backend traits.
 //!
-//! These exist so `status`/`index_health` can compute the fingerprint an
-//! embedding run *would* use, without loading a model. Actual inference
-//! arrives in P2.
+//! The pure part of upstream `src/llm.ts` (90-119, 275-321) plus
+//! `getEmbeddingFingerprint` (`src/store.ts:108-131`), and the injectable
+//! inference backend traits ([`Embedder`], [`Reranker`], [`Generator`]).
+
+mod traits;
 
 use sha2::{Digest, Sha256};
+pub use traits::{CancelToken, Capability, Embedder, Generator, InferenceError, Reranker};
 
+use crate::chunk::{CHUNK_OVERLAP_TOKENS, CHUNK_SIZE_TOKENS};
 use crate::config::ModelsConfig;
 use crate::env::Environment;
 
@@ -20,11 +22,6 @@ pub const DEFAULT_RERANK_MODEL: &str =
 /// Upstream `DEFAULT_GENERATE_MODEL` (llm.ts:285).
 pub const DEFAULT_GENERATE_MODEL: &str =
     "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf";
-
-/// Upstream `CHUNK_SIZE_TOKENS` (store.ts:114).
-pub const CHUNK_SIZE_TOKENS: u32 = 900;
-/// Upstream `CHUNK_OVERLAP_TOKENS` (store.ts:115): 15% of the chunk size.
-pub const CHUNK_OVERLAP_TOKENS: u32 = CHUNK_SIZE_TOKENS * 15 / 100;
 
 const FINGERPRINT_PROBE_QUERY: &str = "__qmd_embedding_query_probe__";
 const FINGERPRINT_PROBE_TITLE: &str = "__qmd_embedding_title_probe__";
@@ -133,8 +130,13 @@ pub fn resolve_models(models: Option<&ModelsConfig>, env: &Environment) -> Resol
 /// The hashed inputs are the model URI, the formatted probe query/doc,
 /// and the chunking parameters. Vectors recorded under a different
 /// fingerprint count as needing re-embedding.
+///
+/// `extra` is appended as one more line (D14 groundwork, architecture
+/// §8.3): `None` keeps the fingerprint identical to upstream; an
+/// [`Embedder::fingerprint_extra`] such as `"pooling:full"` switches the
+/// fingerprint so changed embedding behavior triggers re-embedding.
 #[must_use]
-pub fn embedding_fingerprint(model: &str) -> String {
+pub fn embedding_fingerprint(model: &str, extra: Option<&str>) -> String {
     let significant = [
         format!("model:{model}"),
         format!(
@@ -152,6 +154,9 @@ pub fn embedding_fingerprint(model: &str) -> String {
         format!("chunk_tokens:{CHUNK_SIZE_TOKENS}"),
         format!("chunk_overlap_tokens:{CHUNK_OVERLAP_TOKENS}"),
     ]
+    .into_iter()
+    .chain(extra.map(str::to_owned))
+    .collect::<Vec<_>>()
     .join("\n");
     let digest = Sha256::digest(significant.as_bytes());
     let mut s = String::with_capacity(6);
