@@ -202,6 +202,62 @@ fn search_lex_matches_golden_fixture() {
 }
 
 #[test]
+fn eval_bm25_golden_matches_upstream() {
+    // AC3: upstream `test/eval-docs` corpus (vendored in
+    // `fixtures/eval-docs/`) + the 24 queries from `eval-bm25.test.ts`,
+    // replayed through `search_lex`. Regenerate with
+    // `QMD_UPSTREAM=… bun scripts/gen_eval_golden.ts`.
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/eval_bm25_golden.json")).unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/eval-docs");
+    let qmd = Qmd::builder(tmp.path().join("i.sqlite"))
+        .environment(Environment::default())
+        .build()
+        .unwrap();
+    qmd.add_collection(
+        "eval-docs",
+        &CollectionSpec {
+            path: docs.to_string_lossy().into_owned(),
+            ..CollectionSpec::default()
+        },
+    )
+    .unwrap();
+    qmd.update(&qmd::UpdateOptions::default(), &mut |_| {})
+        .unwrap();
+
+    for q in fixture["queries"].as_array().unwrap() {
+        let query = q["query"].as_str().unwrap();
+        let results = qmd
+            .search_lex(
+                query,
+                &LexOptions {
+                    limit: Some(5),
+                    collections: None,
+                },
+            )
+            .unwrap();
+        let expected = q["results"].as_array().unwrap();
+        let got: Vec<&str> = results.iter().map(|r| r.filepath.as_str()).collect();
+        let want: Vec<&str> = expected
+            .iter()
+            .map(|r| r["filepath"].as_str().unwrap())
+            .collect();
+        assert_eq!(got, want, "rank order differs for {query:?}");
+        for (r, e) in results.iter().zip(expected.iter()) {
+            let want_score = e["score"].as_f64().unwrap();
+            assert!(
+                (r.score - want_score).abs() < 1e-9,
+                "score differs for {query:?} {}: got {}, want {}",
+                r.filepath,
+                r.score,
+                want_score
+            );
+        }
+    }
+}
+
+#[test]
 fn search_lex_result_fields() {
     let tmp = tempfile::tempdir().unwrap();
     let docs = tmp.path().join("docs");
