@@ -24,7 +24,7 @@
 
 use std::path::{Path, PathBuf};
 
-use qmd::config::{self, Collection, Config, ModelsConfig};
+use qmd::config::{self, Collection, Config, ModelsConfig, YamlValue};
 use qmd::{Environment, paths};
 
 fn env(fields: impl FnOnce(&mut Environment)) -> Environment {
@@ -307,4 +307,87 @@ fn collection_defaults() {
     assert_eq!(coll.pattern_or_default(), config::DEFAULT_PATTERN);
     assert!(coll.include_by_default());
     assert!(coll.ignore_patterns().is_empty());
+}
+
+#[test]
+#[ignore = "requires bun and an upstream checkout (set QMD_UPSTREAM)"]
+fn config_interop_upstream_round_trip() {
+    // AC4: YAML written by Rust must load under upstream `loadConfig`
+    // and survive upstream `saveConfig`; upstream's output must load
+    // under Rust — same file shared by both implementations.
+    //   QMD_UPSTREAM=/path/to/tobi/qmd \
+    //     cargo test -p qmd --test paths_config -- --ignored config_interop
+    let upstream = std::env::var("QMD_UPSTREAM").expect("QMD_UPSTREAM not set");
+    let tmp = tempfile::tempdir().expect("tempdir");
+
+    // 1. Rust writes a config exercising every feature upstream must
+    //    tolerate (unknown keys, models, collection extras).
+    let rust_yaml = tmp.path().join("rust.yaml");
+    let mut cfg = Config::default();
+    let mut coll = Collection {
+        path: "/data/docs".to_owned(),
+        pattern: Some("**/*.md".to_owned()),
+        ignore: Some(vec!["drafts/**".to_owned()]),
+        include_by_default: Some(false),
+        ..Collection::default()
+    };
+    coll.context = Some(indexmap::IndexMap::from([(
+        "/".to_owned(),
+        "ctx".to_owned(),
+    )]));
+    coll.extra
+        .insert("custom_key".to_owned(), YamlValue::from(42));
+    cfg.collections.insert("docs".to_owned(), coll);
+    cfg.models = Some(ModelsConfig {
+        embed_pooling: Some(qmd::EmbedPooling::FullSequence),
+        ..ModelsConfig::default()
+    });
+    cfg.extra
+        .insert("unknown_top".to_owned(), YamlValue::from("keepme"));
+    config::save(&rust_yaml, &cfg).expect("save rust yaml");
+
+    // 2. Upstream loads it and re-serializes via its own saveConfig.
+    let upstream_yaml = tmp.path().join("upstream.yaml");
+    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/interop_yaml.ts");
+    let out = std::process::Command::new("bun")
+        .arg(script)
+        .arg(&rust_yaml)
+        .arg(&upstream_yaml)
+        .env("QMD_UPSTREAM", &upstream)
+        .output()
+        .expect("spawn bun");
+    assert!(
+        out.status.success(),
+        "upstream loadConfig failed on Rust YAML: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // 3. Upstream's parse sees our data; its re-serialization keeps the
+    //    keys it does not model (upstream preserves unknown keys —
+    //    p1-config-probe).
+    let seen: serde_json::Value = serde_json::from_slice(&out.stdout).expect("upstream json");
+    assert_eq!(seen["collections"]["docs"]["path"], "/data/docs");
+    let emitted = std::fs::read_to_string(&upstream_yaml).expect("upstream yaml");
+    assert!(
+        emitted.contains("embed_pooling"),
+        "upstream dropped models.embed_pooling:\n{emitted}"
+    );
+    assert!(emitted.contains("unknown_top"));
+    assert!(emitted.contains("custom_key"));
+
+    // 4. Rust loads upstream's output back without losing anything.
+    let back = config::load(&upstream_yaml).expect("rust reload");
+    assert_eq!(back.collections["docs"].path, "/data/docs");
+    assert_eq!(
+        back.collections["docs"].ignore,
+        Some(vec!["drafts/**".to_owned()])
+    );
+    assert_eq!(
+        back.extra.get("unknown_top"),
+        Some(&YamlValue::from("keepme"))
+    );
+    assert_eq!(
+        back.models.as_ref().and_then(|m| m.embed_pooling),
+        Some(qmd::EmbedPooling::FullSequence)
+    );
 }

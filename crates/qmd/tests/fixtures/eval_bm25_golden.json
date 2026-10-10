@@ -1,0 +1,230 @@
+{
+  "upstream_commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
+  "collection": "eval-docs",
+  "queries": [
+    {
+      "query": "API versioning",
+      "expectedDoc": "api-design",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/api-design-principles.md",
+          "score": 0.7727322166248529
+        }
+      ]
+    },
+    {
+      "query": "Series A fundraising",
+      "expectedDoc": "fundraising",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/startup-fundraising-memo.md",
+          "score": 0.8341730093593202
+        }
+      ]
+    },
+    {
+      "query": "CAP theorem",
+      "expectedDoc": "distributed-systems",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/distributed-systems-overview.md",
+          "score": 0.6366927897058222
+        }
+      ]
+    },
+    {
+      "query": "overfitting machine learning",
+      "expectedDoc": "machine-learning",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/machine-learning-primer.md",
+          "score": 0.8512360876390456
+        }
+      ]
+    },
+    {
+      "query": "remote work VPN",
+      "expectedDoc": "remote-work",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/remote-work-policy.md",
+          "score": 0.8085900606353417
+        }
+      ]
+    },
+    {
+      "query": "Project Phoenix retrospective",
+      "expectedDoc": "product-launch",
+      "difficulty": "easy",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/product-launch-retrospective.md",
+          "score": 0.8542544544401579
+        }
+      ]
+    },
+    {
+      "query": "how to structure REST endpoints",
+      "expectedDoc": "api-design",
+      "difficulty": "medium",
+      "results": []
+    },
+    {
+      "query": "raising money for startup",
+      "expectedDoc": "fundraising",
+      "difficulty": "medium",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/startup-fundraising-memo.md",
+          "score": 0.8219405186649342
+        }
+      ]
+    },
+    {
+      "query": "consistency vs availability tradeoffs",
+      "expectedDoc": "distributed-systems",
+      "difficulty": "medium",
+      "results": []
+    },
+    {
+      "query": "how to prevent models from memorizing data",
+      "expectedDoc": "machine-learning",
+      "difficulty": "medium",
+      "results": []
+    },
+    {
+      "query": "working from home guidelines",
+      "expectedDoc": "remote-work",
+      "difficulty": "medium",
+      "results": []
+    },
+    {
+      "query": "what went wrong with the launch",
+      "expectedDoc": "product-launch",
+      "difficulty": "medium",
+      "results": []
+    },
+    {
+      "query": "nouns not verbs",
+      "expectedDoc": "api-design",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/api-design-principles.md",
+          "score": 0.7875684968098375
+        }
+      ]
+    },
+    {
+      "query": "Sequoia investor pitch",
+      "expectedDoc": "fundraising",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/startup-fundraising-memo.md",
+          "score": 0.8406935976289858
+        }
+      ]
+    },
+    {
+      "query": "Raft algorithm leader election",
+      "expectedDoc": "distributed-systems",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/distributed-systems-overview.md",
+          "score": 0.8071176125896863
+        }
+      ]
+    },
+    {
+      "query": "F1 score precision recall",
+      "expectedDoc": "machine-learning",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/machine-learning-primer.md",
+          "score": 0.8514913797048184
+        }
+      ]
+    },
+    {
+      "query": "quarterly team gathering travel",
+      "expectedDoc": "remote-work",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/remote-work-policy.md",
+          "score": 0.8128735715838368
+        }
+      ]
+    },
+    {
+      "query": "beta program 47 bugs",
+      "expectedDoc": "product-launch",
+      "difficulty": "hard",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/product-launch-retrospective.md",
+          "score": 0.8470285811057618
+        }
+      ]
+    },
+    {
+      "query": "how much runway before running out of money",
+      "expectedDoc": "fundraising",
+      "difficulty": "fusion",
+      "results": []
+    },
+    {
+      "query": "datacenter replication sync strategy",
+      "expectedDoc": "distributed-systems",
+      "difficulty": "fusion",
+      "results": []
+    },
+    {
+      "query": "splitting data for training and testing",
+      "expectedDoc": "machine-learning",
+      "difficulty": "fusion",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/machine-learning-primer.md",
+          "score": 0.8022012710673374
+        }
+      ]
+    },
+    {
+      "query": "JSON response codes error messages",
+      "expectedDoc": "api-design",
+      "difficulty": "fusion",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/api-design-principles.md",
+          "score": 0.7768006190591303
+        }
+      ]
+    },
+    {
+      "query": "video calls camera async messaging",
+      "expectedDoc": "remote-work",
+      "difficulty": "fusion",
+      "results": [
+        {
+          "filepath": "qmd://eval-docs/remote-work-policy.md",
+          "score": 0.8499599018684902
+        }
+      ]
+    },
+    {
+      "query": "CI/CD pipeline testing coverage",
+      "expectedDoc": "product-launch",
+      "difficulty": "fusion",
+      "results": []
+    }
+  ]
+}
