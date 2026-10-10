@@ -42,6 +42,7 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+pub mod chunk;
 pub mod collection;
 pub mod config;
 pub mod docid;
@@ -54,8 +55,19 @@ pub mod paths;
 mod qmd;
 pub mod snippet;
 mod store;
+#[cfg(feature = "testing")]
+#[cfg_attr(docsrs, doc(cfg(feature = "testing")))]
+pub mod testing;
 pub mod vpath;
 
+pub use chunk::{
+    BREAK_PATTERNS, BreakPattern, BreakPoint, CHUNK_OVERLAP_CHARS, CHUNK_OVERLAP_TOKENS,
+    CHUNK_SIZE_CHARS, CHUNK_SIZE_TOKENS, CHUNK_WINDOW_CHARS, CHUNK_WINDOW_TOKENS, CharChunkOptions,
+    Chunk, ChunkStrategy, CodeFenceRegion, TokenChunk, TokenChunkOptions, chunk_document,
+    chunk_document_by_tokens, chunk_document_with_break_points, chunk_document_with_strategy,
+    find_best_cutoff, find_code_fences, is_inside_code_fence, merge_break_points,
+    scan_break_points, utf16_len, utf16_to_byte_offset,
+};
 pub use collection::split_glob_mask;
 pub use config::{Collection, Config, EmbedPooling, ModelsConfig};
 pub use docid::get_docid;
@@ -65,6 +77,7 @@ pub use document::{
 };
 pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};
+pub use llm::{CancelToken, Capability, Embedder, Generator, InferenceError, Reranker};
 pub use maintenance::{CleanupCounts, Maintenance};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
@@ -77,6 +90,8 @@ pub use store::fts::{
     build_fts5_query, sanitize_fts5_term, validate_lex_query, validate_semantic_query,
 };
 pub use store::search::{SearchResult, SearchSource};
+#[cfg(feature = "testing")]
+pub use testing::{FakeEmbedder, FakeGenerator, FakeReranker};
 pub use vpath::{
     LineSuffix, VirtualPath, build_virtual_path, is_virtual_path, normalize_virtual_path,
     parse_line_suffix, parse_virtual_path,

@@ -68,8 +68,9 @@ pub(crate) fn hashes_needing_embedding(
     conn: &Connection,
     collection: Option<&str>,
     model: &str,
+    fingerprint_extra: Option<&str>,
 ) -> Result<usize> {
-    let fingerprint = embedding_fingerprint(model);
+    let fingerprint = embedding_fingerprint(model, fingerprint_extra);
     let sql = format!(
         "SELECT COUNT(DISTINCT d.hash) FROM documents d \
          LEFT JOIN ( \
@@ -136,7 +137,11 @@ pub(crate) fn has_vectors_vec(conn: &Connection) -> Result<bool> {
 /// Upstream `getStatus` (store.ts:5239-5284) plus the CLI `status`
 /// aggregates (cli/qmd.ts:540-583). Collections are sorted by
 /// `last_updated` descending.
-pub(crate) fn get_status(conn: &Connection, model: &str) -> Result<StatusRow> {
+pub(crate) fn get_status(
+    conn: &Connection,
+    model: &str,
+    fingerprint_extra: Option<&str>,
+) -> Result<StatusRow> {
     let mut stmt = conn
         .prepare(
             "SELECT collection AS name, COUNT(*) AS active_count, \
@@ -184,7 +189,7 @@ pub(crate) fn get_status(conn: &Connection, model: &str) -> Result<StatusRow> {
 
     Ok(StatusRow {
         total_documents: usize::try_from(total_docs).unwrap_or(0),
-        needs_embedding: hashes_needing_embedding(conn, None, model)?,
+        needs_embedding: hashes_needing_embedding(conn, None, model, fingerprint_extra)?,
         has_vector_index: has_vectors_vec(conn)?,
         vector_count: usize::try_from(vector_count).unwrap_or(0),
         orphaned_vectors: count_orphaned_vectors(conn)?,
@@ -196,7 +201,11 @@ pub(crate) fn get_status(conn: &Connection, model: &str) -> Result<StatusRow> {
 
 /// Upstream `getIndexHealth` (store.ts:2656-2668): pending embeddings,
 /// active document count, and whole days since the newest document.
-pub(crate) fn get_index_health(conn: &Connection, model: &str) -> Result<IndexHealthRow> {
+pub(crate) fn get_index_health(
+    conn: &Connection,
+    model: &str,
+    fingerprint_extra: Option<&str>,
+) -> Result<IndexHealthRow> {
     let latest = latest_modified(conn)?;
     // Upstream `Math.floor((now - last) / 86400000)`; `whole_days`
     // truncates toward zero, which only differs for a future-dated
@@ -221,7 +230,7 @@ pub(crate) fn get_index_health(conn: &Connection, model: &str) -> Result<IndexHe
         })
         .map_err(DbError::from)?;
     Ok(IndexHealthRow {
-        needs_embedding: hashes_needing_embedding(conn, None, model)?,
+        needs_embedding: hashes_needing_embedding(conn, None, model, fingerprint_extra)?,
         total_docs: usize::try_from(total_docs).unwrap_or(0),
         days_stale,
     })

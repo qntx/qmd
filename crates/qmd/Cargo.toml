@@ -10,8 +10,14 @@ keywords               = ["search", "markdown", "embedding", "fts5", "rag"]
 categories             = ["text-processing", "database"]
 
 [package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+features       = ["testing"]
+rustdoc-args   = ["--cfg", "docsrs"]
+
+[features]
+default = []
+# Deterministic in-memory inference backends (`qmd::testing`) for tests
+# and downstream embedders — no model files required.
+testing = []
 
 [dependencies]
 rusqlite      = { version = "0.40.2", features = ["bundled"] }

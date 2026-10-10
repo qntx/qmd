@@ -7,7 +7,7 @@
 //! then syncs the `store_collections`/`store_config` mirror.
 
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use rusqlite::Connection;
 
@@ -15,6 +15,7 @@ use crate::config::{Collection, Config};
 use crate::document::{Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions};
 use crate::env::Environment;
 use crate::error::{Error, Result};
+use crate::llm::{Capability, Embedder, Generator, Reranker};
 use crate::maintenance::Maintenance;
 use crate::store;
 use crate::store::search::SearchResult;
@@ -243,6 +244,9 @@ pub struct Qmd {
     config: Mutex<ConfigSource>,
     db_path: PathBuf,
     env: Environment,
+    embedder: Option<Arc<dyn Embedder>>,
+    reranker: Option<Arc<dyn Reranker>>,
+    generator: Option<Arc<dyn Generator>>,
 }
 
 impl std::fmt::Debug for Qmd {
@@ -267,12 +271,34 @@ pub struct QmdBuilder {
     db_path: PathBuf,
     config: Option<ConfigSource>,
     env: Environment,
+    embedder: Option<Arc<dyn Embedder>>,
+    reranker: Option<Arc<dyn Reranker>>,
+    generator: Option<Arc<dyn Generator>>,
 }
 
 impl QmdBuilder {
     /// Override the injected environment (tests and embedders).
     pub fn environment(mut self, env: Environment) -> Self {
         self.env = env;
+        self
+    }
+
+    /// Inject the embedding backend — upstream `createStore({ llm })`
+    /// passing a `LlamaCpp` session.
+    pub fn embedder(mut self, embedder: Arc<dyn Embedder>) -> Self {
+        self.embedder = Some(embedder);
+        self
+    }
+
+    /// Inject the reranking backend.
+    pub fn reranker(mut self, reranker: Arc<dyn Reranker>) -> Self {
+        self.reranker = Some(reranker);
+        self
+    }
+
+    /// Inject the query-expansion backend.
+    pub fn generator(mut self, generator: Arc<dyn Generator>) -> Self {
+        self.generator = Some(generator);
         self
     }
 
@@ -314,6 +340,9 @@ impl QmdBuilder {
             config: Mutex::new(source),
             db_path: self.db_path,
             env: self.env,
+            embedder: self.embedder,
+            reranker: self.reranker,
+            generator: self.generator,
         })
     }
 }
@@ -325,6 +354,9 @@ impl Qmd {
             db_path: db_path.into(),
             config: None,
             env: Environment::from_process(),
+            embedder: None,
+            reranker: None,
+            generator: None,
         }
     }
 
@@ -339,10 +371,65 @@ impl Qmd {
         lock(&self.conn)
     }
 
-    /// The resolved embed model: `models.embed` → `QMD_EMBED_MODEL` →
-    /// upstream default (llm.ts:303-305).
+    /// The model identity a vector row would be tagged with: an injected
+    /// [`Embedder`] is authoritative (P2-D4); otherwise `models.embed` →
+    /// `QMD_EMBED_MODEL` → upstream default (llm.ts:303-305).
     fn embed_model(&self, config: &Config) -> String {
-        crate::llm::resolve_embed_model(config.models.as_ref(), &self.env)
+        self.embedder.as_ref().map_or_else(
+            || crate::llm::resolve_embed_model(config.models.as_ref(), &self.env),
+            |e| e.model_id().to_owned(),
+        )
+    }
+
+    /// The fingerprint suffix an embedding run would use: the injected
+    /// embedder's non-empty [`Embedder::fingerprint_extra`] wins;
+    /// otherwise the configured `models.embed_pooling` (D14,
+    /// architecture §8.3).
+    fn embed_fingerprint_extra(&self, config: &Config) -> Option<String> {
+        self.embedder
+            .as_ref()
+            .and_then(|e| e.fingerprint_extra())
+            .filter(|s| !s.is_empty())
+            .map(ToOwned::to_owned)
+            .or_else(|| {
+                config
+                    .models
+                    .as_ref()
+                    .and_then(|m| m.embed_pooling)
+                    .unwrap_or_default()
+                    .fingerprint_extra()
+                    .map(ToOwned::to_owned)
+            })
+    }
+
+    /// The injected [`Embedder`].
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] when no embedding backend was injected.
+    pub fn embedder(&self) -> Result<Arc<dyn Embedder>> {
+        self.embedder.clone().ok_or(Error::NoBackend {
+            capability: Capability::Embed,
+        })
+    }
+
+    /// The injected [`Reranker`].
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] when no reranking backend was injected.
+    pub fn reranker(&self) -> Result<Arc<dyn Reranker>> {
+        self.reranker.clone().ok_or(Error::NoBackend {
+            capability: Capability::Rerank,
+        })
+    }
+
+    /// The injected [`Generator`].
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] when no query-expansion backend was injected.
+    pub fn generator(&self) -> Result<Arc<dyn Generator>> {
+        self.generator.clone().ok_or(Error::NoBackend {
+            capability: Capability::Generate,
+        })
     }
 
     /// Close the handle, surfacing connection errors that `Drop` would
@@ -707,9 +794,13 @@ impl Qmd {
     ) -> Result<UpdateReport> {
         // Resolve before locking conn: `load_config` may itself lock it
         // (DbOnly mode) and `Mutex` is not reentrant.
-        let model = {
+        let (model, fingerprint_extra) = {
             let guard = lock(&self.config);
-            self.embed_model(&self.load_config(&guard)?)
+            let config = self.load_config(&guard)?;
+            (
+                self.embed_model(&config),
+                self.embed_fingerprint_extra(&config),
+            )
         };
         let mut conn = lock(&self.conn);
         let cols = store::get_store_collections(&conn)?;
@@ -762,7 +853,12 @@ impl Qmd {
             report.removed += r.removed;
             report.skipped += r.skipped_files.len();
         }
-        report.needs_embedding = store::status::hashes_needing_embedding(&conn, None, &model)?;
+        report.needs_embedding = store::status::hashes_needing_embedding(
+            &conn,
+            None,
+            &model,
+            fingerprint_extra.as_deref(),
+        )?;
         Ok(report)
     }
 
@@ -851,8 +947,9 @@ impl Qmd {
     pub fn status(&self) -> Result<Status> {
         let config = self.config()?;
         let model = self.embed_model(&config);
+        let fingerprint_extra = self.embed_fingerprint_extra(&config);
         let conn = lock(&self.conn);
-        let row = store::status::get_status(&conn, &model)?;
+        let row = store::status::get_status(&conn, &model, fingerprint_extra.as_deref())?;
         drop(conn);
         Ok(Status {
             total_documents: row.total_documents,
@@ -884,8 +981,9 @@ impl Qmd {
     pub fn index_health(&self) -> Result<IndexHealth> {
         let config = self.config()?;
         let model = self.embed_model(&config);
+        let fingerprint_extra = self.embed_fingerprint_extra(&config);
         let conn = lock(&self.conn);
-        let row = store::status::get_index_health(&conn, &model)?;
+        let row = store::status::get_index_health(&conn, &model, fingerprint_extra.as_deref())?;
         drop(conn);
         Ok(IndexHealth {
             needs_embedding: row.needs_embedding,

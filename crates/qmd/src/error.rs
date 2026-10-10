@@ -72,6 +72,51 @@ impl std::error::Error for ConfigError {
 )]
 #[non_exhaustive]
 pub enum Error {
+    /// A [`crate::Capability`] operation was requested but no matching
+    /// backend was injected via the builder (T12).
+    #[error("no {capability} backend configured")]
+    NoBackend {
+        /// The missing capability.
+        capability: crate::llm::Capability,
+    },
+
+    /// The operation was cancelled via a [`crate::CancelToken`].
+    #[error("operation cancelled")]
+    Cancelled,
+
+    /// Loading or initializing a model failed.
+    #[error("model {uri}: {source}")]
+    Model {
+        /// Model URI that failed.
+        uri: String,
+        /// Underlying backend failure.
+        source: crate::llm::InferenceError,
+    },
+
+    /// An inference backend reported a failure.
+    #[error("inference error: {0}")]
+    Inference(#[from] crate::llm::InferenceError),
+
+    /// Stored vectors and the active embedder disagree on dimension.
+    #[error(
+        "embedding dimension mismatch: stored vectors have {existing} dims, \
+         embedder produced {current}"
+    )]
+    EmbeddingDimensionMismatch {
+        /// Dimension of vectors already in the index.
+        existing: usize,
+        /// Dimension the embedder produced.
+        current: usize,
+    },
+
+    /// A query document or structured query failed validation — `reason`
+    /// carries the upstream error text verbatim.
+    #[error("{reason}")]
+    InvalidQuery {
+        /// Upstream error message.
+        reason: String,
+    },
+
     /// Caller-supplied input is invalid.
     #[error("invalid input: {reason}")]
     InvalidInput {
