@@ -192,6 +192,14 @@ pub enum Error {
         source: ConfigError,
     },
 
+    /// A model download or model-cache validation failed — `reason`
+    /// carries the upstream error text.
+    #[error("{reason}")]
+    Download {
+        /// Upstream-style error message.
+        reason: String,
+    },
+
     /// Filesystem I/O failed.
     #[error("I/O error on {}: {source}", path.display())]
     Io {

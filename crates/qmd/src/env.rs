@@ -39,6 +39,25 @@ pub struct Environment {
     pub qmd_generate_model: Option<String>,
     /// `$QMD_RERANK_MODEL` — reranker model URI override (llm.ts:311).
     pub qmd_rerank_model: Option<String>,
+    /// `$HF_ENDPOINT` — `HuggingFace` download endpoint override
+    /// (node-llama-cpp `resolveHuggingFaceEndpoint`).
+    pub hf_endpoint: Option<String>,
+    /// `$MODEL_ENDPOINT` — model download endpoint override; wins over
+    /// `HF_ENDPOINT` when both are set.
+    pub model_endpoint: Option<String>,
+    /// `$QMD_EMBED_CONTEXT_SIZE` — embedding context size (llm.ts:1346).
+    pub qmd_embed_context_size: Option<String>,
+    /// `$QMD_RERANK_CONTEXT_SIZE` — rerank context size (llm.ts:1341).
+    pub qmd_rerank_context_size: Option<String>,
+    /// `$QMD_EXPAND_CONTEXT_SIZE` — generation context size (llm.ts:660).
+    pub qmd_expand_context_size: Option<String>,
+    /// `$QMD_EMBED_PARALLELISM` — worker-count override (llm.ts:671).
+    pub qmd_embed_parallelism: Option<String>,
+    /// `$QMD_LLAMA_GPU` — GPU mode: `metal`/`vulkan`/`cuda`/`auto`/off
+    /// (llm.ts:755).
+    pub qmd_llama_gpu: Option<String>,
+    /// `$QMD_FORCE_CPU` — force CPU inference when truthy (llm.ts:756).
+    pub qmd_force_cpu: Option<String>,
 }
 
 impl Environment {
@@ -62,6 +81,18 @@ impl Environment {
             qmd_generate_model: var_os("QMD_GENERATE_MODEL")
                 .map(|v| v.to_string_lossy().into_owned()),
             qmd_rerank_model: var_os("QMD_RERANK_MODEL").map(|v| v.to_string_lossy().into_owned()),
+            hf_endpoint: var_os("HF_ENDPOINT").map(|v| v.to_string_lossy().into_owned()),
+            model_endpoint: var_os("MODEL_ENDPOINT").map(|v| v.to_string_lossy().into_owned()),
+            qmd_embed_context_size: var_os("QMD_EMBED_CONTEXT_SIZE")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_rerank_context_size: var_os("QMD_RERANK_CONTEXT_SIZE")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_expand_context_size: var_os("QMD_EXPAND_CONTEXT_SIZE")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_embed_parallelism: var_os("QMD_EMBED_PARALLELISM")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_llama_gpu: var_os("QMD_LLAMA_GPU").map(|v| v.to_string_lossy().into_owned()),
+            qmd_force_cpu: var_os("QMD_FORCE_CPU").map(|v| v.to_string_lossy().into_owned()),
         }
     }
 }

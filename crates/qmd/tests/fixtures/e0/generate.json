@@ -1,0 +1,310 @@
+{
+ "load_ms": 1269.1,
+ "rss_mb": 1515,
+ "rendered_prompt": {
+  "chat_wrapper": "QwenChatWrapper",
+  "text": "<|im_start|>system\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible.\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something incorrectly. If you don't know the answer to a question, don't share false information.<|im_end|>\n<|im_start|>user\n/no_think Expand this search query: API versioning<|im_end|>\n<|im_start|>assistant\nlex: importance of versioning\nlex: how to implement\nvec: importance of versioning in api development\nvec: how to implement api versioning in your project\nhyde: Understanding API versioning is essential for modern development. Key aspects include best practices for api versioning implementation. this helps in troubleshooting common problems.</think>\n"
+ },
+ "items": [
+  {
+   "query": "API versioning",
+   "sample": 0,
+   "ms": 1516,
+   "output": "lex: importance of versioning\nlex: how to implement\nvec: importance of versioning in api development\nvec: how to implement api versioning in your project\nhyde: Understanding API versioning is essential for modern development. Key aspects include best practices for api versioning implementation. this helps in troubleshooting common problems.</think>\n"
+  },
+  {
+   "query": "API versioning",
+   "sample": 1,
+   "ms": 1349,
+   "output": "lex: definition of api\nlex: importance of versioning\nvec: definition of api versioning and its significance\nvec: importance of versioning in api stability and maintenance\nhyde: Understanding API versioning is essential for modern development. Key aspects include debates surrounding versioning practices and their. this knowledge helps in building robust applications.</think>\n"
+  },
+  {
+   "query": "API versioning",
+   "sample": 2,
+   "ms": 1188.1,
+   "output": "lex: importance of versioning\nlex: best practices for implementing\nvec: importance of versioning APIs in software development\nvec: best practices for implementing API versioning\nhyde: The topic of API versioning covers importance of versioning APIs in software development. Proper implementation follows established patterns and best practices.  \n"
+  },
+  {
+   "query": "API versioning",
+   "sample": 3,
+   "ms": 1263.5,
+   "output": "lex: importance of versioning\nlex: how to implement\nvec: importance of versioning APIs in development\nvec: how to implement versioning in api endpoints\nhyde: Understanding API versioning is essential for modern development. Key aspects include best practices for managing api versions. this helps in building robust applications.</think>\n"
+  },
+  {
+   "query": "API versioning",
+   "sample": 4,
+   "ms": 1321.9,
+   "output": "lex: definition of versioning\nlex: importance of versioning\nvec: definition of API versioning and its significance\nvec: importance of versioning in evolving apis\nhyde: Understanding API versioning is essential for modern development. Key aspects include best practices for implementing api versioning. this knowledge helps in building robust applications.</think>\n"
+  },
+  {
+   "query": "Series A fundraising",
+   "sample": 0,
+   "ms": 11780.9,
+   "output": "lex: definition of series\nlex: importance of series\nvec: definition of series a fundraising rounds\nvec: importance of series a for startups\nhyde: Understanding Series A fundraising is essential for modern development. Key aspects include how series a fundraising differs from earlier rounds. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+  },
+  {
+   "query": "Series A fundraising",
+   "sample": 1,
+   "ms": 1258,
+   "output": "lex: understanding series a financing\nlex: how series a rounds work\nvec: understanding series a financing\nvec: how series a rounds work\nhyde: Understanding Series A fundraising is an important concept that relates to understanding seed investment in series a. any feedback on this?</think>\n"
+  },
+  {
+   "query": "Series A fundraising",
+   "sample": 2,
+   "ms": 1218.2,
+   "output": "lex: definition of series\nlex: importance of series\nvec: definition of series a fundraising rounds\nvec: importance of series a funding for startups\nhyde: The topic of Series A fundraising covers importance of series a funding for startups. Proper implementation follows established patterns and best practices.</think>\n"
+  },
+  {
+   "query": "Series A fundraising",
+   "sample": 3,
+   "ms": 1260.6,
+   "output": "lex: definition of series\nlex: importance of series\nvec: definition of series a fundraising rounds\nvec: importance of series a funding for startups\nhyde: Series A fundraising is an important concept that relates to how to prepare for successful series a fundraising.</think>\n"
+  },
+  {
+   "query": "Series A fundraising",
+   "sample": 4,
+   "ms": 1379.5,
+   "output": "lex: understanding series a funding\nlex: importance of series\nvec: understanding series a funding rounds\nvec: importance of series a in venture capital\nhyde: Series A fundraising is an important concept that relates to importance of series a in venture capital. It provides value for its users and follows best practices for coding.</think>\n"
+  },
+  {
+   "query": "CAP theorem",
+   "sample": 0,
+   "ms": 1150.6,
+   "output": "lex: understanding the CAP\nlex: overview of CAP\nvec: understanding the CAP theorem in distributed systems\nvec: overview of CAP theory and its significance\nhyde: Understanding CAP theorem is essential for modern development. Key aspects include how CAP theorem informs data consistency strategies.  \n"
+  },
+  {
+   "query": "CAP theorem",
+   "sample": 1,
+   "ms": 944.8,
+   "output": "lex: distributed computing\nlex: consistency models\nvec: distributed computing\nvec: consistency models\nhyde: The topic of CAP theorem covers consistency models. Proper implementation follows established patterns and best practices.</think>\n"
+  },
+  {
+   "query": "CAP theorem",
+   "sample": 2,
+   "ms": 1073.7,
+   "output": "lex: consensus in distributed\nlex: consistency in distributed\nvec: consensus in distributed systems\nvec: consistency in distributed systems\nhyde: The topic of CAP theorem covers consistency in distributed systems. Proper implementation follows established patterns and best practices.</think>\n"
+  },
+  {
+   "query": "CAP theorem",
+   "sample": 3,
+   "ms": 1255.9,
+   "output": "lex: consistency in distributed\nlex: trade-offs inherent in\nvec: consistency in distributed systems theorem\nvec: trade-offs inherent in CAP theory\nhyde: Understanding CAP theorem is essential for modern development. Key aspects include consistency in distributed systems theorem. This knowledge proves useful in practical applications.</think>\n"
+  },
+  {
+   "query": "CAP theorem",
+   "sample": 4,
+   "ms": 1130,
+   "output": "lex: consistency in distributed\nlex: understanding the CAP\nvec: consistency in distributed systems theory\nvec: understanding the CAP theorem basics\nhyde: The topic of CAP theorem covers consistency in distributed systems theory. Proper implementation follows established patterns and best practices.</think>\n"
+  },
+  {
+   "query": "how to structure REST endpoints",
+   "sample": 0,
+   "ms": 1414.7,
+   "output": "lex: best practices for organizing\nlex: effective rest endpoint design\nvec: best practices for organizing rest endpoints\nvec: effective rest endpoint design\nhyde: The process of structure rest endpoints involves several steps. First, best practices for organizing rest endpoints. Second, recommended patterns for rest endpoints. This is recommended for all projects.</think>\n"
+  },
+  {
+   "query": "how to structure REST endpoints",
+   "sample": 1,
+   "ms": 1517,
+   "output": "lex: guide to organizing\nlex: best practices for\nvec: guide to organizing endpoints using rest\nvec: best practices for designing restful endpoints\nhyde: When you need to structure rest endpoints, the most effective method is to guide to organizing endpoints using rest. Check the specs for compliance. This ensures your code follows best practices and is easy to maintain.</think>\n"
+  },
+  {
+   "query": "how to structure REST endpoints",
+   "sample": 2,
+   "ms": 1281.5,
+   "output": "lex: guide to organizing\nlex: best practices for\nvec: guide to organizing endpoints using rest\nvec: best practices for designing restful endpoints\nhyde: The process of structure rest endpoints involves several steps. First, guide to organizing endpoints using rest. Follow this guide to enhance your application development.  \n"
+  },
+  {
+   "query": "how to structure REST endpoints",
+   "sample": 3,
+   "ms": 10903.9,
+   "output": "lex: best practices for organizing\nlex: effective rest endpoint design\nvec: best practices for organizing rest api endpoints\nvec: effective rest endpoint design\nhyde: When you need to structure rest endpoints, the most effective method is to best practices for organizing rest api endpoints. this ensures compliance with best practices. any improvements here? is the recommended approach. impacts of poor structure on rest endpoints. any improvements here?. impacts of poor structure on rest endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?. impact of poor design on api endpoints. any improvements here?."
+  },
+  {
+   "query": "how to structure REST endpoints",
+   "sample": 4,
+   "ms": 1249.5,
+   "output": "lex: guide to organizing\nlex: best practices for\nvec: guide to organizing endpoints using rest\nvec: best practices for designing restful endpoints\nhyde: To structure rest endpoints, start by reviewing the requirements and dependencies. Best practices for designing restful endpoints is the recommended approach.</think>\n"
+  },
+  {
+   "query": "raising money for startup",
+   "sample": 0,
+   "ms": 1154.9,
+   "output": "lex: ways to raise\nlex: methods for fundraising\nvec: ways to raise funds for a startup\nvec: methods for fundraising for startups\nhyde: Understanding raising money for startup is essential for modern development. Key aspects include ways to raise funds for a startup.</think>\n"
+  },
+  {
+   "query": "raising money for startup",
+   "sample": 1,
+   "ms": 1039.6,
+   "output": "lex: ways to raise\nlex: methods for fundraising\nvec: ways to raise capital for startups\nvec: methods for fundraising for entrepreneurial ventures\nhyde: The topic of raising money for startup covers methods for fundraising for entrepreneurial ventures.</think>\n"
+  },
+  {
+   "query": "raising money for startup",
+   "sample": 2,
+   "ms": 1120.9,
+   "output": "lex: ways to raise\nlex: methods for fundraising\nvec: ways to raise funds for a startup\nvec: methods for fundraising for startups\nhyde: Understanding raising money for startup is essential for modern development. Key aspects include ways to raise funds for a startup.  \n"
+  },
+  {
+   "query": "raising money for startup",
+   "sample": 3,
+   "ms": 1135.2,
+   "output": "lex: ways to raise\nlex: methods for fundraising\nvec: ways to raise capital for startups\nvec: methods for fundraising for new businesses\nhyde: Understanding raising money for startup is essential for modern development. Key aspects include methods for fundraising for new businesses.</think>\n"
+  },
+  {
+   "query": "raising money for startup",
+   "sample": 4,
+   "ms": 1201.7,
+   "output": "lex: ways to raise\nlex: methods for fundraising\nvec: ways to raise funds for startups\nvec: methods for fundraising for new businesses\nhyde: The topic of raising money for startup covers methods for fundraising for new businesses. Proper implementation follows established patterns and best practices.</think>\n"
+  },
+  {
+   "query": "how to prevent models from memorizing data",
+   "sample": 0,
+   "ms": 1193.5,
+   "output": "lex: methods for preventing\nlex: approaches to stop\nvec: methods for preventing data memorization in ai\nvec: approaches to stop ai from learning data\nhyde: To configure this setting, modify the settings in your project configuration file. Default values are used if unspecified.</think>\n"
+  },
+  {
+   "query": "how to prevent models from memorizing data",
+   "sample": 1,
+   "ms": 1392.6,
+   "output": "lex: methods for reducing\nlex: approaches to prevent\nvec: methods for reducing data memorization in ai\nvec: approaches to prevent ai from remembering data\nhyde: The process of prevent models from memorizing data involves several steps. First, methods for reducing data memorization in ai. This is essential for many applications.</think>\n"
+  },
+  {
+   "query": "how to prevent models from memorizing data",
+   "sample": 2,
+   "ms": 11023.8,
+   "output": "lex: methods for reducing\nlex: strategies to prevent\nvec: methods for reducing data memorization in ai\nvec: strategies to prevent ai from learning data\nhyde: To configure this setting, modify the following parameters: model_memory_block, data_learning_stop. Default values work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nlex: methods for reducing data memorization in ai\nvec: strategies to prevent ai from learning data\nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nvec: strategies to hinder data memorization in machine learning models\nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nvec: strategies to hinder data memorization in machine learning models\nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nvec: strategies to hinder data memorization in machine learning models  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nvec: strategies to hinder data memorization in machine learning models  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most use cases. If you need to, ensure that all dependencies are properly installed.  \nhyde: The configuration defaults work for most"
+  },
+  {
+   "query": "how to prevent models from memorizing data",
+   "sample": 3,
+   "ms": 1954.8,
+   "output": "lex: techniques for reducing\nlex: methods to prevent\nvec: techniques for reducing data memorization in ai\nvec: methods to prevent data from being memorized by models\nhyde: To configure this setting, modify the settings in your configuration file. The recommended approach is to methods to prevent data from being memorized by models.  \n"
+  },
+  {
+   "query": "how to prevent models from memorizing data",
+   "sample": 4,
+   "ms": 11234.4,
+   "output": "lex: methods for reducing\nlex: tips to prevent\nvec: methods for reducing data memorization in ai models\nvec: tips to prevent data from being remembered by models\nhyde: To configure this setting, modify the settings in your project's configuration file. Defaults to 0 if unset.  \nlex: tips to prevent data from being remembered by models\nvec: methods for reducing data memorization in ai models\nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nvec: how to minimize data memorization in machine learning models\nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nvec: how to minimize data memorization in machine learning models\nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nvec: how to minimize data memorization in machine learning models  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nvec: how to prevent sensitive information from being memorized by models  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration settings for prevent models from memorizing data typically follows established patterns.  \nhyde: The configuration"
+  },
+  {
+   "query": "what went wrong with the product launch",
+   "sample": 0,
+   "ms": 1165.5,
+   "output": "lex: overview of common\nlex: importance of thorough\nvec: overview of common issues faced in product launches\nvec: importance of thorough planning and execution\nhyde: The topic of what went wrong with the product launch covers debates on the role of marketing in product success.</think>\n"
+  },
+  {
+   "query": "what went wrong with the product launch",
+   "sample": 1,
+   "ms": 1116.3,
+   "output": "lex: overview of common\nlex: importance of thorough\nvec: overview of common issues faced in product launches\nvec: importance of thorough planning and execution\nhyde: The topic of what went wrong with the product launch covers debates on the role of marketing in product success.</think>\n"
+  },
+  {
+   "query": "what went wrong with the product launch",
+   "sample": 2,
+   "ms": 1229.5,
+   "output": "lex: overview of common\nlex: importance of thorough\nvec: overview of common issues faced in product launches\nvec: importance of thorough planning and execution\nhyde: Understanding what went wrong with the product launch is essential for modern development. Key aspects include overview of common issues faced in product.</think>\n"
+  },
+  {
+   "query": "what went wrong with the product launch",
+   "sample": 3,
+   "ms": 983.4,
+   "output": "lex: analyze problems faced\nlex: why were product\nvec: analyze problems faced during a product launch\nvec: why were product launches cancelled or delayed\nhyde: The topic of what went wrong with the product launch covers reasons for unsuccessful product launches.</think>\n"
+  },
+  {
+   "query": "what went wrong with the product launch",
+   "sample": 4,
+   "ms": 1103.9,
+   "output": "lex: analyze the reasons\nlex: what failed during\nvec: analyze the reasons for a product launch failure\nvec: what failed during the execution of a product launch\nhyde: Understanding what went wrong with the product launch is essential for modern development. Key aspects include diagnose issues encountered during product.</tool_call>\n"
+  },
+  {
+   "query": "consistency vs availability tradeoffs",
+   "sample": 0,
+   "ms": 1194.4,
+   "output": "lex: understanding the trade-offs\nlex: when to prioritize\nvec: understanding the trade-offs between consistency and availability\nvec: when to prioritize consistency and when availability is key\nhyde: Understanding consistency vs availability tradeoffs is essential for modern development. This involves understanding the trade-offs between consistency and availability.  \n"
+  },
+  {
+   "query": "consistency vs availability tradeoffs",
+   "sample": 1,
+   "ms": 1125.2,
+   "output": "lex: definition of consistency\nlex: importance of understanding\nvec: definition of consistency and availability in software design\nvec: importance of understanding when to use which\nhyde: Understanding consistency vs availability tradeoffs is essential for modern development. Key aspects include debates surrounding the tradeoffs in software.</think>\n"
+  },
+  {
+   "query": "consistency vs availability tradeoffs",
+   "sample": 2,
+   "ms": 1022.3,
+   "output": "lex: definition of consistency\nlex: importance of understanding\nvec: definition of consistency and availability in software design\nvec: importance of understanding when to use which\nhyde: The topic of consistency vs availability tradeoffs covers debates surrounding the trade-offs in software architecture.</think>\n"
+  },
+  {
+   "query": "consistency vs availability tradeoffs",
+   "sample": 3,
+   "ms": 1077.2,
+   "output": "lex: understanding the consistency\nlex: when to choose\nvec: understanding the consistency vs availability tradeoffs\nvec: when to choose consistency over availability\nhyde: The topic of consistency vs availability tradeoffs covers how consistency and availability interact in distributed systems.</think>\n"
+  },
+  {
+   "query": "consistency vs availability tradeoffs",
+   "sample": 4,
+   "ms": 1522.1,
+   "output": "lex: understanding the trade-offs\nlex: when to prioritize\nvec: understanding the trade-offs between consistency and availability\nvec: when to prioritize consistency over availability\nhyde: The topic of consistency vs availability tradeoffs covers understanding the trade-offs between consistency and availability.</think>\n"
+  },
+  {
+   "query": "working from home guidelines",
+   "sample": 0,
+   "ms": 1324.4,
+   "output": "lex: tips for managing\nlex: how to succeed\nvec: tips for managing work-life while working remotely\nvec: how to succeed at home office?\nhyde: Working from home guidelines is an important concept that relates to how to succeed at home office?. It provides value for the majority of use cases.  any improvements possible?</think>\n"
+  },
+  {
+   "query": "working from home guidelines",
+   "sample": 1,
+   "ms": 1099.9,
+   "output": "lex: tips for managing\nlex: how to succeed\nvec: tips for managing remote work\nvec: how to succeed in a home office setup\nhyde: Working from home guidelines is an important concept that relates to guide to working remotely effectively.</think>\n"
+  },
+  {
+   "query": "working from home guidelines",
+   "sample": 2,
+   "ms": 1166.9,
+   "output": "lex: tips for managing\nlex: how to succeed\nvec: tips for managing work-life while working remotely\nvec: how to succeed in a home office environment?\nhyde: Working from home guidelines is an important concept that relates to tips for managing work-life while working remotely.</think>\n"
+  },
+  {
+   "query": "working from home guidelines",
+   "sample": 3,
+   "ms": 1122.3,
+   "output": "lex: tips for managing\nlex: how to succeed\nvec: tips for managing work-life while working remotely\nvec: how to succeed at home office?\nhyde: Working from home guidelines is an important concept that relates to guide to working remotely without compromising productivity.</think>\n"
+  },
+  {
+   "query": "working from home guidelines",
+   "sample": 4,
+   "ms": 1419.9,
+   "output": "lex: tips for managing\nlex: how to succeed\nvec: tips for managing work-life while working remotely\nvec: how to succeed at home office tasks?\nhyde: Working from home guidelines is an important concept that relates to how to succeed at home office tasks?. Let me know if this is what you were looking for.</think>\n"
+  },
+  {
+   "query": "nouns not verbs",
+   "sample": 0,
+   "ms": 946.6,
+   "output": "lex: overview of the\nvec: overview of the difference between nouns and verbs\nhyde: Nouns not verbs is an important concept that relates to overview of the difference between nouns and verbs.</think>\n"
+  },
+  {
+   "query": "nouns not verbs",
+   "sample": 1,
+   "ms": 951,
+   "output": "lex: overview of the\nvec: overview of the difference between nouns and verbs\nhyde: Nouns not verbs is an important concept that relates to overview of the difference between nouns and verbs.</think>\n"
+  },
+  {
+   "query": "nouns not verbs",
+   "sample": 2,
+   "ms": 965.2,
+   "output": "lex: overview of the\nvec: overview of the difference between nouns and verbs\nhyde: Nouns not verbs is an important concept that relates to overview of the difference between nouns and verbs.</think>\n"
+  },
+  {
+   "query": "nouns not verbs",
+   "sample": 3,
+   "ms": 899.3,
+   "output": "lex: overview of the\nvec: overview of the difference between nouns and verbs\nhyde: Nouns not verbs is an important concept that relates to overview of the difference between nouns and verbs.</think>\n"
+  },
+  {
+   "query": "nouns not verbs",
+   "sample": 4,
+   "ms": 873.2,
+   "output": "lex: overview of the\nvec: overview of the difference between nouns and verbs\nhyde: Nouns not verbs is an important concept that relates to overview of the difference between nouns and verbs.</think>\n"
+  }
+ ]
+}

@@ -17,3 +17,9 @@ jobs:
     with:
       submodules: false
       deny: true
+      # GPU passthroughs (cuda/vulkan) are opt-in and would fail on this image;
+      # llama+testing is the supported set (see crates/qmd/Cargo.toml).
+      features: '--features llama,testing'
+      # llama-cpp-sys-2 builds llama.cpp with cmake and runs bindgen against
+      # libclang. The image ships both; pin them anyway against label drift.
+      apt-packages: 'cmake clang libclang-dev'
