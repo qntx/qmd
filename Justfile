@@ -2,31 +2,38 @@
 
 default: all
 
+# The supported feature set for local dev and CI: llama.cpp inference
+# (CPU-only on Linux; Metal is always built on Apple) plus the deterministic
+# test backends. GPU passthroughs (metal/cuda/vulkan) are opt-in — add them
+# here per machine, e.g. `just FEATURES="--features llama,testing,metal" all`.
+# `--all-features` is not a supported configuration (see crates/qmd/Cargo.toml).
+FEATURES := "--features llama,testing"
+
 all: fmt clippy-fix deny test doc-check
 
 list:
     @just --list
 
 build:
-    cargo build --workspace --release --all-features
+    cargo build --workspace --release {{FEATURES}}
 
 check:
-    cargo check --workspace --all-features
+    cargo check --workspace {{FEATURES}}
 
 update:
     cargo update
 
 test:
-    cargo test --workspace --all-features
+    cargo test --workspace {{FEATURES}}
 
 bench:
-    cargo bench --all-features
+    cargo bench {{FEATURES}}
 
 # Prerequisites: `rustup toolchain install nightly --component clippy`
 clippy:
     cargo +nightly clippy --workspace \
         --all-targets \
-        --all-features \
+        {{FEATURES}} \
         -- -D warnings
 
 # Prerequisites: `rustup toolchain install nightly --component clippy`
@@ -34,7 +41,7 @@ clippy-fix:
     cargo +nightly clippy --workspace \
         --fix \
         --all-targets \
-        --all-features \
+        {{FEATURES}} \
         --allow-dirty \
         --allow-staged \
         -- -D warnings
@@ -52,10 +59,10 @@ fmt-check:
 
 # Prerequisites: `rustup toolchain install nightly`
 doc:
-    cargo +nightly doc --workspace --all-features --no-deps --open
+    cargo +nightly doc --workspace {{FEATURES}} --no-deps --open
 
 doc-check:
-    RUSTDOCFLAGS="-D warnings" cargo +nightly doc --workspace --all-features --no-deps
+    RUSTDOCFLAGS="-D warnings" cargo +nightly doc --workspace {{FEATURES}} --no-deps
 
 # Prerequisites: `cargo install cargo-deny`
 deny:

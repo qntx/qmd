@@ -6,6 +6,14 @@
 
 mod traits;
 
+#[cfg(feature = "llama")]
+#[cfg_attr(docsrs, doc(cfg(feature = "llama")))]
+pub mod download;
+
+#[cfg(feature = "llama")]
+#[cfg_attr(docsrs, doc(cfg(feature = "llama")))]
+pub mod llamacpp;
+
 use sha2::{Digest, Sha256};
 pub use traits::{CancelToken, Capability, Embedder, Generator, InferenceError, Reranker};
 

@@ -10,14 +10,26 @@ keywords               = ["search", "markdown", "embedding", "fts5", "rag"]
 categories             = ["text-processing", "database"]
 
 [package.metadata.docs.rs]
-features       = ["testing"]
-rustdoc-args   = ["--cfg", "docsrs"]
+no-default-features = true
+features            = ["testing"]
+rustdoc-args        = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["llama"]
 # Deterministic in-memory inference backends (`qmd::testing`) for tests
 # and downstream embedders — no model files required.
 testing = []
+# On-device inference on llama.cpp (`llm::llamacpp`) plus HuggingFace model
+# download (`llm::download`). Enabled by default; builds C++ via cmake and
+# bindgen, so `cmake`, `clang`/`libclang` must be installed.
+llama = ["dep:llama-cpp-2", "dep:ureq", "dep:tracing"]
+# GPU backend passthroughs to llama.cpp. These are opt-in and platform
+# selective — `cuda` needs a CUDA toolkit, `vulkan` a Vulkan SDK — so
+# `--all-features` is intentionally not a supported configuration; enable the
+# backends your machine has. On Apple targets Metal is built regardless.
+metal  = ["llama", "llama-cpp-2/metal"]
+cuda   = ["llama", "llama-cpp-2/cuda"]
+vulkan = ["llama", "llama-cpp-2/vulkan"]
 
 [dependencies]
 rusqlite      = { version = "0.40.2", features = ["bundled"] }
@@ -33,6 +45,9 @@ globset       = "0.4.20"
 regex         = "1.13.1"
 strsim        = "0.11.1"
 time          = { version = "0.3.36", features = ["formatting", "macros", "parsing"] }
+llama-cpp-2   = { version = "=0.1.158", optional = true }
+ureq          = { version = "3.4.2", optional = true }
+tracing       = { version = "0.1.44", optional = true }
 
 [dev-dependencies]
 tempfile = "3.23.0"
