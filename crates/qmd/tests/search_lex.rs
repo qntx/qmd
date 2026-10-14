@@ -380,6 +380,54 @@ fn search_lex_collection_scope_and_merge() {
     assert!(none.is_empty());
 }
 
+/// Multi-collection merge parity (upstream `mergeSearchResultsByScore`):
+/// JS `Map` preserves insertion order and `sort` is stable, so equal
+/// scores keep first-seen (collection-list) order. Regression test for
+/// the `HashMap` → nondeterministic tie order bug.
+#[test]
+fn search_lex_merge_tie_order_is_stable() {
+    let tmp = tempfile::tempdir().unwrap();
+    let a = tmp.path().join("a");
+    let b = tmp.path().join("b");
+    // Identical bodies → identical bm25 score → a tie the merge must
+    // resolve deterministically.
+    let body = "# Same\n\nidentical merge body text\n";
+    write(&a, "a.md", body);
+    write(&b, "b.md", body);
+    let db = tmp.path().join("i.sqlite");
+    let qmd = Qmd::builder(&db)
+        .environment(Environment::default())
+        .build()
+        .unwrap();
+    for (name, dir) in [("ca", &a), ("cb", &b)] {
+        qmd.add_collection(
+            name,
+            &CollectionSpec {
+                path: dir.to_string_lossy().into_owned(),
+                ..CollectionSpec::default()
+            },
+        )
+        .unwrap();
+    }
+    qmd.update(&qmd::UpdateOptions::default(), &mut |_| {})
+        .unwrap();
+
+    let merged = qmd
+        .search_lex(
+            "identical",
+            &LexOptions {
+                limit: Some(20),
+                collections: Some(vec!["ca".to_owned(), "cb".to_owned()]),
+            },
+        )
+        .unwrap();
+    assert_eq!(merged.len(), 2);
+    assert_eq!(merged[0].score, merged[1].score, "expected a tied score");
+    // First-queried collection wins the tie.
+    assert_eq!(merged[0].collection_name, "ca");
+    assert_eq!(merged[1].collection_name, "cb");
+}
+
 #[test]
 fn search_lex_context_included() {
     let tmp = tempfile::tempdir().unwrap();

@@ -18,6 +18,7 @@
 pub(crate) mod collections;
 pub(crate) mod document;
 pub(crate) mod documents;
+pub(crate) mod embed;
 pub(crate) mod fts;
 pub(crate) mod maintenance;
 pub(crate) mod search;

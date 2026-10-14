@@ -34,8 +34,20 @@ fn builder() -> (tempfile::TempDir, QmdBuilder) {
 fn missing_backends_report_no_backend() {
     let (_dir, builder) = builder();
     let qmd = builder.build().unwrap();
+    // Under `llama` the embedder resolves to a lazy default handle that
+    // downloads/loads the model only on first inference use — the
+    // accessor itself is cheap and infallible (P2.3). The reranker and
+    // generator still report NoBackend until P2.4 wires their defaults.
+    #[cfg(feature = "llama")]
+    {
+        qmd.embedder().unwrap_or_else(|e| panic!("embedder: {e}"));
+    }
+    #[cfg(not(feature = "llama"))]
+    match qmd.embedder() {
+        Err(Error::NoBackend { capability }) => assert_eq!(capability, Capability::Embed),
+        other => panic!("expected NoBackend, got {other:?}"),
+    }
     for (res, cap) in [
-        (qmd.embedder().map(|_| ()), Capability::Embed),
         (qmd.reranker().map(|_| ()), Capability::Rerank),
         (qmd.generator().map(|_| ()), Capability::Generate),
     ] {
