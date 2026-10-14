@@ -980,3 +980,89 @@ fn chunk_golden_matches_upstream() {
         assert_eq!(ours, theirs, "merge case {i}");
     }
 }
+
+// ── AC4: token-refined chunking parity (real tokenizer) ──
+//
+// `scripts/gen_token_chunk_golden.ts` captures upstream
+// `chunkDocumentByTokens` output — with the real embeddinggemma-300M
+// tokenizer — over the vendored corpus plus two synthetic docs that
+// exercise the >max_tokens re-split path. The fixture is self-contained
+// (input `content` embedded), so the assertion needs only the model.
+#[cfg(feature = "llama")]
+mod token_chunk_golden {
+    use qmd::llm::download::model_cache_dir;
+    use qmd::llm::llamacpp::{EmbeddingMode, LlamaEmbedder};
+    use qmd::{Environment, TokenChunkOptions, chunk_document_by_tokens};
+    use serde_json::Value;
+
+    fn fixture() -> Value {
+        let text = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/token_chunk_golden.json"
+        ))
+        .unwrap();
+        serde_json::from_str(&text).unwrap()
+    }
+
+    /// AC4 — every golden doc's chunks must match upstream's real-
+    /// tokenizer output verbatim (`text`, UTF-16 `pos`, `tokens`).
+    #[test]
+    #[ignore = "requires cached GGUF models"]
+    fn token_chunks_match_upstream() {
+        // Local path like the e0 fixtures — bypasses `pull_models`' etag
+        // refresh entirely (a model-less run skips, never downloads).
+        let path = model_cache_dir(&Environment::default())
+            .join("hf_ggml-org_embeddinggemma-300M-Q8_0.gguf");
+        assert!(path.exists(), "model cache missing: {}", path.display());
+        let embedder = LlamaEmbedder::new(
+            &path,
+            qmd::llm::DEFAULT_EMBED_MODEL,
+            &Environment::default(),
+            EmbeddingMode::UpstreamTail,
+        )
+        .unwrap();
+        let golden = fixture();
+        let params = &golden["params"];
+        let opts = TokenChunkOptions {
+            max_tokens: usize::try_from(params["max_tokens"].as_u64().unwrap()).unwrap(),
+            overlap_tokens: usize::try_from(params["overlap_tokens"].as_u64().unwrap()).unwrap(),
+            window_tokens: usize::try_from(params["window_tokens"].as_u64().unwrap()).unwrap(),
+            ..TokenChunkOptions::default()
+        };
+
+        let mut asserted = 0usize;
+        for doc in golden["docs"].as_array().unwrap() {
+            let name = doc["name"].as_str().unwrap();
+            let content = doc["content"].as_str().unwrap();
+            let want: Vec<(String, usize, usize)> = doc["chunks"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| {
+                    (
+                        c["text"].as_str().unwrap().to_owned(),
+                        usize::try_from(c["pos"].as_u64().unwrap()).unwrap(),
+                        usize::try_from(c["tokens"].as_u64().unwrap()).unwrap(),
+                    )
+                })
+                .collect();
+            let got = chunk_document_by_tokens(
+                &embedder,
+                content,
+                &TokenChunkOptions {
+                    filepath: Some(name.to_owned()),
+                    strategy: qmd::ChunkStrategy::Regex,
+                    ..opts.clone()
+                },
+            )
+            .unwrap();
+            let got: Vec<(String, usize, usize)> = got
+                .iter()
+                .map(|c| (c.text.to_string(), c.pos, c.tokens))
+                .collect();
+            assert_eq!(got, want, "chunk mismatch for {name}");
+            asserted += want.len();
+        }
+        assert!(asserted > 0);
+    }
+}

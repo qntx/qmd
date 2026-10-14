@@ -81,8 +81,9 @@ pub use llm::{CancelToken, Capability, Embedder, Generator, InferenceError, Rera
 pub use maintenance::{CleanupCounts, Maintenance};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
-    ContextEntry, IndexHealth, LexOptions, Qmd, QmdBuilder, Status, StatusCollection,
-    UpdateOptions, UpdateProgress, UpdateReport,
+    ContextEntry, EmbedFailure, EmbedOptions, EmbedProgress, EmbedReport, IndexHealth, LexOptions,
+    Qmd, QmdBuilder, Status, StatusCollection, UpdateOptions, UpdateProgress, UpdateReport,
+    VectorOptions,
 };
 pub use snippet::{SnippetResult, add_line_numbers, extract_snippet};
 pub use store::documents::extract_title;

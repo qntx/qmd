@@ -56,3 +56,10 @@ mod imp {
 }
 
 pub(crate) use imp::register;
+
+/// `f32` slice → little-endian blob — the binding form upstream's
+/// `Float32Array` takes through better-sqlite3 (probe:
+/// `vec_match_and_exact_scan_with_blob_params` in tests/store.rs).
+pub(crate) fn vec_blob(embedding: &[f32]) -> Vec<u8> {
+    embedding.iter().flat_map(|f| f.to_le_bytes()).collect()
+}

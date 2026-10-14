@@ -100,6 +100,70 @@ fn vec_extension_works() {
     qmd.close().expect("close");
 }
 
+/// P2.3 probe: the ANN (`embedding MATCH ? AND k = ?`) and exact-scan
+/// (`vec_distance_cosine` over `hash_seq IN (…)`) query shapes upstream
+/// `searchVec` uses (store.ts:4195-4234), exercised through rusqlite
+/// parameter binding with little-endian f32 blobs — the binding form
+/// upstream's `Float32Array` produces via better-sqlite3.
+#[test]
+fn vec_match_and_exact_scan_with_blob_params() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("idx.sqlite");
+    let qmd = open_qmd(&db).expect("build");
+    let conn = raw_conn(&db);
+    conn.execute_batch(
+        "CREATE VIRTUAL TABLE vectors_vec USING vec0(\
+           hash_seq TEXT PRIMARY KEY, embedding float[2] distance_metric=cosine)",
+    )
+    .unwrap();
+
+    let blob = |v: &[f32]| -> Vec<u8> { v.iter().flat_map(|f| f.to_le_bytes()).collect() };
+    conn.execute(
+        "INSERT INTO vectors_vec (hash_seq, embedding) VALUES ('a_0', ?1)",
+        [rusqlite::types::Value::Blob(blob(&[1.0, 0.0]))],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO vectors_vec (hash_seq, embedding) VALUES ('b_0', ?1)",
+        [rusqlite::types::Value::Blob(blob(&[0.0, 1.0]))],
+    )
+    .unwrap();
+
+    // ANN: nearest to [1,0] must be a_0.
+    let rows: Vec<(String, f64)> = conn
+        .prepare("SELECT hash_seq, distance FROM vectors_vec WHERE embedding MATCH ? AND k = ?")
+        .unwrap()
+        .query_map(
+            rusqlite::params![rusqlite::types::Value::Blob(blob(&[1.0, 0.0])), 2i64],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].0, "a_0");
+    assert_eq!(rows[0].1, 0.0);
+    assert_eq!(rows[1].0, "b_0");
+    assert!((rows[1].1 - 1.0).abs() < 1e-6);
+
+    // Exact scan: `vec_distance_cosine` over an IN list, same blob binding.
+    let exact: Vec<(String, f64)> = conn
+        .prepare(
+            "SELECT hash_seq, vec_distance_cosine(embedding, ?) AS distance \
+               FROM vectors_vec WHERE hash_seq IN ('a_0', 'b_0') ORDER BY distance",
+        )
+        .unwrap()
+        .query_map([rusqlite::types::Value::Blob(blob(&[0.0, 1.0]))], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .unwrap()
+        .collect::<rusqlite::Result<_>>()
+        .unwrap();
+    assert_eq!(exact[0].0, "b_0");
+    assert_eq!(exact[0].1, 0.0);
+    qmd.close().expect("close");
+}
+
 #[test]
 fn rejects_foreign_index() {
     let tmp = tempfile::tempdir().expect("tempdir");

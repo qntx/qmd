@@ -197,6 +197,119 @@ pub struct LexOptions {
     pub collections: Option<Vec<String>>,
 }
 
+/// Options for [`Qmd::embed`], mirroring upstream `EmbedOptions`
+/// (store.ts:1776-1801).
+///
+/// `model` is dropped (P2-D4: the injected [`Embedder`]'s `model_id()`
+/// is authoritative) and `onProgress` is a parameter of [`Qmd::embed`].
+#[derive(Debug, Clone)]
+pub struct EmbedOptions {
+    /// Rebuild every vector from scratch (upstream `force` →
+    /// `clearAllEmbeddings` before the pending scan).
+    pub force: bool,
+    /// Restrict to one collection; `None` embeds every pending document.
+    pub collection: Option<String>,
+    /// Documents per batch (upstream `maxDocsPerBatch`, default 64).
+    /// `0` errors with "maxDocsPerBatch must be a positive integer".
+    pub max_docs_per_batch: usize,
+    /// Byte cap per document batch (upstream `maxBatchBytes`, default
+    /// 64 MiB). `0` errors with "maxBatchBytes must be a positive
+    /// integer".
+    pub max_batch_bytes: usize,
+    /// Chunking strategy (upstream `chunkStrategy`, default
+    /// [`crate::chunk::ChunkStrategy::Regex`]).
+    pub chunk_strategy: crate::chunk::ChunkStrategy,
+    /// Wall-clock cap for the whole run (upstream `maxDurationMs`,
+    /// default 30 minutes). `None` or `Some(Duration::ZERO)` disables
+    /// the cap (upstream `maxDuration <= 0` skips the timer).
+    pub max_duration: Option<std::time::Duration>,
+    /// Cooperative cancellation (Rust extension, T6 — upstream
+    /// `EmbedOptions` has no `signal`; wired like the internal
+    /// `LLMSessionOptions.signal`).
+    pub cancel: crate::llm::CancelToken,
+}
+
+impl Default for EmbedOptions {
+    fn default() -> Self {
+        Self {
+            force: false,
+            collection: None,
+            max_docs_per_batch: store::embed::DEFAULT_MAX_DOCS_PER_BATCH,
+            max_batch_bytes: store::embed::DEFAULT_MAX_BATCH_BYTES,
+            chunk_strategy: crate::chunk::ChunkStrategy::Regex,
+            max_duration: Some(store::embed::DEFAULT_MAX_DURATION),
+            cancel: crate::llm::CancelToken::new(),
+        }
+    }
+}
+
+/// One progress event from [`Qmd::embed`] — upstream `EmbedProgress`
+/// (store.ts:1757-1765).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct EmbedProgress {
+    /// Chunks embedded so far.
+    pub chunks_embedded: usize,
+    /// Chunks discovered so far across processed batches.
+    pub total_chunks: usize,
+    /// Document bytes processed (chunk-byte prorated, upstream
+    /// store.ts:2194-2197).
+    pub bytes_processed: u64,
+    /// Total bytes of pending documents.
+    pub total_bytes: u64,
+    /// Outstanding failed chunks still awaiting a successful retry.
+    pub errors: usize,
+    /// Per-chunk failure records, first-failure order.
+    pub failures: Vec<EmbedFailure>,
+}
+
+/// One failed chunk — upstream `EmbedFailure` (store.ts:1749-1755).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct EmbedFailure {
+    /// Document path (`MIN(path)` of the hash's documents).
+    pub path: String,
+    /// Content hash.
+    pub hash: String,
+    /// Chunk sequence number.
+    pub seq: usize,
+    /// Attempt count so far.
+    pub attempts: u32,
+    /// Failure reason (177-UTF-16-unit truncation plus ellipsis).
+    pub reason: String,
+}
+
+/// Aggregate result of [`Qmd::embed`] — upstream `EmbedResult`
+/// (store.ts:1767-1774).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct EmbedReport {
+    /// Pending-document count at call start — upstream reports the
+    /// total *selected*, not actually processed (§8.1).
+    pub docs_processed: usize,
+    /// Chunks embedded (post `remove_incomplete` adjustment).
+    pub chunks_embedded: usize,
+    /// Failed chunks that did not recover after retries.
+    pub errors: usize,
+    /// Failure records (upstream `failures`).
+    pub failures: Vec<EmbedFailure>,
+    /// Wall-clock duration of the run.
+    pub duration: std::time::Duration,
+}
+
+/// Options for [`Qmd::search_vector`], mirroring upstream
+/// `VectorSearchOptions` (index.ts:216-224) minus the P3 metadata
+/// `filter`.
+#[derive(Debug, Clone, Default)]
+pub struct VectorOptions {
+    /// Maximum results (upstream default: 20).
+    pub limit: Option<usize>,
+    /// Restrict to these collection names; several are queried
+    /// separately and merged by score (same shape as
+    /// [`LexOptions::collections`]).
+    pub collections: Option<Vec<String>>,
+}
+
 /// One progress event from [`Qmd::update`], mirroring upstream
 /// `UpdateProgress`.
 #[derive(Debug, Clone)]
@@ -244,7 +357,10 @@ pub struct Qmd {
     config: Mutex<ConfigSource>,
     db_path: PathBuf,
     env: Environment,
-    embedder: Option<Arc<dyn Embedder>>,
+    /// `Mutex` — under `llama` a missing embedder is lazily built on
+    /// first use (architecture §3.2; upstream resolves the model inside
+    /// the embed path, llm.ts:1128-1133).
+    embedder: Mutex<Option<Arc<dyn Embedder>>>,
     reranker: Option<Arc<dyn Reranker>>,
     generator: Option<Arc<dyn Generator>>,
 }
@@ -340,7 +456,7 @@ impl QmdBuilder {
             config: Mutex::new(source),
             db_path: self.db_path,
             env: self.env,
-            embedder: self.embedder,
+            embedder: Mutex::new(self.embedder),
             reranker: self.reranker,
             generator: self.generator,
         })
@@ -375,7 +491,7 @@ impl Qmd {
     /// [`Embedder`] is authoritative (P2-D4); otherwise `models.embed` →
     /// `QMD_EMBED_MODEL` → upstream default (llm.ts:303-305).
     fn embed_model(&self, config: &Config) -> String {
-        self.embedder.as_ref().map_or_else(
+        lock(&self.embedder).as_ref().map_or_else(
             || crate::llm::resolve_embed_model(config.models.as_ref(), &self.env),
             |e| e.model_id().to_owned(),
         )
@@ -386,7 +502,7 @@ impl Qmd {
     /// otherwise the configured `models.embed_pooling` (D14,
     /// architecture §8.3).
     fn embed_fingerprint_extra(&self, config: &Config) -> Option<String> {
-        self.embedder
+        lock(&self.embedder)
             .as_ref()
             .and_then(|e| e.fingerprint_extra())
             .filter(|s| !s.is_empty())
@@ -402,12 +518,57 @@ impl Qmd {
             })
     }
 
-    /// The injected [`Embedder`].
+    /// The embedding backend: the injected [`Embedder`], or — with the
+    /// `llama` feature — a lazily built [`LlamaEmbedder`] for the
+    /// resolved `models.embed` URI (downloaded into the shared model
+    /// cache on first use). Mirrors upstream's lazy `resolveModel`
+    /// inside the embed path (llm.ts:1128-1133).
     ///
     /// # Errors
-    /// [`Error::NoBackend`] when no embedding backend was injected.
+    /// [`Error::NoBackend`] when no backend was injected and `llama` is
+    /// off; [`Error::Download`]/[`Error::Model`]/[`Error::Inference`]
+    /// when lazy resolution or model load fails.
+    ///
+    /// [`LlamaEmbedder`]: crate::llm::llamacpp::LlamaEmbedder
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the init lock must stay held across check-and-fill"
+    )]
     pub fn embedder(&self) -> Result<Arc<dyn Embedder>> {
-        self.embedder.clone().ok_or(Error::NoBackend {
+        let mut slot = lock(&self.embedder);
+        if let Some(e) = slot.as_ref() {
+            return Ok(Arc::clone(e));
+        }
+        let built = self.build_default_embedder()?;
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+
+    /// Lazy default backend construction — `llama` feature only. The
+    /// returned [`LazyLlamaEmbedder`] resolves and loads the model on
+    /// its first inference call, so this accessor stays cheap.
+    #[cfg(feature = "llama")]
+    fn build_default_embedder(&self) -> Result<Arc<dyn Embedder>> {
+        let config = self.config()?;
+        let model_uri = crate::llm::resolve_embed_model(config.models.as_ref(), &self.env);
+        let mode = crate::llm::llamacpp::EmbeddingMode::from(
+            config
+                .models
+                .as_ref()
+                .and_then(|m| m.embed_pooling)
+                .unwrap_or_default(),
+        );
+        Ok(Arc::new(crate::llm::llamacpp::LazyLlamaEmbedder::new(
+            model_uri,
+            self.env.clone(),
+            mode,
+        )))
+    }
+
+    /// Without `llama` there is no default backend to build.
+    #[cfg(not(feature = "llama"))]
+    fn build_default_embedder(&self) -> Result<Arc<dyn Embedder>> {
+        Err(Error::NoBackend {
             capability: Capability::Embed,
         })
     }
@@ -1009,6 +1170,112 @@ impl Qmd {
         let conn = lock(&self.conn);
         store::search::search_fts(
             &conn,
+            query,
+            opts.limit.unwrap_or(20),
+            opts.collections.clone(),
+        )
+    }
+
+    /// Generate vector embeddings for documents that need them —
+    /// upstream `generateEmbeddings` (store.ts:1984-2240), driven by the
+    /// resolved [`Embedder`] (injected, or lazily built under `llama`).
+    ///
+    /// Re-running after interruption resumes where it stopped:
+    /// `content_vectors` completeness determines the pending set.
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] without an embedder, [`Error::InvalidInput`]
+    /// on non-positive batch options (upstream `validatePositiveInteger`
+    /// messages), [`Error::EmbeddingDimensionMismatch`] when the stored
+    /// `vectors_vec` dimension disagrees with the model, and
+    /// [`Error::Inference`]/[`Error::Db`] on backend/storage failures.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard must live until the embed run completes"
+    )]
+    pub fn embed(
+        &self,
+        opts: &EmbedOptions,
+        progress: &mut dyn FnMut(&EmbedProgress),
+    ) -> Result<EmbedReport> {
+        let embedder = self.embedder()?;
+        // Upstream `validatePositiveIntegerOption` (store.ts:1819-1825)
+        // — usize cannot be non-integer, so only the `< 1` arm applies.
+        if opts.max_docs_per_batch == 0 {
+            return Err(Error::InvalidInput {
+                reason: "maxDocsPerBatch must be a positive integer".to_owned(),
+            });
+        }
+        if opts.max_batch_bytes == 0 {
+            return Err(Error::InvalidInput {
+                reason: "maxBatchBytes must be a positive integer".to_owned(),
+            });
+        }
+
+        let run_opts = store::embed::EmbedRunOptions {
+            force: opts.force,
+            collection: opts.collection.clone(),
+            max_docs_per_batch: opts.max_docs_per_batch,
+            max_batch_bytes: opts.max_batch_bytes,
+            chunk_strategy: opts.chunk_strategy,
+            max_duration: opts.max_duration,
+            cancel: opts.cancel.clone(),
+        };
+        let mut conn = lock(&self.conn);
+        let outcome =
+            store::embed::generate_embeddings(&mut conn, embedder.as_ref(), &run_opts, &mut |p| {
+                progress(&EmbedProgress {
+                    chunks_embedded: p.chunks_embedded,
+                    total_chunks: p.total_chunks,
+                    bytes_processed: p.bytes_processed,
+                    total_bytes: p.total_bytes,
+                    errors: p.errors,
+                    failures: p
+                        .failures
+                        .iter()
+                        .map(|f| EmbedFailure {
+                            path: f.path.clone(),
+                            hash: f.hash.clone(),
+                            seq: f.seq,
+                            attempts: f.attempts,
+                            reason: f.reason.clone(),
+                        })
+                        .collect(),
+                });
+            })?;
+        Ok(EmbedReport {
+            docs_processed: outcome.docs_processed,
+            chunks_embedded: outcome.chunks_embedded,
+            errors: outcome.errors,
+            failures: outcome
+                .failures
+                .iter()
+                .map(|f| EmbedFailure {
+                    path: f.path.clone(),
+                    hash: f.hash.clone(),
+                    seq: f.seq,
+                    attempts: f.attempts,
+                    reason: f.reason.clone(),
+                })
+                .collect(),
+            duration: outcome.duration,
+        })
+    }
+
+    /// Vector similarity search — upstream `searchVector` → `searchVec`
+    /// (index.ts:478-481, store.ts:4236-4384). Requires embeddings from
+    /// [`Qmd::embed`]; returns `[]` when `vectors_vec` does not exist.
+    /// Each result carries `chunk_pos` and `score = 1 - cosine distance`.
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] without an embedder, [`Error::Inference`] on
+    /// query-embedding failure, [`Error::Db`] on SQLite failures.
+    pub fn search_vector(&self, query: &str, opts: &VectorOptions) -> Result<Vec<SearchResult>> {
+        let embedder = self.embedder()?;
+        let conn = lock(&self.conn);
+        store::search::search_vec(
+            &conn,
+            embedder.as_ref(),
             query,
             opts.limit.unwrap_or(20),
             opts.collections.clone(),

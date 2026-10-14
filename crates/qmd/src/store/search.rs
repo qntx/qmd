@@ -42,10 +42,14 @@ pub struct SearchResult {
     pub body: String,
     /// Folder context (global + longest-prefix path contexts).
     pub context: Option<String>,
-    /// Relevance score in `[0, 1)` — `|bm25| / (1 + |bm25|)`.
+    /// Relevance score in `[0, 1)` — `|bm25| / (1 + |bm25|)` for FTS,
+    /// `1 - cosine distance` for vector hits.
     pub score: f64,
     /// Search source.
     pub source: SearchSource,
+    /// Chunk position (UTF-16 code units) within the document — `Some`
+    /// only for vector hits (upstream `chunkPos`, P2.3).
+    pub chunk_pos: Option<usize>,
 }
 
 /// Where a search hit came from (upstream `source` field).
@@ -264,6 +268,7 @@ pub(crate) fn search_fts(
             body: row.body,
             score: bm25 / (1.0 + bm25),
             source: SearchSource::Fts,
+            chunk_pos: None,
             collection_name: row.collection_name,
             filepath: row.filepath,
             display_path: row.display_path,
@@ -288,9 +293,11 @@ struct Row {
 
 /// Upstream `mergeSearchResultsByScore` (store.ts:4076-4079): keep the
 /// best-scoring entry per filepath, sort by score descending, truncate.
+/// `IndexMap` preserves first-insertion order like upstream's JS `Map`
+/// (`set` on an existing key updates in place), so equal scores keep
+/// first-seen order through the stable sort.
 fn merge_search_results_by_score(lists: Vec<Vec<SearchResult>>, limit: usize) -> Vec<SearchResult> {
-    let mut best: std::collections::HashMap<String, SearchResult> =
-        std::collections::HashMap::new();
+    let mut best: indexmap::IndexMap<String, SearchResult> = indexmap::IndexMap::new();
     for list in lists {
         for r in list {
             match best.get(&r.filepath) {
@@ -305,4 +312,284 @@ fn merge_search_results_by_score(lists: Vec<Vec<SearchResult>>, limit: usize) ->
     merged.sort_by(|a, b| b.score.total_cmp(&a.score));
     merged.truncate(limit);
     merged
+}
+
+// =============================================================================
+// Vector search (P2.3)
+// =============================================================================
+
+/// Upstream `SQLITE_VEC_MAX_K` (store.ts:4178): sqlite-vec's hard cap on
+/// `k` in a MATCH query.
+const SQLITE_VEC_MAX_K: usize = 4096;
+/// Upstream `FILTERED_VEC_EXACT_SCAN_MAX` (store.ts:4187): eligible-set
+/// size below which we exact-scan instead of capped ANN + post-filter.
+const FILTERED_VEC_EXACT_SCAN_MAX: usize = 20_000;
+/// Upstream `VEC_HASH_SEQ_IN_CHUNK` (store.ts:4190): `hash_seq IN (…)`
+/// chunk width for the exact scan.
+const VEC_HASH_SEQ_IN_CHUNK: usize = 400;
+
+/// Upstream `exactVecScanByHashSeq` (store.ts:4195-4221): exact
+/// `vec_distance_cosine` scan over a known `hash_seq` set, IN-list
+/// chunked, over-fetching `max(limit * 3, limit)` so multi-chunk docs
+/// still yield `limit` unique files after dedupe.
+fn exact_vec_scan_by_hash_seq(
+    conn: &Connection,
+    embedding: &[f32],
+    hash_seqs: &[String],
+    limit: usize,
+) -> Result<Vec<(String, f64)>> {
+    if hash_seqs.is_empty() || limit == 0 {
+        return Ok(Vec::new());
+    }
+    let fetch_limit = limit.saturating_mul(3).max(limit);
+    let query = rusqlite::types::Value::Blob(super::vec::vec_blob(embedding));
+    let mut scored: Vec<(String, f64)> = Vec::new();
+    for chunk in hash_seqs.chunks(VEC_HASH_SEQ_IN_CHUNK) {
+        let placeholders = vec!["?"; chunk.len()].join(",");
+        let sql = format!(
+            "SELECT hash_seq, vec_distance_cosine(embedding, ?) AS distance \
+             FROM vectors_vec WHERE hash_seq IN ({placeholders})"
+        );
+        let mut params: Vec<rusqlite::types::Value> = Vec::with_capacity(chunk.len() + 1);
+        params.push(query.clone());
+        params.extend(chunk.iter().map(|s| s.clone().into()));
+        let mut rows = conn
+            .prepare(&sql)
+            .and_then(|mut s| {
+                s.query_map(params_from_iter(params), |r| {
+                    Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?))
+                })
+                .and_then(|m| m.collect::<rusqlite::Result<Vec<_>>>())
+            })
+            .map_err(DbError::from)?;
+        scored.append(&mut rows);
+    }
+    scored.sort_by(|a, b| a.1.total_cmp(&b.1));
+    scored.truncate(fetch_limit);
+    Ok(scored)
+}
+
+/// Upstream `annVecScan` (store.ts:4223-4234): `embedding MATCH ?` with
+/// `k` clamped to `[1, SQLITE_VEC_MAX_K]`.
+fn ann_vec_scan(conn: &Connection, embedding: &[f32], k: usize) -> Result<Vec<(String, f64)>> {
+    let vec_k = k.clamp(1, SQLITE_VEC_MAX_K);
+    let rows = conn
+        .prepare("SELECT hash_seq, distance FROM vectors_vec WHERE embedding MATCH ? AND k = ?")
+        .and_then(|mut s| {
+            s.query_map(
+                rusqlite::params![
+                    rusqlite::types::Value::Blob(super::vec::vec_blob(embedding)),
+                    i64::try_from(vec_k).unwrap_or(i64::MAX)
+                ],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?)),
+            )
+            .and_then(|m| m.collect::<rusqlite::Result<Vec<_>>>())
+        })
+        .map_err(DbError::from)?;
+    Ok(rows)
+}
+
+/// Upstream `searchVec` (store.ts:4236-4384) minus the P3 metadata
+/// `filter` join.
+///
+/// Two-step shape is load-bearing: sqlite-vec virtual tables hang on a
+/// `JOIN` in the same query (upstream PR #23) — the vec step never
+/// joins, the document lookup never touches `vectors_vec`.
+///
+/// With a collection filter the eligible `hash_seq` set is computed
+/// first: small sets exact-scan (global ANN would starve them, upstream
+/// #791/#803), large sets fall back to capped ANN and the filter is
+/// re-applied at the document join.
+pub(crate) fn search_vec(
+    conn: &Connection,
+    embedder: &dyn crate::llm::Embedder,
+    query: &str,
+    limit: usize,
+    collection_scope: Option<Vec<String>>,
+) -> Result<Vec<SearchResult>> {
+    if !super::status::has_vectors_vec(conn)? {
+        return Ok(Vec::new());
+    }
+
+    // Upstream `getEmbedding(query, model, isQuery=true)` — null
+    // embedding returns []. The trait's whole-batch contract makes an
+    // empty/absent slot the only `null` analogue; backend errors
+    // propagate like upstream's thrown `session.embed`.
+    let text = crate::llm::format_query_for_embedding(query, Some(embedder.model_id()));
+    let embedding = embedder
+        .embed(&[&text])
+        .map_err(crate::Error::from)?
+        .into_iter()
+        .next()
+        .filter(|v| !v.is_empty());
+    let Some(embedding) = embedding else {
+        return Ok(Vec::new());
+    };
+
+    let names = collection_scope.map(|scope| {
+        scope
+            .into_iter()
+            .map(|n| n.trim().to_owned())
+            .filter(|n| !n.is_empty())
+            .collect::<Vec<_>>()
+    });
+    if let Some(names) = names.as_ref().filter(|n| n.len() > 1) {
+        let lists = names
+            .iter()
+            .map(|name| search_vec_multi(conn, &embedding, limit, Some(name)))
+            .collect::<Result<Vec<_>>>()?;
+        return Ok(merge_search_results_by_score(lists, limit));
+    }
+    search_vec_multi(
+        conn,
+        &embedding,
+        limit,
+        names.and_then(|n| n.into_iter().next()).as_deref(),
+    )
+}
+
+/// The query-embeddings-free inner half of `searchVec` — multi-
+/// collection merge reuses the already-computed query vector
+/// (upstream passes `precomputedEmbedding`).
+fn search_vec_multi(
+    conn: &Connection,
+    embedding: &[f32],
+    limit: usize,
+    collection_filter: Option<&str>,
+) -> Result<Vec<SearchResult>> {
+    let vec_results: Vec<(String, f64)> = if let Some(name) = &collection_filter {
+        // Eligible hash_seqs for the collection (store.ts:4272-4296).
+        let eligible: Vec<String> = conn
+            .prepare(
+                "SELECT DISTINCT cv.hash || '_' || cv.seq AS hash_seq \
+                 FROM content_vectors cv \
+                 JOIN documents d ON d.hash = cv.hash AND d.active = 1 \
+                 WHERE d.collection = ?",
+            )
+            .and_then(|mut s| {
+                s.query_map(rusqlite::params![name], |r| r.get::<_, String>(0))
+                    .and_then(|m| m.collect::<rusqlite::Result<Vec<_>>>())
+            })
+            .map_err(DbError::from)?;
+        if eligible.is_empty() {
+            return Ok(Vec::new());
+        }
+        if eligible.len() <= FILTERED_VEC_EXACT_SCAN_MAX {
+            exact_vec_scan_by_hash_seq(conn, embedding, &eligible, limit)?
+        } else {
+            // Large eligible set: ANN with over-fetch, k capped at
+            // sqlite-vec's max (store.ts:4302).
+            ann_vec_scan(conn, embedding, limit.saturating_mul(30))?
+        }
+    } else {
+        ann_vec_scan(conn, embedding, limit.saturating_mul(3))?
+    };
+    if vec_results.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let distance_map: std::collections::HashMap<String, f64> =
+        vec_results.iter().cloned().collect();
+    let hash_seqs: Vec<String> = vec_results.iter().map(|r| r.0.clone()).collect();
+    let placeholders = vec!["?"; hash_seqs.len()].join(",");
+    let mut sql = format!(
+        "SELECT cv.hash || '_' || cv.seq AS hash_seq, cv.hash, cv.pos, \
+           'qmd://' || d.collection || '/' || d.path AS filepath, \
+           d.collection || '/' || d.path AS display_path, \
+           d.title, content.doc AS body \
+         FROM content_vectors cv \
+         JOIN documents d ON d.hash = cv.hash AND d.active = 1 \
+         JOIN content ON content.hash = d.hash \
+         WHERE cv.hash || '_' || cv.seq IN ({placeholders})"
+    );
+    let mut params: Vec<rusqlite::types::Value> = hash_seqs.into_iter().map(Into::into).collect();
+    if let Some(name) = collection_filter {
+        sql.push_str(" AND d.collection = ?");
+        params.push(name.to_owned().into());
+    }
+
+    let mut stmt = conn.prepare(&sql).map_err(DbError::from)?;
+    let doc_rows = stmt
+        .query_map(params_from_iter(params), |r| {
+            Ok(VecRow {
+                hash_seq: r.get(0)?,
+                hash: r.get(1)?,
+                pos: r.get(2)?,
+                filepath: r.get(3)?,
+                display_path: r.get(4)?,
+                title: r.get(5)?,
+                body: r.get(6)?,
+            })
+        })
+        .map_err(DbError::from)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)?;
+
+    // Dedupe by filepath keeping the smallest distance (store.ts:4334).
+    // Upstream `Map` iterates in insertion order and `sort` is stable,
+    // so equal distances keep first-seen order — track insertion order
+    // ourselves to mirror that.
+    let mut best: std::collections::HashMap<String, (VecRow, f64)> =
+        std::collections::HashMap::new();
+    let mut filepath_order: Vec<String> = Vec::new();
+    for row in doc_rows {
+        let distance = distance_map.get(&row.hash_seq).copied().unwrap_or(1.0);
+        let dominated = matches!(best.get(&row.filepath), Some((_, b)) if *b <= distance);
+        if !dominated {
+            if !best.contains_key(&row.filepath) {
+                filepath_order.push(row.filepath.clone());
+            }
+            best.insert(row.filepath.clone(), (row, distance));
+        }
+    }
+    let mut winners: Vec<(VecRow, f64)> = filepath_order
+        .into_iter()
+        .filter_map(|f| best.remove(&f))
+        .collect();
+    winners.sort_by(|a, b| a.1.total_cmp(&b.1));
+    winners.truncate(limit);
+
+    let collections = get_store_collections(conn)?;
+    let global_context = get_store_global_context(conn)?;
+
+    let mut results = Vec::with_capacity(winners.len());
+    for (row, dist) in winners {
+        let collection_name = row
+            .filepath
+            .strip_prefix("qmd://")
+            .and_then(|rest| rest.split('/').next())
+            .unwrap_or_default()
+            .to_owned();
+        let context =
+            get_context_for_file(conn, &row.filepath, &collections, global_context.as_deref())?;
+        results.push(SearchResult {
+            filepath: row.filepath.clone(),
+            display_path: row.display_path,
+            title: row.title,
+            hash: row.hash.clone(),
+            docid: get_docid(&row.hash),
+            collection_name,
+            // Upstream `modifiedAt: ""` — not available in this query
+            // shape (store.ts:4357).
+            modified_at: String::new(),
+            body_length: row.body.len(),
+            body: row.body,
+            context,
+            score: 1.0 - dist,
+            source: SearchSource::Vec,
+            chunk_pos: Some(usize::try_from(row.pos).unwrap_or(0)),
+        });
+    }
+    Ok(results)
+}
+
+/// One row of the `searchVec` document lookup (step 2).
+struct VecRow {
+    hash_seq: String,
+    hash: String,
+    pos: i64,
+    filepath: String,
+    display_path: String,
+    title: String,
+    body: String,
 }

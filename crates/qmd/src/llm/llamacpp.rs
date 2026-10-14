@@ -23,7 +23,7 @@
 use std::num::NonZeroU32;
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, OnceLock, mpsc};
+use std::sync::{Arc, Mutex, OnceLock, mpsc};
 
 use llama_cpp_2::context::LlamaContext;
 use llama_cpp_2::context::params::{LlamaContextParams, LlamaPoolingType};
@@ -559,6 +559,15 @@ pub enum EmbeddingMode {
     FullSequence,
 }
 
+impl From<crate::config::EmbedPooling> for EmbeddingMode {
+    fn from(p: crate::config::EmbedPooling) -> Self {
+        match p {
+            crate::config::EmbedPooling::UpstreamTail => Self::UpstreamTail,
+            crate::config::EmbedPooling::FullSequence => Self::FullSequence,
+        }
+    }
+}
+
 /// Embed `texts` on one worker context, checking `cancel` between items
 /// (upstream aborts a cancelled batch mid-flight too).
 fn embed_batch(
@@ -725,8 +734,11 @@ impl Embedder for LlamaEmbedder {
     fn fingerprint_extra(&self) -> Option<&str> {
         match self.mode {
             // FullSequence vectors differ from upstream for >512-token
-            // inputs, so the vector identity must differ too.
-            EmbeddingMode::FullSequence => Some("llamacpp-fullseq"),
+            // inputs, so the vector identity must differ too — the
+            // canonical extra string is `EmbedPooling`'s (§8.3).
+            EmbeddingMode::FullSequence => {
+                crate::config::EmbedPooling::FullSequence.fingerprint_extra()
+            }
             EmbeddingMode::UpstreamTail => None,
         }
     }
@@ -766,6 +778,116 @@ impl Embedder for LlamaEmbedder {
             out.extend(r?);
         }
         Ok(out)
+    }
+}
+
+/// Lazily-built [`LlamaEmbedder`] — upstream resolves and loads the
+/// model inside the first inference call (`LlamaCpp::resolveModel`,
+/// llm.ts:1128-1133), not when the session handle is produced.
+///
+/// With the `llama` feature [`crate::Qmd::embedder`] returns this cheap
+/// handle immediately; the GGUF download, model load and worker-pool
+/// spin-up happen on the first `tokenize`/`embed` call, and a failed
+/// build leaves the slot empty so the next call retries (upstream
+/// clears the load promise on rejection).
+pub struct LazyLlamaEmbedder {
+    model_uri: String,
+    env: Environment,
+    mode: EmbeddingMode,
+    inner: Mutex<Option<Arc<LlamaEmbedder>>>,
+}
+
+impl LazyLlamaEmbedder {
+    /// Wrap the embedder for `model_uri` (`hf:` or local path) without
+    /// touching the network or the model file. `mode` is the
+    /// configured pooling (`upstream_tail` default).
+    #[must_use]
+    pub const fn new(model_uri: String, env: Environment, mode: EmbeddingMode) -> Self {
+        Self {
+            model_uri,
+            env,
+            mode,
+            inner: Mutex::new(None),
+        }
+    }
+
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the init lock must stay held across check-and-fill"
+    )]
+    fn get(&self) -> Result<Arc<LlamaEmbedder>> {
+        let mut slot = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(e) = slot.as_ref() {
+            return Ok(Arc::clone(e));
+        }
+        let pulled = super::download::pull_models(
+            std::slice::from_ref(&self.model_uri),
+            &self.env,
+            None,
+            false,
+        )?;
+        let path = pulled
+            .first()
+            .map(|r| r.path.clone())
+            .ok_or_else(|| Error::InvalidInput {
+                reason: format!("model resolution returned no path for {}", self.model_uri),
+            })?;
+        let built = Arc::new(LlamaEmbedder::new(
+            &path,
+            &self.model_uri,
+            &self.env,
+            self.mode,
+        )?);
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+
+    fn delegate<T>(
+        &self,
+        f: impl FnOnce(&LlamaEmbedder) -> Result<T, InferenceError>,
+    ) -> Result<T, InferenceError> {
+        self.get()
+            .map_err(|e| InferenceError::Backend(e.to_string()))
+            .and_then(|e| f(&e))
+    }
+}
+
+impl std::fmt::Debug for LazyLlamaEmbedder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LazyLlamaEmbedder")
+            .field("model_uri", &self.model_uri)
+            .field("mode", &self.mode)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Embedder for LazyLlamaEmbedder {
+    fn model_id(&self) -> &str {
+        &self.model_uri
+    }
+
+    fn fingerprint_extra(&self) -> Option<&str> {
+        match self.mode {
+            EmbeddingMode::FullSequence => {
+                crate::config::EmbedPooling::FullSequence.fingerprint_extra()
+            }
+            EmbeddingMode::UpstreamTail => None,
+        }
+    }
+
+    fn tokenize(&self, text: &str) -> Result<Vec<u32>, InferenceError> {
+        self.delegate(|e| e.tokenize(text))
+    }
+
+    fn detokenize(&self, tokens: &[u32]) -> Result<String, InferenceError> {
+        self.delegate(|e| e.detokenize(tokens))
+    }
+
+    fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>, InferenceError> {
+        self.delegate(|e| e.embed(texts))
     }
 }
 
