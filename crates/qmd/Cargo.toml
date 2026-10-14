@@ -45,7 +45,7 @@ globset       = "0.4.20"
 regex         = "1.13.1"
 strsim        = "0.11.1"
 time          = { version = "0.3.36", features = ["formatting", "macros", "parsing"] }
-llama-cpp-2   = { version = "=0.1.158", optional = true }
+llama-cpp-2   = { version = "=0.1.159", optional = true }
 ureq          = { version = "3.4.2", optional = true }
 tracing       = "0.1.44"
 
