@@ -36,6 +36,7 @@ use llama_cpp_2::token::LlamaToken;
 use llama_cpp_2::{LlamaBackendDevice, LlamaBackendDeviceType, LogOptions};
 
 use crate::CancelToken;
+use crate::chunk::{is_js_ws, js_trim};
 use crate::env::Environment;
 use crate::error::{Error, Result};
 use crate::llm::{Embedder, Generator, InferenceError, Reranker};
@@ -70,8 +71,9 @@ content ::= [^\n]+
 // ============================================================================
 
 /// JS `parseInt(str, 10)`: sign + leading digit run, `None` on NaN.
+/// `parseInt` skips `StrWhiteSpaceChar` — the JS `\s` set.
 fn js_parse_int(raw: &str) -> Option<i64> {
-    let s = raw.trim_start();
+    let s = raw.trim_start_matches(is_js_ws);
     let (sign, digits) = s.strip_prefix('-').map_or_else(
         || (1i64, s.strip_prefix('+').unwrap_or(s)),
         |rest| (-1i64, rest),
@@ -97,7 +99,8 @@ pub fn context_size_env(raw: Option<&str>, default: u32) -> u32 {
 /// `Number()` parse, integer ≥ 1, capped at 8 — else automatic.
 #[must_use]
 pub fn resolve_parallelism_override(env_value: Option<&str>) -> Option<u32> {
-    let normalized = env_value?.trim();
+    // `envValue?.trim()` upstream (llm.ts:672) — JS trim.
+    let normalized = js_trim(env_value?);
     if normalized.is_empty() {
         return None;
     }
@@ -136,11 +139,12 @@ pub fn resolve_llama_gpu_mode(
     env_value: Option<&str>,
     force_cpu_value: Option<&str>,
 ) -> LlamaGpuMode {
-    let force_cpu = force_cpu_value.unwrap_or("").trim().to_lowercase();
+    // `?.trim().toLowerCase()` upstream (llm.ts:758, 763) — JS trim.
+    let force_cpu = js_trim(force_cpu_value.unwrap_or("")).to_lowercase();
     if !force_cpu.is_empty() && !GPU_OFF_VALUES.contains(&force_cpu.as_str()) {
         return LlamaGpuMode::Cpu;
     }
-    let normalized = env_value.unwrap_or("").trim().to_lowercase();
+    let normalized = js_trim(env_value.unwrap_or("")).to_lowercase();
     if normalized.is_empty() {
         return LlamaGpuMode::Auto;
     }
@@ -344,6 +348,22 @@ fn load_leaked_model(
     // their contexts for the pool's lifetime, so the model is intentionally
     // leaked to 'static. The OS reclaims the mapping at process exit.
     Ok(Box::leak(Box::new(model)))
+}
+
+/// Resolve `gpu_mode` to model params and load the GGUF. Both steps are
+/// model setup — upstream performs them inside `ensureXModel`, which
+/// throws (llm.ts:1365, 1635-1636) — so any failure here is
+/// [`Error::Model`], keeping `Error::Inference` for context-creation
+/// failures only.
+fn load_gguf(path: &Path, model_uri: &str, mode: LlamaGpuMode) -> Result<&'static LlamaModel> {
+    let params = model_params(mode).map_err(|source| Error::Model {
+        uri: model_uri.to_owned(),
+        source,
+    })?;
+    load_leaked_model(path, &params).map_err(|source| Error::Model {
+        uri: model_uri.to_owned(),
+        source,
+    })
 }
 
 // ============================================================================
@@ -635,8 +655,9 @@ impl LlamaEmbedder {
     /// build the worker pool from `env`.
     ///
     /// # Errors
-    /// [`Error::Model`] when the file fails to load; [`Error::Inference`]
-    /// when no embedding context can be created.
+    /// [`Error::Model`] when the model cannot be prepared or the file
+    /// fails to load; [`Error::Inference`] when no embedding context can
+    /// be created.
     pub fn new(
         path: &Path,
         model_uri: &str,
@@ -649,11 +670,7 @@ impl LlamaEmbedder {
             env.qmd_embed_context_size.as_deref(),
             DEFAULT_EMBED_CONTEXT_SIZE,
         );
-        let model =
-            load_leaked_model(path, &model_params(gpu_mode)?).map_err(|source| Error::Model {
-                uri: model_uri.to_owned(),
-                source,
-            })?;
+        let model = load_gguf(path, model_uri, gpu_mode)?;
         // Upstream resolveEmbedTokenLimit: max(1, min(ctx, train_ctx)).
         let trained = model.n_ctx_train();
         let token_limit = usize::try_from(if trained > 0 {
@@ -850,7 +867,7 @@ impl LazyLlamaEmbedder {
         f: impl FnOnce(&LlamaEmbedder) -> Result<T, InferenceError>,
     ) -> Result<T, InferenceError> {
         self.get()
-            .map_err(|e| InferenceError::Backend(e.to_string()))
+            .map_err(|e| InferenceError::ModelLoad(e.to_string()))
             .and_then(|e| f(&e))
     }
 }
@@ -1005,7 +1022,7 @@ impl LlamaReranker {
     /// metadata; build the context pool (`min(pool, 4)` upstream).
     ///
     /// # Errors
-    /// [`Error::Model`] on load/template failure; [`Error::Inference`]
+    /// [`Error::Model`] on params/load/template failure; [`Error::Inference`]
     /// when no ranking context can be created.
     pub fn new(path: &Path, model_uri: &str, env: &Environment) -> Result<Self> {
         let gpu_mode =
@@ -1014,11 +1031,7 @@ impl LlamaReranker {
             env.qmd_rerank_context_size.as_deref(),
             DEFAULT_RERANK_CONTEXT_SIZE,
         );
-        let model =
-            load_leaked_model(path, &model_params(gpu_mode)?).map_err(|source| Error::Model {
-                uri: model_uri.to_owned(),
-                source,
-            })?;
+        let model = load_gguf(path, model_uri, gpu_mode)?;
         let template: Arc<str> = model
             .meta_val_str("tokenizer.chat_template.rerank")
             .map_err(|e| Error::Model {
@@ -1239,8 +1252,8 @@ impl LlamaGenerator {
     /// per call, like upstream's per-call `LlamaContext`.
     ///
     /// # Errors
-    /// [`Error::Model`] on load failure; [`Error::Inference`] when the
-    /// worker cannot start.
+    /// [`Error::Model`] on params/load failure; [`Error::Inference`] when
+    /// the worker cannot start.
     pub fn new(path: &Path, model_uri: &str, env: &Environment) -> Result<Self> {
         let gpu_mode =
             resolve_llama_gpu_mode(env.qmd_llama_gpu.as_deref(), env.qmd_force_cpu.as_deref());
@@ -1248,11 +1261,7 @@ impl LlamaGenerator {
             env.qmd_expand_context_size.as_deref(),
             DEFAULT_EXPAND_CONTEXT_SIZE,
         );
-        let model =
-            load_leaked_model(path, &model_params(gpu_mode)?).map_err(|source| Error::Model {
-                uri: model_uri.to_owned(),
-                source,
-            })?;
+        let model = load_gguf(path, model_uri, gpu_mode)?;
         let pool = Pool::spawn(
             1,
             move || Ok(model),
@@ -1285,6 +1294,162 @@ impl Generator for LlamaGenerator {
             },
             &CancelToken::new(),
         )
+    }
+}
+
+// ============================================================================
+// Lazy reranker / generator — same resolve-on-first-call pattern as
+// `LazyLlamaEmbedder`.
+// ============================================================================
+
+/// Lazily-built [`LlamaReranker`] — resolves the GGUF path and loads
+/// the model on first rerank call.
+pub struct LazyLlamaReranker {
+    model_uri: String,
+    env: Environment,
+    inner: Mutex<Option<Arc<LlamaReranker>>>,
+}
+
+impl LazyLlamaReranker {
+    /// Wrap the reranker for `model_uri` without touching the network
+    /// or the model file.
+    #[must_use]
+    pub const fn new(model_uri: String, env: Environment) -> Self {
+        Self {
+            model_uri,
+            env,
+            inner: Mutex::new(None),
+        }
+    }
+
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the init lock must stay held across check-and-fill"
+    )]
+    fn get(&self) -> Result<Arc<LlamaReranker>> {
+        let mut slot = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(r) = slot.as_ref() {
+            return Ok(Arc::clone(r));
+        }
+        let pulled = super::download::pull_models(
+            std::slice::from_ref(&self.model_uri),
+            &self.env,
+            None,
+            false,
+        )?;
+        let path = pulled
+            .first()
+            .map(|r| r.path.clone())
+            .ok_or_else(|| Error::InvalidInput {
+                reason: format!("model resolution returned no path for {}", self.model_uri),
+            })?;
+        let built = Arc::new(LlamaReranker::new(&path, &self.model_uri, &self.env)?);
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+}
+
+impl std::fmt::Debug for LazyLlamaReranker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LazyLlamaReranker")
+            .field("model_uri", &self.model_uri)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Reranker for LazyLlamaReranker {
+    fn model_id(&self) -> &str {
+        &self.model_uri
+    }
+
+    fn rerank(&self, query: &str, docs: &[&str]) -> Result<Vec<f32>, InferenceError> {
+        match self.get() {
+            Ok(r) => r.rerank(query, docs),
+            // Only ranking-context creation failure degrades — upstream
+            // catches just `createRankingContext` (llm.ts:1374-1386),
+            // scoring every doc 0.5 (llm.ts:1743-1748). `LlamaReranker::new`
+            // reports that one case as `Error::Inference`.
+            Err(Error::Inference(e)) => {
+                tracing::warn!("reranker context unavailable ({e}); scoring all docs 0.5");
+                Ok(vec![0.5; docs.len()])
+            }
+            // Model resolution/download/load failures propagate —
+            // `ensureRerankModel` throws before the try (llm.ts:1365).
+            Err(e) => Err(InferenceError::ModelLoad(e.to_string())),
+        }
+    }
+}
+
+/// Lazily-built [`LlamaGenerator`] — resolves the GGUF path and loads
+/// the model on first expand call.
+pub struct LazyLlamaGenerator {
+    model_uri: String,
+    env: Environment,
+    inner: Mutex<Option<Arc<LlamaGenerator>>>,
+}
+
+impl LazyLlamaGenerator {
+    /// Wrap the generator for `model_uri` without touching the network
+    /// or the model file.
+    #[must_use]
+    pub const fn new(model_uri: String, env: Environment) -> Self {
+        Self {
+            model_uri,
+            env,
+            inner: Mutex::new(None),
+        }
+    }
+
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the init lock must stay held across check-and-fill"
+    )]
+    fn get(&self) -> Result<Arc<LlamaGenerator>> {
+        let mut slot = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(g) = slot.as_ref() {
+            return Ok(Arc::clone(g));
+        }
+        let pulled = super::download::pull_models(
+            std::slice::from_ref(&self.model_uri),
+            &self.env,
+            None,
+            false,
+        )?;
+        let path = pulled
+            .first()
+            .map(|r| r.path.clone())
+            .ok_or_else(|| Error::InvalidInput {
+                reason: format!("model resolution returned no path for {}", self.model_uri),
+            })?;
+        let built = Arc::new(LlamaGenerator::new(&path, &self.model_uri, &self.env)?);
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+}
+
+impl std::fmt::Debug for LazyLlamaGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LazyLlamaGenerator")
+            .field("model_uri", &self.model_uri)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Generator for LazyLlamaGenerator {
+    fn model_id(&self) -> &str {
+        &self.model_uri
+    }
+
+    fn expand(&self, query: &str) -> Result<String, InferenceError> {
+        self.get()
+            .map_err(|e| InferenceError::ModelLoad(e.to_string()))
+            .and_then(|g| g.expand(query))
     }
 }
 
@@ -1417,6 +1582,43 @@ mod tests {
         // negative index: drop |k| from the end
         assert_eq!(slice_head(100, -50), 50);
         assert_eq!(slice_head(10, -20), 0);
+    }
+
+    // Model resolution failures on lazy backends surface as
+    // `InferenceError::ModelLoad` (A3/A4) — never as a 0.5 rerank
+    // fallback or a silent expand error. A nonexistent local GGUF path
+    // fails inside `pull_models` without touching the network.
+    #[test]
+    #[allow(clippy::unwrap_used, reason = "idiomatic test-code patterns")]
+    fn lazy_backends_report_model_load_on_missing_gguf() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir
+            .path()
+            .join("missing.gguf")
+            .to_string_lossy()
+            .into_owned();
+        let env = Environment::default();
+
+        let reranker = LazyLlamaReranker::new(missing.clone(), env.clone());
+        let err_rerank = reranker.rerank("q", &["doc"]).unwrap_err();
+        assert!(
+            matches!(err_rerank, InferenceError::ModelLoad(_)),
+            "rerank: {err_rerank:?}"
+        );
+
+        let generator = LazyLlamaGenerator::new(missing.clone(), env.clone());
+        let err_expand = generator.expand("q").unwrap_err();
+        assert!(
+            matches!(err_expand, InferenceError::ModelLoad(_)),
+            "expand: {err_expand:?}"
+        );
+
+        let embedder = LazyLlamaEmbedder::new(missing, env, EmbeddingMode::UpstreamTail);
+        let err_embed = embedder.embed(&["q"]).unwrap_err();
+        assert!(
+            matches!(err_embed, InferenceError::ModelLoad(_)),
+            "embed: {err_embed:?}"
+        );
     }
 
     // `QMD_EMBED_PARALLELISM` feeds pool_size via Environment; keep the

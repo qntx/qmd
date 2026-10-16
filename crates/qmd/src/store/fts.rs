@@ -14,6 +14,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use rusqlite::{Connection, OptionalExtension, params};
 
+use crate::chunk::{JS_WS, is_js_ws, js_trim};
 use crate::error::{DbError, Result};
 
 /// Upstream `CJK_RUN_PATTERN` (store.ts:871): runs of Han, Hiragana,
@@ -78,7 +79,8 @@ fn contains_cjk(text: &str) -> bool {
 fn sanitize_fts5_phrase(phrase: &str) -> String {
     let normalized = normalize_cjk_for_fts(phrase);
     let mut out: Vec<String> = Vec::new();
-    for token in normalized.split_whitespace() {
+    // Upstream splits on `/\s+/` — the JS whitespace set (store.ts:896).
+    for token in normalized.split(is_js_ws) {
         out.extend(split_fts5_compound_term(token));
     }
     out.join(" ")
@@ -88,7 +90,8 @@ fn sanitize_fts5_phrase(phrase: &str) -> String {
 /// and whether it is negated.
 fn lex_fragment(term: &str, is_phrase: bool) -> Option<String> {
     if is_phrase || contains_cjk(term) {
-        let sanitized = sanitize_fts5_phrase(term.trim());
+        // Upstream `phrase.trim()` is JS trim (store.ts:3969).
+        let sanitized = sanitize_fts5_phrase(js_trim(term));
         return (!sanitized.is_empty()).then(|| format!("\"{sanitized}\""));
     }
     match split_fts5_compound_term(term).as_slice() {
@@ -112,13 +115,15 @@ fn lex_fragment(term: &str, is_phrase: bool) -> Option<String> {
     reason = "every index is bounds-checked against `s.len()` in the same statement; the lint cannot see it"
 )]
 pub fn build_fts5_query(query: &str) -> Option<String> {
-    let s: Vec<char> = query.trim().chars().collect();
+    // Upstream `query.trim()` and the `/\s/`/`/[\s"]/` character tests
+    // are JS whitespace — not `char::is_whitespace` (store.ts:3953-3984).
+    let s: Vec<char> = js_trim(query).chars().collect();
     let mut positive: Vec<String> = Vec::new();
     let mut negative: Vec<String> = Vec::new();
     let mut i = 0;
 
     while i < s.len() {
-        while i < s.len() && s[i].is_whitespace() {
+        while i < s.len() && is_js_ws(s[i]) {
             i += 1;
         }
         if i >= s.len() {
@@ -141,7 +146,7 @@ pub fn build_fts5_query(query: &str) -> Option<String> {
             lex_fragment(&phrase, true)
         } else {
             let start = i;
-            while i < s.len() && !s[i].is_whitespace() && s[i] != '"' {
+            while i < s.len() && !is_js_ws(s[i]) && s[i] != '"' {
                 i += 1;
             }
             let term: String = s[start..i].iter().collect();
@@ -185,14 +190,18 @@ pub fn validate_lex_query(query: &str) -> Option<&'static str> {
     None
 }
 
-/// Upstream `validateSemanticQuery` (store.ts:4064-4071): vec/hyde
-/// queries reject lex-style `-term` negation at token boundaries.
-/// `[A-Za-z0-9_]` mirrors JS `\w` (ASCII only), not the Unicode `\w`.
+/// Upstream `validateSemanticQuery` (store.ts:4064-4071).
+///
+/// Vec/hyde queries reject lex-style `-term` negation at token
+/// boundaries. `[A-Za-z0-9_]` mirrors JS `\w` (ASCII only), not the
+/// Unicode `\w`; `JS_WS` mirrors JS `\s` — Rust regex `\s` would
+/// wrongly include U+0085 and exclude U+FEFF.
 #[must_use]
 pub fn validate_semantic_query(query: &str) -> Option<&'static str> {
     static NEGATION: LazyLock<Regex> = LazyLock::new(|| {
         #[allow(clippy::expect_used, reason = "the pattern is a compile-time constant")]
-        Regex::new(r#"(^|\s)-[A-Za-z0-9_"]"#).expect("semantic-query validation pattern is valid")
+        Regex::new(&format!("(^|{JS_WS})-[A-Za-z0-9_\"]"))
+            .expect("semantic-query validation pattern is valid")
     });
     if NEGATION.is_match(query) {
         return Some(

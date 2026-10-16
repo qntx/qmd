@@ -315,7 +315,20 @@ pub fn utf16_to_byte_offset(text: &str, utf16_offset: usize) -> usize {
 /// plus U+FEFF. `\p{White_Space}` alone would wrongly match U+0085,
 /// which JS `\s` does not cover. Mirrors upstream (upstream-quirks.md
 /// Q16).
-const JS_WS: &str = r"[\u{9}-\u{d}\u{20}\u{a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]";
+pub(crate) const JS_WS: &str = r"[\u{9}-\u{d}\u{20}\u{a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]";
+
+/// JS `\s` as a `char` predicate — the same set as [`JS_WS`].
+pub(crate) const fn is_js_ws(c: char) -> bool {
+    matches!(c,
+        '\u{9}'..='\u{d}' | '\u{20}' | '\u{a0}' | '\u{1680}'
+        | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}'
+        | '\u{205f}' | '\u{3000}' | '\u{feff}')
+}
+
+/// JS `String.prototype.trim()` — trims the `\s` set.
+pub(crate) fn js_trim(s: &str) -> &str {
+    s.trim_matches(is_js_ws)
+}
 
 #[allow(
     clippy::expect_used,
@@ -744,4 +757,33 @@ pub fn chunk_document_by_tokens<'a, E: Embedder + ?Sized>(
         push_within_token_limit(embedder, chunk.text, chunk.pos, options, &mut results)?;
     }
     Ok(results)
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::missing_assert_message,
+    reason = "idiomatic test-code patterns"
+)]
+mod tests {
+    use super::*;
+
+    /// Pin [`is_js_ws`] and [`JS_WS`] to the same set over the whole
+    /// scalar range — the predicate and the char class must never
+    /// drift apart.
+    #[test]
+    fn is_js_ws_matches_js_ws_class() {
+        let re = Regex::new(&format!("^{JS_WS}$")).unwrap();
+        for u in 0_u32..=0x10_FFFF {
+            let Some(c) = char::from_u32(u) else {
+                continue; // surrogates are not scalar values
+            };
+            assert_eq!(
+                is_js_ws(c),
+                re.is_match(c.encode_utf8(&mut [0; 4])),
+                "U+{u:04X}"
+            );
+        }
+    }
 }
