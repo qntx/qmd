@@ -1,0 +1,1347 @@
+{
+  "upstream_commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
+  "upstream_version": "2.8.3",
+  "generated_at": "2026-10-15T08:28:37.097Z",
+  "cases": {
+    "cache_key": [
+      {
+        "url": "expandQuery",
+        "body": {
+          "query": "alpha bravo",
+          "model": "hf:Qwen/Qwen3-0.6B-GGUF"
+        },
+        "key": "e4dc81151269f9cbca44957b1a9c3fa813f6d44b7613083c3169286ad5330b74"
+      },
+      {
+        "url": "expandQuery",
+        "body": {
+          "query": "C++ \"templates\"\nline2",
+          "model": "m-gen"
+        },
+        "key": "8717059955a85018565eab1bb7a2a9028c75df7eb01bee32a4706de011c723f6"
+      },
+      {
+        "url": "expandQuery",
+        "body": {
+          "query": "日本語 クエリ 🚀",
+          "model": "m-gen"
+        },
+        "key": "84df52550633ffb7199b251990bb2b5e0f0421d68479d81b8d08e036251d62f7"
+      },
+      {
+        "url": "rerank",
+        "body": {
+          "query": "intent text\n\nalpha",
+          "model": "m-rerank",
+          "chunk": "chunk body"
+        },
+        "key": "450f2674a5a4848a0b0ef76b4de17ec3690df8e1e0f5e6a447bd609a5e2ad50b"
+      },
+      {
+        "url": "rerank",
+        "body": {
+          "query": "q",
+          "model": "m-rerank",
+          "chunk": ""
+        },
+        "key": "ed1089c43ddf397981633a2c35554b7f291789dabf71e7612d4a4cbfafa18385"
+      },
+      {
+        "url": "rerank",
+        "body": {
+          "model": "m-rerank",
+          "chunk": "no query field"
+        },
+        "key": "ce2e23659c250dbf31ad6f711d7915e59f3639a977f4687960d879cec0130009"
+      }
+    ],
+    "rrf": [
+      {
+        "name": "single_list",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.8
+            },
+            {
+              "file": "qmd://docs/c.md",
+              "displayPath": "docs/c.md",
+              "title": "qmd://docs/c.md",
+              "body": "body of qmd://docs/c.md",
+              "score": 0.7
+            }
+          ]
+        ],
+        "weights": [
+          2
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "alpha"
+          }
+        ],
+        "k": 60,
+        "fused": [
+          {
+            "file": "qmd://docs/a.md",
+            "score": 0.08278688524590164
+          },
+          {
+            "file": "qmd://docs/b.md",
+            "score": 0.052258064516129035
+          },
+          {
+            "file": "qmd://docs/c.md",
+            "score": 0.05174603174603175
+          }
+        ]
+      },
+      {
+        "name": "merge_across_lists_original_2x",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.92
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.81
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.77
+            },
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.65
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/c.md",
+              "displayPath": "docs/c.md",
+              "title": "qmd://docs/c.md",
+              "body": "body of qmd://docs/c.md",
+              "score": 0.7
+            }
+          ]
+        ],
+        "weights": [
+          2,
+          1,
+          2
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "alpha"
+          },
+          {
+            "source": "fts",
+            "queryType": "lex",
+            "query": "alpha terms"
+          },
+          {
+            "source": "vec",
+            "queryType": "original",
+            "query": "alpha"
+          }
+        ],
+        "k": 60,
+        "fused": [
+          {
+            "file": "qmd://docs/a.md",
+            "score": 0.09891591750396617
+          },
+          {
+            "file": "qmd://docs/b.md",
+            "score": 0.09865150713907986
+          },
+          {
+            "file": "qmd://docs/c.md",
+            "score": 0.08278688524590164
+          }
+        ]
+      },
+      {
+        "name": "missing_weight_defaults_to_one",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.9
+            }
+          ]
+        ],
+        "weights": [],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          },
+          {
+            "source": "vec",
+            "queryType": "vec",
+            "query": "q v"
+          }
+        ],
+        "k": 60,
+        "fused": [
+          {
+            "file": "qmd://docs/a.md",
+            "score": 0.06639344262295083
+          },
+          {
+            "file": "qmd://docs/b.md",
+            "score": 0.06639344262295083
+          }
+        ]
+      },
+      {
+        "name": "custom_k",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.5
+            }
+          ]
+        ],
+        "weights": [
+          1
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          }
+        ],
+        "k": 30,
+        "fused": [
+          {
+            "file": "qmd://docs/a.md",
+            "score": 0.08225806451612903
+          },
+          {
+            "file": "qmd://docs/b.md",
+            "score": 0.051250000000000004
+          }
+        ]
+      },
+      {
+        "name": "rank_bonus_boundary",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/r1.md",
+              "displayPath": "docs/r1.md",
+              "title": "qmd://docs/r1.md",
+              "body": "body of qmd://docs/r1.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/r2.md",
+              "displayPath": "docs/r2.md",
+              "title": "qmd://docs/r2.md",
+              "body": "body of qmd://docs/r2.md",
+              "score": 0.8
+            },
+            {
+              "file": "qmd://docs/r3.md",
+              "displayPath": "docs/r3.md",
+              "title": "qmd://docs/r3.md",
+              "body": "body of qmd://docs/r3.md",
+              "score": 0.7
+            },
+            {
+              "file": "qmd://docs/r4.md",
+              "displayPath": "docs/r4.md",
+              "title": "qmd://docs/r4.md",
+              "body": "body of qmd://docs/r4.md",
+              "score": 0.6
+            }
+          ]
+        ],
+        "weights": [
+          1
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "r"
+          }
+        ],
+        "k": 60,
+        "fused": [
+          {
+            "file": "qmd://docs/r1.md",
+            "score": 0.06639344262295083
+          },
+          {
+            "file": "qmd://docs/r2.md",
+            "score": 0.03612903225806452
+          },
+          {
+            "file": "qmd://docs/r3.md",
+            "score": 0.035873015873015876
+          },
+          {
+            "file": "qmd://docs/r4.md",
+            "score": 0.015625
+          }
+        ]
+      }
+    ],
+    "rrf_trace": [
+      {
+        "name": "single_list",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.8
+            },
+            {
+              "file": "qmd://docs/c.md",
+              "displayPath": "docs/c.md",
+              "title": "qmd://docs/c.md",
+              "body": "body of qmd://docs/c.md",
+              "score": 0.7
+            }
+          ]
+        ],
+        "weights": [
+          2
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "alpha"
+          }
+        ],
+        "k": 60,
+        "trace": {
+          "qmd://docs/a.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 1,
+                "weight": 2,
+                "backendScore": 0.9,
+                "rrfContribution": 0.03278688524590164
+              }
+            ],
+            "baseScore": 0.03278688524590164,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.08278688524590164
+          },
+          "qmd://docs/b.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 2,
+                "weight": 2,
+                "backendScore": 0.8,
+                "rrfContribution": 0.03225806451612903
+              }
+            ],
+            "baseScore": 0.03225806451612903,
+            "topRank": 2,
+            "topRankBonus": 0.02,
+            "totalScore": 0.052258064516129035
+          },
+          "qmd://docs/c.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 3,
+                "weight": 2,
+                "backendScore": 0.7,
+                "rrfContribution": 0.031746031746031744
+              }
+            ],
+            "baseScore": 0.031746031746031744,
+            "topRank": 3,
+            "topRankBonus": 0.02,
+            "totalScore": 0.05174603174603175
+          }
+        }
+      },
+      {
+        "name": "merge_across_lists_original_2x",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.92
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.81
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.77
+            },
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.65
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/c.md",
+              "displayPath": "docs/c.md",
+              "title": "qmd://docs/c.md",
+              "body": "body of qmd://docs/c.md",
+              "score": 0.7
+            }
+          ]
+        ],
+        "weights": [
+          2,
+          1,
+          2
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "alpha"
+          },
+          {
+            "source": "fts",
+            "queryType": "lex",
+            "query": "alpha terms"
+          },
+          {
+            "source": "vec",
+            "queryType": "original",
+            "query": "alpha"
+          }
+        ],
+        "k": 60,
+        "trace": {
+          "qmd://docs/a.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 1,
+                "weight": 2,
+                "backendScore": 0.92,
+                "rrfContribution": 0.03278688524590164
+              },
+              {
+                "listIndex": 1,
+                "source": "fts",
+                "queryType": "lex",
+                "query": "alpha terms",
+                "rank": 2,
+                "weight": 1,
+                "backendScore": 0.65,
+                "rrfContribution": 0.016129032258064516
+              }
+            ],
+            "baseScore": 0.04891591750396616,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.09891591750396617
+          },
+          "qmd://docs/b.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 2,
+                "weight": 2,
+                "backendScore": 0.81,
+                "rrfContribution": 0.03225806451612903
+              },
+              {
+                "listIndex": 1,
+                "source": "fts",
+                "queryType": "lex",
+                "query": "alpha terms",
+                "rank": 1,
+                "weight": 1,
+                "backendScore": 0.77,
+                "rrfContribution": 0.01639344262295082
+              }
+            ],
+            "baseScore": 0.048651507139079855,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.09865150713907986
+          },
+          "qmd://docs/c.md": {
+            "contributions": [
+              {
+                "listIndex": 2,
+                "source": "vec",
+                "queryType": "original",
+                "query": "alpha",
+                "rank": 1,
+                "weight": 2,
+                "backendScore": 0.7,
+                "rrfContribution": 0.03278688524590164
+              }
+            ],
+            "baseScore": 0.03278688524590164,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.08278688524590164
+          }
+        }
+      },
+      {
+        "name": "missing_weight_defaults_to_one",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            }
+          ],
+          [
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.9
+            }
+          ]
+        ],
+        "weights": [],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          },
+          {
+            "source": "vec",
+            "queryType": "vec",
+            "query": "q v"
+          }
+        ],
+        "k": 60,
+        "trace": {
+          "qmd://docs/a.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "q",
+                "rank": 1,
+                "weight": 1,
+                "backendScore": 0.9,
+                "rrfContribution": 0.01639344262295082
+              }
+            ],
+            "baseScore": 0.01639344262295082,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.06639344262295083
+          },
+          "qmd://docs/b.md": {
+            "contributions": [
+              {
+                "listIndex": 1,
+                "source": "vec",
+                "queryType": "vec",
+                "query": "q v",
+                "rank": 1,
+                "weight": 1,
+                "backendScore": 0.9,
+                "rrfContribution": 0.01639344262295082
+              }
+            ],
+            "baseScore": 0.01639344262295082,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.06639344262295083
+          }
+        }
+      },
+      {
+        "name": "custom_k",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/a.md",
+              "displayPath": "docs/a.md",
+              "title": "qmd://docs/a.md",
+              "body": "body of qmd://docs/a.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/b.md",
+              "displayPath": "docs/b.md",
+              "title": "qmd://docs/b.md",
+              "body": "body of qmd://docs/b.md",
+              "score": 0.5
+            }
+          ]
+        ],
+        "weights": [
+          1
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          }
+        ],
+        "k": 30,
+        "trace": {
+          "qmd://docs/a.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "q",
+                "rank": 1,
+                "weight": 1,
+                "backendScore": 0.9,
+                "rrfContribution": 0.03225806451612903
+              }
+            ],
+            "baseScore": 0.03225806451612903,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.08225806451612903
+          },
+          "qmd://docs/b.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "q",
+                "rank": 2,
+                "weight": 1,
+                "backendScore": 0.5,
+                "rrfContribution": 0.03125
+              }
+            ],
+            "baseScore": 0.03125,
+            "topRank": 2,
+            "topRankBonus": 0.02,
+            "totalScore": 0.051250000000000004
+          }
+        }
+      },
+      {
+        "name": "rank_bonus_boundary",
+        "lists": [
+          [
+            {
+              "file": "qmd://docs/r1.md",
+              "displayPath": "docs/r1.md",
+              "title": "qmd://docs/r1.md",
+              "body": "body of qmd://docs/r1.md",
+              "score": 0.9
+            },
+            {
+              "file": "qmd://docs/r2.md",
+              "displayPath": "docs/r2.md",
+              "title": "qmd://docs/r2.md",
+              "body": "body of qmd://docs/r2.md",
+              "score": 0.8
+            },
+            {
+              "file": "qmd://docs/r3.md",
+              "displayPath": "docs/r3.md",
+              "title": "qmd://docs/r3.md",
+              "body": "body of qmd://docs/r3.md",
+              "score": 0.7
+            },
+            {
+              "file": "qmd://docs/r4.md",
+              "displayPath": "docs/r4.md",
+              "title": "qmd://docs/r4.md",
+              "body": "body of qmd://docs/r4.md",
+              "score": 0.6
+            }
+          ]
+        ],
+        "weights": [
+          1
+        ],
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "r"
+          }
+        ],
+        "k": 60,
+        "trace": {
+          "qmd://docs/r1.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "r",
+                "rank": 1,
+                "weight": 1,
+                "backendScore": 0.9,
+                "rrfContribution": 0.01639344262295082
+              }
+            ],
+            "baseScore": 0.01639344262295082,
+            "topRank": 1,
+            "topRankBonus": 0.05,
+            "totalScore": 0.06639344262295083
+          },
+          "qmd://docs/r2.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "r",
+                "rank": 2,
+                "weight": 1,
+                "backendScore": 0.8,
+                "rrfContribution": 0.016129032258064516
+              }
+            ],
+            "baseScore": 0.016129032258064516,
+            "topRank": 2,
+            "topRankBonus": 0.02,
+            "totalScore": 0.03612903225806452
+          },
+          "qmd://docs/r3.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "r",
+                "rank": 3,
+                "weight": 1,
+                "backendScore": 0.7,
+                "rrfContribution": 0.015873015873015872
+              }
+            ],
+            "baseScore": 0.015873015873015872,
+            "topRank": 3,
+            "topRankBonus": 0.02,
+            "totalScore": 0.035873015873015876
+          },
+          "qmd://docs/r4.md": {
+            "contributions": [
+              {
+                "listIndex": 0,
+                "source": "fts",
+                "queryType": "original",
+                "query": "r",
+                "rank": 4,
+                "weight": 1,
+                "backendScore": 0.6,
+                "rrfContribution": 0.015625
+              }
+            ],
+            "baseScore": 0.015625,
+            "topRank": 4,
+            "topRankBonus": 0,
+            "totalScore": 0.015625
+          }
+        }
+      }
+    ],
+    "hybrid_weights": [
+      {
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          },
+          {
+            "source": "fts",
+            "queryType": "lex",
+            "query": "q lex"
+          },
+          {
+            "source": "vec",
+            "queryType": "original",
+            "query": "q"
+          },
+          {
+            "source": "vec",
+            "queryType": "vec",
+            "query": "q vec"
+          },
+          {
+            "source": "vec",
+            "queryType": "hyde",
+            "query": "q hyde"
+          }
+        ],
+        "weights": [
+          2,
+          1,
+          2,
+          1,
+          1
+        ]
+      },
+      {
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "original",
+            "query": "q"
+          }
+        ],
+        "weights": [
+          2
+        ]
+      },
+      {
+        "metas": [
+          {
+            "source": "fts",
+            "queryType": "lex",
+            "query": "a"
+          },
+          {
+            "source": "fts",
+            "queryType": "vec",
+            "query": "b"
+          }
+        ],
+        "weights": [
+          1,
+          1
+        ]
+      }
+    ],
+    "parse_query_doc": [
+      {
+        "input": "just a plain query",
+        "result": null,
+        "error": null
+      },
+      {
+        "input": "expand: something to expand",
+        "result": null,
+        "error": null
+      },
+      {
+        "input": "lex: alpha terms\nvec: semantic variant\nhyde: hypothetical answer",
+        "result": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "alpha terms",
+              "line": 1
+            },
+            {
+              "type": "vec",
+              "query": "semantic variant",
+              "line": 2
+            },
+            {
+              "type": "hyde",
+              "query": "hypothetical answer",
+              "line": 3
+            }
+          ]
+        },
+        "error": null
+      },
+      {
+        "input": "intent: focus on tradeoffs\nlex: cap theorem",
+        "result": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "cap theorem",
+              "line": 2
+            }
+          ],
+          "intent": "focus on tradeoffs"
+        },
+        "error": null
+      },
+      {
+        "input": "vec: embeddings only\nintent: keep it short",
+        "result": {
+          "searches": [
+            {
+              "type": "vec",
+              "query": "embeddings only",
+              "line": 1
+            }
+          ],
+          "intent": "keep it short"
+        },
+        "error": null
+      },
+      {
+        "input": "lex: one\nLEX: two\nVec: three\nHYDE: four",
+        "result": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "one",
+              "line": 1
+            },
+            {
+              "type": "lex",
+              "query": "two",
+              "line": 2
+            },
+            {
+              "type": "vec",
+              "query": "three",
+              "line": 3
+            },
+            {
+              "type": "hyde",
+              "query": "four",
+              "line": 4
+            }
+          ]
+        },
+        "error": null
+      },
+      {
+        "input": "lex: trailing spaces   \n\n  \nvec: after blanks",
+        "result": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "trailing spaces",
+              "line": 1
+            },
+            {
+              "type": "vec",
+              "query": "after blanks",
+              "line": 4
+            }
+          ]
+        },
+        "error": null
+      },
+      {
+        "input": "expand: first\nlex: second",
+        "result": null,
+        "error": "Line 1 starts with expand:, but query documents cannot mix expand with typed lines. Submit a single expand query instead."
+      },
+      {
+        "input": "lex: first\nexpand: second",
+        "result": null,
+        "error": "Line 2 starts with expand:, but query documents cannot mix expand with typed lines. Submit a single expand query instead."
+      },
+      {
+        "input": "intent: only intent no searches",
+        "result": null,
+        "error": "intent: cannot appear alone. Add at least one lex:, vec:, or hyde: line."
+      },
+      {
+        "input": "intent: dup one\nintent: dup two\nlex: x",
+        "result": null,
+        "error": "Line 2: only one intent: line is allowed per query document."
+      },
+      {
+        "input": "lex:",
+        "result": null,
+        "error": "Line 1 (lex:) must include text."
+      },
+      {
+        "input": "vec:   ",
+        "result": null,
+        "error": "Line 1 (vec:) must include text."
+      },
+      {
+        "input": "intent:  ",
+        "result": null,
+        "error": "Line 1: intent: must include text."
+      },
+      {
+        "input": "lex: ok\nthis line lacks a prefix\nvec: tail",
+        "result": null,
+        "error": "Line 2 is missing a lex:/vec:/hyde:/intent: prefix. Each line in a query document must start with one."
+      },
+      {
+        "input": "lex: ok\nrandom middle line",
+        "result": null,
+        "error": "Line 2 is missing a lex:/vec:/hyde:/intent: prefix. Each line in a query document must start with one."
+      },
+      {
+        "input": "two plain lines\nsecond plain line",
+        "result": null,
+        "error": "Line 1 is missing a lex:/vec:/hyde:/intent: prefix. Each line in a query document must start with one."
+      },
+      {
+        "input": "\n\n",
+        "result": null,
+        "error": null
+      },
+      {
+        "input": "   ",
+        "result": null,
+        "error": null
+      },
+      {
+        "input": "lex: a\nlex: b\nlex: c",
+        "result": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "a",
+              "line": 1
+            },
+            {
+              "type": "lex",
+              "query": "b",
+              "line": 2
+            },
+            {
+              "type": "lex",
+              "query": "c",
+              "line": 3
+            }
+          ]
+        },
+        "error": null
+      }
+    ],
+    "intent_terms": [
+      {
+        "intent": "quickly find the C++ template metaprogramming guide",
+        "terms": [
+          "quickly",
+          "template",
+          "metaprogramming",
+          "guide"
+        ]
+      },
+      {
+        "intent": "I need help with on-call runbooks and post-mortems",
+        "terms": [
+          "help",
+          "on-call",
+          "runbooks",
+          "post-mortems"
+        ]
+      },
+      {
+        "intent": "the quick brown fox jumps over the lazy dog",
+        "terms": [
+          "quick",
+          "brown",
+          "fox",
+          "jumps",
+          "over",
+          "lazy",
+          "dog"
+        ]
+      },
+      {
+        "intent": "a an the of to in for on at by with",
+        "terms": []
+      },
+      {
+        "intent": "multi-word state-of-the-art hyphenated terms keep internal dashes",
+        "terms": [
+          "multi-word",
+          "state-of-the-art",
+          "hyphenated",
+          "terms",
+          "keep",
+          "internal",
+          "dashes"
+        ]
+      },
+      {
+        "intent": "UPPERCASE MixedCase lowercase",
+        "terms": [
+          "uppercase",
+          "mixedcase",
+          "lowercase"
+        ]
+      },
+      {
+        "intent": "trailing punctuation, like commas, periods! and? question—marks…",
+        "terms": [
+          "trailing",
+          "punctuation",
+          "like",
+          "commas",
+          "periods",
+          "question—marks"
+        ]
+      },
+      {
+        "intent": "emoji 🚀 rocket and ☕ coffee symbols",
+        "terms": [
+          "emoji",
+          "rocket",
+          "coffee",
+          "symbols"
+        ]
+      },
+      {
+        "intent": "résumé café naïve übermensch",
+        "terms": [
+          "résumé",
+          "café",
+          "naïve",
+          "übermensch"
+        ]
+      },
+      {
+        "intent": "single x y z letters filtered",
+        "terms": [
+          "single",
+          "letters",
+          "filtered"
+        ]
+      }
+    ],
+    "snippet": [
+      {
+        "body": "# Notes\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again\nlast line\n",
+        "query": "alpha",
+        "maxLen": 500,
+        "chunkPos": null,
+        "chunkLen": null,
+        "intent": null,
+        "result": {
+          "line": 3,
+          "snippet": "@@ -2,4 @@ (1 before, 2 after)\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again",
+          "linesBefore": 1,
+          "linesAfter": 2,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "# Notes\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again\nlast line\n",
+        "query": "alpha",
+        "maxLen": 60,
+        "chunkPos": null,
+        "chunkLen": null,
+        "intent": null,
+        "result": {
+          "line": 3,
+          "snippet": "@@ -2,4 @@ (1 before, 2 after)\n\nfirst line about alpha\nsecond line is filler\nthird line ...",
+          "linesBefore": 1,
+          "linesAfter": 2,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "line 1 filler\nline 2 filler\nline 3 filler\nline 4 filler\nline 5 filler\nline 6 filler\nline 7 filler\nline 8 filler\nline 9 filler\nline 10 filler\nline 11 filler\nline 12 filler\nline 13 alpha needle here\nline 14 filler\nline 15 filler\nline 16 filler\nline 17 filler\nline 18 filler\nline 19 filler\nline 20 filler\nline 21 filler\nline 22 filler\nline 23 filler\nline 24 filler\nline 25 filler\nline 26 filler\nline 27 filler\nline 28 filler\nline 29 filler\nline 30 filler",
+        "query": "needle",
+        "maxLen": 500,
+        "chunkPos": 0,
+        "chunkLen": 400,
+        "intent": null,
+        "result": {
+          "line": 13,
+          "snippet": "@@ -12,4 @@ (11 before, 15 after)\nline 12 filler\nline 13 alpha needle here\nline 14 filler\nline 15 filler",
+          "linesBefore": 11,
+          "linesAfter": 15,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "line 1 filler\nline 2 filler\nline 3 filler\nline 4 filler\nline 5 filler\nline 6 filler\nline 7 filler\nline 8 filler\nline 9 filler\nline 10 filler\nline 11 filler\nline 12 filler\nline 13 alpha needle here\nline 14 filler\nline 15 filler\nline 16 filler\nline 17 filler\nline 18 filler\nline 19 filler\nline 20 filler\nline 21 filler\nline 22 filler\nline 23 filler\nline 24 filler\nline 25 filler\nline 26 filler\nline 27 filler\nline 28 filler\nline 29 filler\nline 30 filler",
+        "query": "nomatch",
+        "maxLen": 500,
+        "chunkPos": 0,
+        "chunkLen": 400,
+        "intent": null,
+        "result": {
+          "line": 1,
+          "snippet": "@@ -1,3 @@ (0 before, 27 after)\nline 1 filler\nline 2 filler\nline 3 filler",
+          "linesBefore": 0,
+          "linesAfter": 27,
+          "snippetLines": 3
+        }
+      },
+      {
+        "body": "line 1 filler\nline 2 filler\nline 3 filler\nline 4 filler\nline 5 filler\nline 6 filler\nline 7 filler\nline 8 filler\nline 9 filler\nline 10 filler\nline 11 filler\nline 12 filler\nline 13 alpha needle here\nline 14 filler\nline 15 filler\nline 16 filler\nline 17 filler\nline 18 filler\nline 19 filler\nline 20 filler\nline 21 filler\nline 22 filler\nline 23 filler\nline 24 filler\nline 25 filler\nline 26 filler\nline 27 filler\nline 28 filler\nline 29 filler\nline 30 filler",
+        "query": "nomatch",
+        "maxLen": 500,
+        "chunkPos": 100,
+        "chunkLen": 400,
+        "intent": null,
+        "result": {
+          "line": 8,
+          "snippet": "@@ -7,4 @@ (6 before, 20 after)\nline 7 filler\nline 8 filler\nline 9 filler\nline 10 filler",
+          "linesBefore": 6,
+          "linesAfter": 20,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "🚀🚀🚀 intro line\nsecond line alpha\nthird line\n",
+        "query": "alpha",
+        "maxLen": 500,
+        "chunkPos": 4,
+        "chunkLen": 400,
+        "intent": null,
+        "result": {
+          "line": 2,
+          "snippet": "@@ -1,4 @@ (0 before, 0 after)\n🚀🚀🚀 intro line\nsecond line alpha\nthird line\n",
+          "linesBefore": 0,
+          "linesAfter": 0,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "header\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx alpha\nyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n",
+        "query": "alpha",
+        "maxLen": 500,
+        "chunkPos": null,
+        "chunkLen": null,
+        "intent": null,
+        "result": {
+          "line": 2,
+          "snippet": "@@ -1,4 @@ (0 before, 0 after)\nheader\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...",
+          "linesBefore": 0,
+          "linesAfter": 0,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "# Notes\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again\nlast line\n",
+        "query": "zzz",
+        "maxLen": 500,
+        "chunkPos": null,
+        "chunkLen": null,
+        "intent": "about alpha topics",
+        "result": {
+          "line": 3,
+          "snippet": "@@ -2,4 @@ (1 before, 2 after)\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again",
+          "linesBefore": 1,
+          "linesAfter": 2,
+          "snippetLines": 4
+        }
+      },
+      {
+        "body": "# Notes\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again\nlast line\n",
+        "query": "zzz alpha",
+        "maxLen": 500,
+        "chunkPos": null,
+        "chunkLen": null,
+        "intent": "filler second",
+        "result": {
+          "line": 3,
+          "snippet": "@@ -2,4 @@ (1 before, 2 after)\n\nfirst line about alpha\nsecond line is filler\nthird line mentions alpha again",
+          "linesBefore": 1,
+          "linesAfter": 2,
+          "snippetLines": 4
+        }
+      }
+    ]
+  }
+}

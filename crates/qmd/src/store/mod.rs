@@ -15,12 +15,15 @@
 //! The `application_id` PRAGMA carries [`APPLICATION_ID`] to reject foreign
 //! databases (including upstream `qmd` indexes) before any write.
 
+pub(crate) mod cache;
 pub(crate) mod collections;
 pub(crate) mod document;
 pub(crate) mod documents;
 pub(crate) mod embed;
 pub(crate) mod fts;
+pub(crate) mod hybrid;
 pub(crate) mod maintenance;
+pub(crate) mod rrf;
 pub(crate) mod search;
 pub(crate) mod status;
 pub(crate) mod vec;

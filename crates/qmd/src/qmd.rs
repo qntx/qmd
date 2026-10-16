@@ -7,17 +7,22 @@
 //! then syncs the `store_collections`/`store_config` mirror.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use rusqlite::Connection;
 
+use crate::chunk::ChunkStrategy;
 use crate::config::{Collection, Config};
 use crate::document::{Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions};
 use crate::env::Environment;
 use crate::error::{Error, Result};
-use crate::llm::{Capability, Embedder, Generator, Reranker};
+#[cfg(not(feature = "llama"))]
+use crate::llm::Capability;
+use crate::llm::{Embedder, Generator, Reranker};
 use crate::maintenance::Maintenance;
 use crate::store;
+use crate::store::hybrid::SearchHooks;
 use crate::store::search::SearchResult;
 
 /// How the [`Qmd`] handle resolves its configuration.
@@ -217,8 +222,8 @@ pub struct EmbedOptions {
     /// integer".
     pub max_batch_bytes: usize,
     /// Chunking strategy (upstream `chunkStrategy`, default
-    /// [`crate::chunk::ChunkStrategy::Regex`]).
-    pub chunk_strategy: crate::chunk::ChunkStrategy,
+    /// [`ChunkStrategy::Regex`]).
+    pub chunk_strategy: ChunkStrategy,
     /// Wall-clock cap for the whole run (upstream `maxDurationMs`,
     /// default 30 minutes). `None` or `Some(Duration::ZERO)` disables
     /// the cap (upstream `maxDuration <= 0` skips the timer).
@@ -236,7 +241,7 @@ impl Default for EmbedOptions {
             collection: None,
             max_docs_per_batch: store::embed::DEFAULT_MAX_DOCS_PER_BATCH,
             max_batch_bytes: store::embed::DEFAULT_MAX_BATCH_BYTES,
-            chunk_strategy: crate::chunk::ChunkStrategy::Regex,
+            chunk_strategy: ChunkStrategy::Regex,
             max_duration: Some(store::embed::DEFAULT_MAX_DURATION),
             cancel: crate::llm::CancelToken::new(),
         }
@@ -310,6 +315,95 @@ pub struct VectorOptions {
     pub collections: Option<Vec<String>>,
 }
 
+/// Input for [`Qmd::search`] — how the query text reaches the
+/// pipeline.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum SearchInput {
+    /// A raw user query — runs the expansion-based hybrid pipeline
+    /// (upstream `hybridQuery`).
+    Query(String),
+    /// Pre-expanded typed searches from
+    /// [`crate::query::parse_query_document`] — runs the structured
+    /// pipeline (upstream `structuredSearch`).
+    Expanded(Vec<crate::query::ExpandedQuery>),
+}
+
+/// Options for [`Qmd::search`], mirroring upstream
+/// `HybridQueryOptions`/`StructuredSearchOptions` (minus the P3
+/// metadata `filter`).
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct SearchOptions {
+    /// The query input.
+    pub input: SearchInput,
+    /// Domain intent hint — prepended to the rerank query and used in
+    /// chunk selection / snippets. Also disables the BM25
+    /// strong-signal bypass in the hybrid pipeline (upstream
+    /// store.ts:5561-5563).
+    pub intent: Option<String>,
+    /// Enable reranking (default `true`; `false` = upstream
+    /// `skipRerank`).
+    pub rerank: bool,
+    /// Collection scope. `None` or `Some([])` means all collections —
+    /// `search` normalizes `Some([])` to `None`, mirroring upstream's
+    /// `[]` → `undefined` (index.ts:436-449).
+    pub collections: Option<Vec<String>>,
+    /// Maximum results (default 10).
+    pub limit: usize,
+    /// RRF candidates kept before chunk selection / reranking
+    /// (default 40).
+    pub candidate_limit: usize,
+    /// Minimum blended score (default 0).
+    pub min_score: f64,
+    /// Emit per-file score traces on each result.
+    pub explain: bool,
+    /// Chunking strategy for best-chunk selection.
+    pub chunk_strategy: ChunkStrategy,
+}
+
+impl Default for SearchOptions {
+    fn default() -> Self {
+        Self {
+            input: SearchInput::Query(String::new()),
+            intent: None,
+            rerank: true,
+            collections: None,
+            limit: 10,
+            candidate_limit: store::hybrid::RERANK_CANDIDATE_LIMIT,
+            min_score: 0.0,
+            explain: false,
+            chunk_strategy: ChunkStrategy::Auto,
+        }
+    }
+}
+
+/// Options for [`Qmd::vector_query`].
+///
+/// Mirrors upstream `VectorSearchOptions` for the pipeline variant
+/// (store.ts:5839-5846) — upstream's `intent` field is ignored there
+/// (quirk Q9), so the Rust API does not take one.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct VectorQueryOptions {
+    /// Collection scope; `None` or empty = all.
+    pub collections: Option<Vec<String>>,
+    /// Maximum results (default 10).
+    pub limit: usize,
+    /// Minimum cosine score (default 0.3).
+    pub min_score: f64,
+}
+
+impl Default for VectorQueryOptions {
+    fn default() -> Self {
+        Self {
+            collections: None,
+            limit: 10,
+            min_score: 0.3,
+        }
+    }
+}
+
 /// One progress event from [`Qmd::update`], mirroring upstream
 /// `UpdateProgress`.
 #[derive(Debug, Clone)]
@@ -361,8 +455,11 @@ pub struct Qmd {
     /// first use (architecture §3.2; upstream resolves the model inside
     /// the embed path, llm.ts:1128-1133).
     embedder: Mutex<Option<Arc<dyn Embedder>>>,
-    reranker: Option<Arc<dyn Reranker>>,
-    generator: Option<Arc<dyn Generator>>,
+    /// Same lazy-build pattern for rerank/query-expansion backends.
+    reranker: Mutex<Option<Arc<dyn Reranker>>>,
+    generator: Mutex<Option<Arc<dyn Generator>>>,
+    /// `llm_cache` write counter for the deterministic prune (T5).
+    cache_writes: AtomicUsize,
 }
 
 impl std::fmt::Debug for Qmd {
@@ -457,8 +554,9 @@ impl QmdBuilder {
             db_path: self.db_path,
             env: self.env,
             embedder: Mutex::new(self.embedder),
-            reranker: self.reranker,
-            generator: self.generator,
+            reranker: Mutex::new(self.reranker),
+            generator: Mutex::new(self.generator),
+            cache_writes: AtomicUsize::new(0),
         })
     }
 }
@@ -535,11 +633,23 @@ impl Qmd {
         reason = "the init lock must stay held across check-and-fill"
     )]
     pub fn embedder(&self) -> Result<Arc<dyn Embedder>> {
+        self.embedder_with(&self.config()?)
+    }
+
+    /// Resolve the embedder against an already-loaded `config`.
+    /// `load_config` may lock `self.conn` on the `DbOnly` source, so
+    /// callers holding the connection guard must resolve the config
+    /// first and use this variant — never [`Qmd::embedder`].
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the check-and-fill lock must stay held across lazy construction"
+    )]
+    fn embedder_with(&self, config: &Config) -> Result<Arc<dyn Embedder>> {
         let mut slot = lock(&self.embedder);
         if let Some(e) = slot.as_ref() {
             return Ok(Arc::clone(e));
         }
-        let built = self.build_default_embedder()?;
+        let built = self.build_default_embedder(config)?;
         *slot = Some(Arc::clone(&built));
         Ok(built)
     }
@@ -548,8 +658,11 @@ impl Qmd {
     /// returned [`LazyLlamaEmbedder`] resolves and loads the model on
     /// its first inference call, so this accessor stays cheap.
     #[cfg(feature = "llama")]
-    fn build_default_embedder(&self) -> Result<Arc<dyn Embedder>> {
-        let config = self.config()?;
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "the `not(llama)` twin returns Err — the signature must be uniform"
+    )]
+    fn build_default_embedder(&self, config: &Config) -> Result<Arc<dyn Embedder>> {
         let model_uri = crate::llm::resolve_embed_model(config.models.as_ref(), &self.env);
         let mode = crate::llm::llamacpp::EmbeddingMode::from(
             config
@@ -567,28 +680,104 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
-    fn build_default_embedder(&self) -> Result<Arc<dyn Embedder>> {
+    fn build_default_embedder(&self, _config: &Config) -> Result<Arc<dyn Embedder>> {
         Err(Error::NoBackend {
             capability: Capability::Embed,
         })
     }
 
-    /// The injected [`Reranker`].
+    /// The resolved [`Reranker`] — injected, or lazily built under
+    /// `llama` (same pattern as [`Qmd::embedder`]).
     ///
     /// # Errors
-    /// [`Error::NoBackend`] when no reranking backend was injected.
+    /// [`Error::NoBackend`] without a reranking backend and without the
+    /// `llama` feature; [`Error::Model`] on lazy resolution failure.
     pub fn reranker(&self) -> Result<Arc<dyn Reranker>> {
-        self.reranker.clone().ok_or(Error::NoBackend {
+        self.reranker_with(&self.config()?)
+    }
+
+    /// [`Qmd::reranker`] against a pre-loaded config — see
+    /// [`Qmd::embedder_with`].
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the check-and-fill lock must stay held across lazy construction"
+    )]
+    fn reranker_with(&self, config: &Config) -> Result<Arc<dyn Reranker>> {
+        let mut slot = lock(&self.reranker);
+        if let Some(r) = slot.as_ref() {
+            return Ok(Arc::clone(r));
+        }
+        let built = self.build_default_reranker(config)?;
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+
+    /// The resolved [`Generator`] — injected, or lazily built under
+    /// `llama`.
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] without an expansion backend and without
+    /// the `llama` feature; [`Error::Model`] on lazy resolution failure.
+    pub fn generator(&self) -> Result<Arc<dyn Generator>> {
+        self.generator_with(&self.config()?)
+    }
+
+    /// [`Qmd::generator`] against a pre-loaded config — see
+    /// [`Qmd::embedder_with`].
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the check-and-fill lock must stay held across lazy construction"
+    )]
+    fn generator_with(&self, config: &Config) -> Result<Arc<dyn Generator>> {
+        let mut slot = lock(&self.generator);
+        if let Some(g) = slot.as_ref() {
+            return Ok(Arc::clone(g));
+        }
+        let built = self.build_default_generator(config)?;
+        *slot = Some(Arc::clone(&built));
+        Ok(built)
+    }
+
+    /// Lazy default reranker — `llama` feature only.
+    #[cfg(feature = "llama")]
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "the `not(llama)` twin returns Err — the signature must be uniform"
+    )]
+    fn build_default_reranker(&self, config: &Config) -> Result<Arc<dyn Reranker>> {
+        let model_uri = crate::llm::resolve_rerank_model(config.models.as_ref(), &self.env);
+        Ok(Arc::new(crate::llm::llamacpp::LazyLlamaReranker::new(
+            model_uri,
+            self.env.clone(),
+        )))
+    }
+
+    /// Without `llama` there is no default backend to build.
+    #[cfg(not(feature = "llama"))]
+    fn build_default_reranker(&self, _config: &Config) -> Result<Arc<dyn Reranker>> {
+        Err(Error::NoBackend {
             capability: Capability::Rerank,
         })
     }
 
-    /// The injected [`Generator`].
-    ///
-    /// # Errors
-    /// [`Error::NoBackend`] when no query-expansion backend was injected.
-    pub fn generator(&self) -> Result<Arc<dyn Generator>> {
-        self.generator.clone().ok_or(Error::NoBackend {
+    /// Lazy default generator — `llama` feature only.
+    #[cfg(feature = "llama")]
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "the `not(llama)` twin returns Err — the signature must be uniform"
+    )]
+    fn build_default_generator(&self, config: &Config) -> Result<Arc<dyn Generator>> {
+        let model_uri = crate::llm::resolve_generate_model(config.models.as_ref(), &self.env);
+        Ok(Arc::new(crate::llm::llamacpp::LazyLlamaGenerator::new(
+            model_uri,
+            self.env.clone(),
+        )))
+    }
+
+    /// Without `llama` there is no default backend to build.
+    #[cfg(not(feature = "llama"))]
+    fn build_default_generator(&self, _config: &Config) -> Result<Arc<dyn Generator>> {
+        Err(Error::NoBackend {
             capability: Capability::Generate,
         })
     }
@@ -1279,6 +1468,167 @@ impl Qmd {
             query,
             opts.limit.unwrap_or(20),
             opts.collections.clone(),
+        )
+    }
+
+    /// Expand a query into `lex:`/`vec:`/`hyde:` sub-queries — upstream
+    /// `expandQuery` (store.ts:4550-4589). Results are cached in
+    /// `llm_cache`; entries identical to the original query are dropped.
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] without a query-expansion backend;
+    /// [`Error::Db`] on cache access failure.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard must live until the query completes"
+    )]
+    pub fn expand_query(&self, query: &str) -> Result<Vec<crate::query::ExpandedQuery>> {
+        // Resolve config before locking conn: `load_config` may itself
+        // lock it on the `DbOnly` source, and the lazy backend
+        // resolvers below need it while the guard is held.
+        let config = self.config()?;
+        let conn = lock(&self.conn);
+        // Backend resolvers must outlive the context, so they are bound
+        // as named locals before `SearchCtx` borrows them (lazy — a
+        // pipeline only resolves the backends it reaches).
+        let embedder = || self.embedder_with(&config);
+        let reranker = || self.reranker_with(&config);
+        let generator = || self.generator_with(&config);
+        let ctx = store::hybrid::SearchCtx {
+            conn: &conn,
+            cache_writes: &self.cache_writes,
+            backends: store::hybrid::Backends {
+                embedder: &embedder,
+                reranker: &reranker,
+                generator: &generator,
+            },
+            hooks: &(),
+        };
+        Ok(store::hybrid::expand_query(&ctx, query)?.0)
+    }
+
+    /// Hybrid or structured search — upstream `hybridQuery` /
+    /// `structuredSearch` sharing one post-fusion pipeline (T14).
+    /// `SearchInput::Query` expands + fuses; `SearchInput::Expanded`
+    /// runs the pre-typed searches from
+    /// [`crate::query::parse_query_document`].
+    ///
+    /// # Errors
+    /// [`Error::InvalidQuery`] on an empty query string or per-line
+    /// structured validation; backend/database errors propagate.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard must live until the query completes"
+    )]
+    pub fn search(
+        &self,
+        opts: &SearchOptions,
+        hooks: &dyn SearchHooks,
+    ) -> Result<Vec<store::hybrid::HybridResult>> {
+        // `""` is falsy upstream — `search({query: ""})` hits the same
+        // "requires either 'query' or 'queries'" throw (index.ts:432-434).
+        if let SearchInput::Query(q) = &opts.input
+            && q.is_empty()
+        {
+            return Err(Error::InvalidQuery {
+                reason: "search() requires either 'query' or 'queries'".to_owned(),
+            });
+        }
+        // JS falsy normalization (upstream index.ts:436-449): an empty
+        // intent and an empty collections list behave as absent on both
+        // paths — `""` keeps `!intent` true (strong-signal bypass,
+        // plain rerank query) and `[]` becomes `undefined`.
+        let intent = opts.intent.as_deref().filter(|s| !s.is_empty());
+        let collections = opts.collections.clone().filter(|c| !c.is_empty());
+        let config = self.config()?;
+        let conn = lock(&self.conn);
+        let embedder = || self.embedder_with(&config);
+        let reranker = || self.reranker_with(&config);
+        let generator = || self.generator_with(&config);
+        let ctx = store::hybrid::SearchCtx {
+            conn: &conn,
+            cache_writes: &self.cache_writes,
+            backends: store::hybrid::Backends {
+                embedder: &embedder,
+                reranker: &reranker,
+                generator: &generator,
+            },
+            hooks,
+        };
+        match &opts.input {
+            SearchInput::Query(query) => store::hybrid::hybrid_query(
+                &ctx,
+                query,
+                &store::hybrid::HybridQueryOpts {
+                    collections,
+                    intent,
+                    skip_rerank: !opts.rerank,
+                    explain: opts.explain,
+                    min_score: opts.min_score,
+                    limit: opts.limit,
+                    candidate_limit: opts.candidate_limit,
+                    chunk_strategy: opts.chunk_strategy,
+                },
+            ),
+            SearchInput::Expanded(searches) => store::hybrid::structured_search(
+                &ctx,
+                searches,
+                &store::hybrid::StructuredSearchOpts {
+                    collections,
+                    intent,
+                    skip_rerank: !opts.rerank,
+                    explain: opts.explain,
+                    min_score: opts.min_score,
+                    limit: opts.limit,
+                    candidate_limit: opts.candidate_limit,
+                    chunk_strategy: opts.chunk_strategy,
+                },
+            ),
+        }
+    }
+
+    /// Expansion-based vector search — upstream `vectorSearchQuery`
+    /// (store.ts:5868-5917). Expands the query, keeps `vec:`/`hyde:`
+    /// sub-queries, searches each and dedupes by file keeping the best
+    /// score. Upstream's `intent` parameter is ignored there too
+    /// (quirk Q9), so [`VectorQueryOptions`] has no such field.
+    ///
+    /// # Errors
+    /// [`Error::NoBackend`] without an embedding/expansion backend;
+    /// [`Error::Db`] on database failure.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard must live until the query completes"
+    )]
+    pub fn vector_query(
+        &self,
+        query: &str,
+        opts: &VectorQueryOptions,
+        hooks: &dyn SearchHooks,
+    ) -> Result<Vec<store::hybrid::VectorQueryResult>> {
+        let config = self.config()?;
+        let conn = lock(&self.conn);
+        let embedder = || self.embedder_with(&config);
+        let reranker = || self.reranker_with(&config);
+        let generator = || self.generator_with(&config);
+        let ctx = store::hybrid::SearchCtx {
+            conn: &conn,
+            cache_writes: &self.cache_writes,
+            backends: store::hybrid::Backends {
+                embedder: &embedder,
+                reranker: &reranker,
+                generator: &generator,
+            },
+            hooks,
+        };
+        store::hybrid::vector_query(
+            &ctx,
+            query,
+            &store::hybrid::VectorQueryOpts {
+                collections: opts.collections.clone(),
+                limit: opts.limit,
+                min_score: opts.min_score,
+            },
         )
     }
 

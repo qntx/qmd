@@ -40,6 +40,10 @@ pub enum InferenceError {
     /// The backend or model runtime failed.
     #[error("{0}")]
     Backend(String),
+    /// The model could not be resolved, downloaded or loaded — never
+    /// degraded to a fallback.
+    #[error("model unavailable: {0}")]
+    ModelLoad(String),
     /// The operation was cancelled via a [`CancelToken`].
     #[error("operation cancelled")]
     Cancelled,
@@ -96,20 +100,26 @@ pub trait Embedder: Send + Sync + fmt::Debug {
     /// Encode `text` into token ids (upstream `llm.tokenize`).
     ///
     /// # Errors
-    /// [`InferenceError::Backend`] on tokenizer failure.
+    /// [`InferenceError::Backend`] on tokenizer failure;
+    /// [`InferenceError::ModelLoad`] when a lazy wrapper cannot resolve
+    /// or load the model.
     fn tokenize(&self, text: &str) -> Result<Vec<u32>, InferenceError>;
 
     /// Decode token ids back to text (upstream `llm.detokenize`).
     ///
     /// # Errors
-    /// [`InferenceError::Backend`] on tokenizer failure.
+    /// [`InferenceError::Backend`] on tokenizer failure;
+    /// [`InferenceError::ModelLoad`] when a lazy wrapper cannot resolve
+    /// or load the model.
     fn detokenize(&self, tokens: &[u32]) -> Result<String, InferenceError>;
 
     /// Embed already-formatted texts; the batch succeeds or fails as a
     /// whole. Output length must equal `texts.len()`.
     ///
     /// # Errors
-    /// [`InferenceError::Backend`] on model failure.
+    /// [`InferenceError::Backend`] on model failure;
+    /// [`InferenceError::ModelLoad`] when a lazy wrapper cannot resolve
+    /// or load the model.
     fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>, InferenceError>;
 }
 
@@ -122,7 +132,9 @@ pub trait Reranker: Send + Sync + fmt::Debug {
     /// `docs`, in `[0, 1]`.
     ///
     /// # Errors
-    /// [`InferenceError::Backend`] on model failure.
+    /// [`InferenceError::Backend`] on model failure;
+    /// [`InferenceError::ModelLoad`] when a lazy wrapper cannot resolve
+    /// or load the model.
     fn rerank(&self, query: &str, docs: &[&str]) -> Result<Vec<f32>, InferenceError>;
 }
 
@@ -138,6 +150,8 @@ pub trait Generator: Send + Sync + fmt::Debug {
     /// Generate expansion lines for `query`.
     ///
     /// # Errors
-    /// [`InferenceError::Backend`] on model failure.
+    /// [`InferenceError::Backend`] on model failure;
+    /// [`InferenceError::ModelLoad`] when a lazy wrapper cannot resolve
+    /// or load the model.
     fn expand(&self, query: &str) -> Result<String, InferenceError>;
 }

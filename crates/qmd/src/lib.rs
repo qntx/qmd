@@ -53,6 +53,7 @@ pub mod llm;
 pub mod maintenance;
 pub mod paths;
 mod qmd;
+pub mod query;
 pub mod snippet;
 mod store;
 #[cfg(feature = "testing")]
@@ -82,14 +83,19 @@ pub use maintenance::{CleanupCounts, Maintenance};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
     ContextEntry, EmbedFailure, EmbedOptions, EmbedProgress, EmbedReport, IndexHealth, LexOptions,
-    Qmd, QmdBuilder, Status, StatusCollection, UpdateOptions, UpdateProgress, UpdateReport,
-    VectorOptions,
+    Qmd, QmdBuilder, SearchInput, SearchOptions, Status, StatusCollection, UpdateOptions,
+    UpdateProgress, UpdateReport, VectorOptions, VectorQueryOptions,
 };
-pub use snippet::{SnippetResult, add_line_numbers, extract_snippet};
+pub use query::{
+    ExpandedQuery, ParsedQueryDocument, QueryKind, extract_intent_terms, parse_query_document,
+};
+pub use snippet::{ChunkSpan, SnippetResult, add_line_numbers, extract_snippet};
 pub use store::documents::extract_title;
 pub use store::fts::{
     build_fts5_query, sanitize_fts5_term, validate_lex_query, validate_semantic_query,
 };
+pub use store::hybrid::{Explain, HybridResult, RrfTrace, SearchHooks, VectorQueryResult};
+pub use store::rrf::RrfContribution;
 pub use store::search::{SearchResult, SearchSource};
 #[cfg(feature = "testing")]
 pub use testing::{FakeEmbedder, FakeGenerator, FakeReranker};

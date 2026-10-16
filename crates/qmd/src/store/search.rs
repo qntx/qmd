@@ -174,7 +174,7 @@ pub(crate) fn search_fts(
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| n.trim().to_owned())
+            .map(|n| crate::chunk::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });
@@ -412,9 +412,11 @@ pub(crate) fn search_vec(
     }
 
     // Upstream `getEmbedding(query, model, isQuery=true)` — null
-    // embedding returns []. The trait's whole-batch contract makes an
-    // empty/absent slot the only `null` analogue; backend errors
-    // propagate like upstream's thrown `session.embed`.
+    // embedding returns []. Upstream `llm.embed`/`embedBatch` catch
+    // every error and return null (llm.ts:1473-1495, 1502-1566), so
+    // upstream degrades to "no vector results"; we deliberately
+    // propagate backend errors instead (registered deviation). An
+    // empty/absent slot remains the `null` analogue.
     let text = crate::llm::format_query_for_embedding(query, Some(embedder.model_id()));
     let embedding = embedder
         .embed(&[&text])
@@ -425,24 +427,36 @@ pub(crate) fn search_vec(
     let Some(embedding) = embedding else {
         return Ok(Vec::new());
     };
+    search_vec_with_embedding(conn, &embedding, limit, collection_scope)
+}
 
+/// `searchVec` with a precomputed query embedding — the hybrid and
+/// structured pipelines embed all vec queries in one batch call, then
+/// run this per query (upstream `searchVec`'s `precomputedEmbedding`
+/// parameter, store.ts:4263, 5641-5644, 6048-6051).
+pub(crate) fn search_vec_with_embedding(
+    conn: &Connection,
+    embedding: &[f32],
+    limit: usize,
+    collection_scope: Option<Vec<String>>,
+) -> Result<Vec<SearchResult>> {
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| n.trim().to_owned())
+            .map(|n| crate::chunk::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });
     if let Some(names) = names.as_ref().filter(|n| n.len() > 1) {
         let lists = names
             .iter()
-            .map(|name| search_vec_multi(conn, &embedding, limit, Some(name)))
+            .map(|name| search_vec_multi(conn, embedding, limit, Some(name)))
             .collect::<Result<Vec<_>>>()?;
         return Ok(merge_search_results_by_score(lists, limit));
     }
     search_vec_multi(
         conn,
-        &embedding,
+        embedding,
         limit,
         names.and_then(|n| n.into_iter().next()).as_deref(),
     )
@@ -451,7 +465,7 @@ pub(crate) fn search_vec(
 /// The query-embeddings-free inner half of `searchVec` — multi-
 /// collection merge reuses the already-computed query vector
 /// (upstream passes `precomputedEmbedding`).
-fn search_vec_multi(
+pub(crate) fn search_vec_multi(
     conn: &Connection,
     embedding: &[f32],
     limit: usize,

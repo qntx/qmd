@@ -472,7 +472,7 @@ fn extract_snippet_best_line_window() {
     // JS `split('\n')`: the trailing newline leaves an empty 6th line,
     // which counts toward linesAfter.
     let body = "line one\nline two has alpha and beta\nline three\nline four\nline five\n";
-    let r = qmd::extract_snippet(body, "alpha beta", 500);
+    let r = qmd::extract_snippet(body, "alpha beta", 500, None, None);
     assert_eq!(r.line, 2);
     assert_eq!(r.snippet_lines, 4);
     assert_eq!(r.lines_before, 0);
@@ -486,7 +486,7 @@ fn extract_snippet_best_line_window() {
 #[test]
 fn extract_snippet_truncates_long_text() {
     let body = "x ".repeat(400); // 800 chars on one line
-    let r = qmd::extract_snippet(&body, "x", 100);
+    let r = qmd::extract_snippet(&body, "x", 100, None, None);
     assert!(r.snippet.ends_with("..."));
 }
 
@@ -494,7 +494,7 @@ fn extract_snippet_truncates_long_text() {
 fn extract_snippet_counts_trailing_empty_line() {
     // JS `split('\n')` semantics: "a\n" has 2 lines, and the window
     // [best-1, best+3) includes the trailing empty one.
-    let r = qmd::extract_snippet("a\n", "a", 500);
+    let r = qmd::extract_snippet("a\n", "a", 500, None, None);
     assert_eq!(r.snippet_lines, 2);
     assert_eq!(r.lines_after, 0);
     assert_eq!(r.snippet, "@@ -1,2 @@ (0 before, 0 after)\na\n");
