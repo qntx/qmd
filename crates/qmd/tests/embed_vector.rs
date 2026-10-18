@@ -24,8 +24,8 @@
 //! deterministic.
 
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use qmd::{
     CancelToken, CollectionSpec, EmbedOptions, Embedder, Environment, Error, InferenceError, Qmd,
@@ -385,6 +385,128 @@ fn embed_dimension_mismatch_errors() {
         "{err}"
     );
     qmd.close().unwrap();
+}
+
+// ── Batch limits (store.test.ts:4194/4262/4630, sdk.test.ts:987/1104) ──
+
+/// Embedder whose `embed` records each batch's size.
+fn recording_embedder(dimension: usize) -> (StubEmbedder, Arc<Mutex<Vec<usize>>>) {
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&calls);
+    let embedder = StubEmbedder::new("test-embed", dimension, move |texts| {
+        sink.lock().unwrap().push(texts.len());
+        Ok(texts.iter().map(|t| hashed_vector(t, dimension)).collect())
+    });
+    (embedder, calls)
+}
+
+#[test]
+fn embed_flushes_batches_at_max_docs_per_batch() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (embedder, calls) = recording_embedder(8);
+    let (qmd, db) = indexed_qmd(
+        tmp.path(),
+        &[
+            ("one.md", "# One\n\nAlpha"),
+            ("two.md", "# Two\n\nBeta"),
+            ("three.md", "# Three\n\nGamma"),
+        ],
+        Arc::new(embedder),
+    );
+    let report = qmd
+        .embed(
+            &EmbedOptions {
+                max_docs_per_batch: 1,
+                max_batch_bytes: 1024 * 1024,
+                ..EmbedOptions::default()
+            },
+            &mut |_| {},
+        )
+        .unwrap();
+    // calls[0] is the single-chunk dimension probe — upstream runs that
+    // probe through `session.embed`, which `embedBatchCalls` does not
+    // record, so compare `calls[1..]`.
+    assert_eq!(calls.lock().unwrap()[1..], [1, 1, 1]);
+    assert_eq!(report.docs_processed, 3);
+    assert_eq!(report.chunks_embedded, 3);
+    assert_eq!(vec_row_count(&db), 3);
+}
+
+#[test]
+fn embed_flushes_batches_at_max_batch_bytes() {
+    let tmp = tempfile::tempdir().unwrap();
+    let doc_one = format!("# One\n\n{}", "A".repeat(36));
+    let doc_two = format!("# Two\n\n{}", "B".repeat(36));
+    let doc_three = format!("# Three\n\n{}", "C".repeat(36));
+    let batch_limit = doc_one.len() + doc_two.len() + 1;
+    let (embedder, calls) = recording_embedder(8);
+    let (qmd, _db) = indexed_qmd(
+        tmp.path(),
+        &[
+            ("a-one.md", &doc_one),
+            ("b-two.md", &doc_two),
+            ("c-three.md", &doc_three),
+        ],
+        Arc::new(embedder),
+    );
+    let report = qmd
+        .embed(
+            &EmbedOptions {
+                max_docs_per_batch: 64,
+                max_batch_bytes: batch_limit,
+                ..EmbedOptions::default()
+            },
+            &mut |_| {},
+        )
+        .unwrap();
+    // Same probe offset as above.
+    assert_eq!(calls.lock().unwrap()[1..], [2, 1]);
+    assert_eq!(report.docs_processed, 3);
+    assert_eq!(report.chunks_embedded, 3);
+}
+
+#[test]
+fn embed_rejects_invalid_batch_limits() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (embedder, calls) = recording_embedder(8);
+    // No collections: upstream builds the store with `collections: {}`.
+    let qmd = Qmd::builder(tmp.path().join("i.sqlite"))
+        .environment(env())
+        .embedder(Arc::new(embedder))
+        .build()
+        .unwrap();
+    let err = qmd
+        .embed(
+            &EmbedOptions {
+                max_docs_per_batch: 0,
+                ..EmbedOptions::default()
+            },
+            &mut |_| {},
+        )
+        .unwrap_err();
+    match err {
+        Error::InvalidInput { ref reason } => {
+            assert!(reason.contains("maxDocsPerBatch"), "{reason}");
+        }
+        e => panic!("expected InvalidInput, got {e:?}"),
+    }
+    let err = qmd
+        .embed(
+            &EmbedOptions {
+                max_batch_bytes: 0,
+                ..EmbedOptions::default()
+            },
+            &mut |_| {},
+        )
+        .unwrap_err();
+    match err {
+        Error::InvalidInput { ref reason } => {
+            assert!(reason.contains("maxBatchBytes"), "{reason}");
+        }
+        e => panic!("expected InvalidInput, got {e:?}"),
+    }
+    // Upstream validates before touching the LLM.
+    assert!(calls.lock().unwrap().is_empty());
 }
 
 // ── Retry / fallback / circuit breaker / cancellation ──

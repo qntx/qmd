@@ -446,6 +446,14 @@ pub struct UpdateReport {
 /// `Send + Sync`: the connection and config are each guarded by a
 /// [`Mutex`]. Dropping the handle closes the database; use
 /// [`Qmd::close`] to observe shutdown errors.
+///
+/// # macOS / Metal
+/// Drop every `Qmd` handle — and any backend handle obtained from it —
+/// before the process exits normally. llama.cpp asserts in a static
+/// destructor when Metal residency sets are still alive at exit
+/// (ggml-org/llama.cpp#22593). Upstream avoids that by disabling
+/// residency sets from its launcher; this port releases contexts and
+/// models on drop instead, so ordinary scope-based cleanup is enough.
 pub struct Qmd {
     conn: Mutex<Connection>,
     config: Mutex<ConfigSource>,
@@ -1387,9 +1395,10 @@ impl Qmd {
         opts: &EmbedOptions,
         progress: &mut dyn FnMut(&EmbedProgress),
     ) -> Result<EmbedReport> {
-        let embedder = self.embedder()?;
         // Upstream `validatePositiveIntegerOption` (store.ts:1819-1825)
         // — usize cannot be non-integer, so only the `< 1` arm applies.
+        // Validation precedes backend resolution (upstream validates
+        // before touching the LLM).
         if opts.max_docs_per_batch == 0 {
             return Err(Error::InvalidInput {
                 reason: "maxDocsPerBatch must be a positive integer".to_owned(),
@@ -1400,6 +1409,7 @@ impl Qmd {
                 reason: "maxBatchBytes must be a positive integer".to_owned(),
             });
         }
+        let embedder = self.embedder()?;
 
         let run_opts = store::embed::EmbedRunOptions {
             force: opts.force,

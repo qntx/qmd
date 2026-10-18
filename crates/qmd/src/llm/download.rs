@@ -1194,6 +1194,25 @@ mod tests {
         assert_eq!(np_info.magic.as_deref(), Some("0x01020304"));
     }
 
+    // Upstream `llm.test.ts:100-112` — a path that exists but cannot be
+    // read as a file is `unreadable`, not `invalid`.
+    #[test]
+    fn inspect_unreadable_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let not_a_file = dir.path().join("actually-a-directory.gguf");
+        std::fs::create_dir(&not_a_file).expect("mkdir");
+        let i = inspect_gguf_file(&not_a_file);
+        assert!(i.exists);
+        assert!(!i.valid);
+        assert_eq!(i.kind, GgufKind::Unreadable);
+        assert_eq!(i.magic, None);
+        assert!(
+            i.details.contains("cannot read model file"),
+            "details: {}",
+            i.details
+        );
+    }
+
     #[test]
     fn file_size_format() {
         assert_eq!(format_model_file_size(0), "0 KB");
