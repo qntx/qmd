@@ -9,3 +9,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # llama.cpp upgrades must re-run the real-model parity suite
+      # (`cargo test --features llama,testing -- --ignored`) before landing.
+      - dependency-name: "llama-cpp-2"
+      - dependency-name: "llama-cpp-sys-2"

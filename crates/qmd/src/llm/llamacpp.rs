@@ -8,6 +8,10 @@
 //! upstream SDK `index.ts:415-423` / `llm.ts:896-985`) and reload on the
 //! next call. Dropping a backend joins its worker threads.
 //!
+//! On macOS, llama.cpp asserts in a static destructor when Metal
+//! residency sets outlive the process (ggml-org/llama.cpp#22593) — drop
+//! every backend before exit; see `# macOS / Metal` on [`crate::Qmd`].
+//!
 //! Semantics ported from upstream `src/llm.ts`:
 //! - embed: `truncateToContextSize` (token limit `min(ctx, n_ctx_train)`,
 //!   safe margin `limit - 4`), eval input tokenized with model special
@@ -90,12 +94,25 @@ fn js_parse_int(raw: &str) -> Option<i64> {
 
 /// `QMD_*_CONTEXT_SIZE` parse: `parseInt` result `> 0`, else the default
 /// (upstream `llm.ts:1341-1349`).
+///
+/// `warn_var` names the variable in the invalid-value warning —
+/// upstream emits it only for `QMD_EXPAND_CONTEXT_SIZE` (llm.ts:810-818)
+/// and silently falls back for the embed/rerank parsers (`None` there).
 #[must_use]
-pub fn context_size_env(raw: Option<&str>, default: u32) -> u32 {
-    raw.and_then(js_parse_int)
+pub fn context_size_env(raw: Option<&str>, default: u32, warn_var: Option<&str>) -> u32 {
+    let trimmed = js_trim(raw.unwrap_or(""));
+    if trimmed.is_empty() {
+        return default;
+    }
+    js_parse_int(trimmed)
         .and_then(|v| u32::try_from(v).ok())
         .filter(|v| *v > 0)
-        .unwrap_or(default)
+        .unwrap_or_else(|| {
+            if let Some(var) = warn_var {
+                tracing::warn!("invalid {var}=\"{trimmed}\", using default {default}.");
+            }
+            default
+        })
 }
 
 /// Upstream `resolveParallelismOverride` (`llm.ts:671-682`): strict
@@ -103,20 +120,27 @@ pub fn context_size_env(raw: Option<&str>, default: u32) -> u32 {
 #[must_use]
 pub fn resolve_parallelism_override(env_value: Option<&str>) -> Option<u32> {
     // `envValue?.trim()` upstream (llm.ts:672) — JS trim.
-    let normalized = js_trim(env_value?);
+    let raw = env_value?;
+    let normalized = js_trim(raw);
     if normalized.is_empty() {
         return None;
     }
-    let parsed = normalized.parse::<f64>().ok()?;
-    if parsed.fract() != 0.0 || parsed < 1.0 {
-        return None;
+    match normalized.parse::<f64>() {
+        Ok(v) if v.fract() == 0.0 && v >= 1.0 =>
+        {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "checked integral and >= 1 above"
+            )]
+            Some((v as u32).min(8))
+        }
+        // Upstream warns on stderr (llm.ts:677).
+        _ => {
+            tracing::warn!("invalid QMD_EMBED_PARALLELISM=\"{raw}\", using automatic parallelism.");
+            None
+        }
     }
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "checked integral and >= 1 above"
-    )]
-    Some((parsed as u32).min(8))
 }
 
 /// Upstream `LlamaGpuMode` (`llm.ts:662`).
@@ -147,7 +171,8 @@ pub fn resolve_llama_gpu_mode(
     if !force_cpu.is_empty() && !GPU_OFF_VALUES.contains(&force_cpu.as_str()) {
         return LlamaGpuMode::Cpu;
     }
-    let normalized = js_trim(env_value.unwrap_or("")).to_lowercase();
+    let raw = env_value.unwrap_or("");
+    let normalized = js_trim(raw).to_lowercase();
     if normalized.is_empty() {
         return LlamaGpuMode::Auto;
     }
@@ -158,7 +183,12 @@ pub fn resolve_llama_gpu_mode(
         "metal" => LlamaGpuMode::Metal,
         "vulkan" => LlamaGpuMode::Vulkan,
         "cuda" => LlamaGpuMode::Cuda,
-        _ => LlamaGpuMode::Auto,
+        // Upstream warns on stderr for any other non-empty value —
+        // including a literal "auto" (llm.ts:768).
+        _ => {
+            tracing::warn!("invalid QMD_LLAMA_GPU=\"{raw}\", using auto GPU selection.");
+            LlamaGpuMode::Auto
+        }
     }
 }
 
@@ -234,42 +264,9 @@ fn threads_per_context(gpu: bool, parallelism: usize) -> Option<i32> {
 // Backend + devices
 // ============================================================================
 
-/// Upstream sets `GGML_METAL_NO_RESIDENCY=1` from its launcher before the
-/// native binding loads, disabling Metal residency sets whose
-/// static-destructor asserts at process exit while contexts/models are
-/// still alive (ggml-org/llama.cpp#22593). We set it inside the `OnceLock`
-/// init in [`backend`], so it lands before `llama_backend_init()` reads it
-/// in `ggml_metal_device_init`. `QMD_METAL_KEEP_RESIDENCY=1` opts back in,
-/// same as upstream.
-///
-/// This reads the process environment directly, deliberately bypassing
-/// [`Environment`]: the residency decision is process-global (it lands
-/// inside `llama_backend_init`, before any model context exists), matching
-/// upstream's launcher-level toggle. Per-handle env values would race the
-/// `OnceLock` — the first caller's value would win silently.
-#[cfg(target_os = "macos")]
-#[allow(
-    unsafe_code,
-    clippy::disallowed_methods,
-    reason = "env write inside OnceLock init, before any llama.cpp call"
-)]
-fn disable_metal_residency_sets() {
-    use std::ffi::OsStr;
-
-    if std::env::var_os("QMD_METAL_KEEP_RESIDENCY").as_deref() == Some(OsStr::new("1")) {
-        return;
-    }
-    // SAFETY: called only from `OnceLock::get_or_init` in `backend()`, which
-    // runs once on one thread before the first llama.cpp call; nothing else
-    // in this crate mutates the environment.
-    unsafe { std::env::set_var("GGML_METAL_NO_RESIDENCY", "1") };
-}
-
 fn backend() -> Result<&'static LlamaBackend, InferenceError> {
     static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
     let res = BACKEND.get_or_init(|| {
-        #[cfg(target_os = "macos")]
-        disable_metal_residency_sets();
         llama_cpp_2::send_logs_to_tracing(LogOptions::default());
         LlamaBackend::init().map_err(|e| e.to_string())
     });
@@ -861,6 +858,27 @@ fn pool_size(
     resolve_safe_parallelism(windows_cuda, computed, override_)
 }
 
+/// Upstream `resolveEmbedTokenLimit` (`llm.ts:1449-1452`):
+/// `max(1, min(ctx, n_ctx_train))`, or `ctx` when the model reports no
+/// train context.
+fn embed_token_limit(ctx_size: u32, n_ctx_train: u32) -> usize {
+    let limit = if n_ctx_train == 0 {
+        ctx_size
+    } else {
+        ctx_size.min(n_ctx_train)
+    };
+    usize::try_from(limit.max(1)).unwrap_or(usize::MAX)
+}
+
+/// Upstream `truncateToContextSize` (`llm.ts:1458-1465`): `None` when the
+/// input fits, else the cut length `limit - 4` (at least 1).
+fn embed_truncation_len(token_limit: usize, n_tokens: usize) -> Option<usize> {
+    if n_tokens <= token_limit {
+        return None;
+    }
+    Some(token_limit.saturating_sub(4).max(1))
+}
+
 impl LlamaEmbedder {
     /// Load `path` (a GGUF file, e.g. from [`crate::llm::download`]) and
     /// build the worker pool from `env`.
@@ -877,20 +895,14 @@ impl LlamaEmbedder {
     ) -> Result<Self> {
         let gpu_mode =
             resolve_llama_gpu_mode(env.qmd_llama_gpu.as_deref(), env.qmd_force_cpu.as_deref());
+        // Upstream is silent on an invalid embed context value.
         let ctx_size = context_size_env(
             env.qmd_embed_context_size.as_deref(),
             DEFAULT_EMBED_CONTEXT_SIZE,
+            None,
         );
         let model = load_gguf(path, model_uri, gpu_mode)?;
-        // Upstream resolveEmbedTokenLimit: max(1, min(ctx, train_ctx)).
-        let trained = model.n_ctx_train();
-        let token_limit = usize::try_from(if trained > 0 {
-            ctx_size.min(trained)
-        } else {
-            ctx_size
-        })
-        .unwrap_or(usize::MAX)
-        .max(1);
+        let token_limit = embed_token_limit(ctx_size, model.n_ctx_train());
         let gpu = gpu_free_mb(gpu_mode).is_some();
         let model_bytes = std::fs::metadata(path).map_or(0, |m| m.len());
         let per_ctx_mb = estimate_embed_context_mb(model_bytes, ctx_size);
@@ -929,10 +941,9 @@ impl LlamaEmbedder {
     fn truncate_to_context_size(&self, text: &str) -> String {
         let vocab = self.model.vocab();
         let tokens = vocab.tokenize(text.as_bytes(), false, false);
-        if tokens.len() <= self.token_limit {
+        let Some(safe) = embed_truncation_len(self.token_limit, tokens.len()) else {
             return text.to_owned();
-        }
-        let safe = self.token_limit.saturating_sub(4).max(1);
+        };
         let cut = tokens.get(..safe).unwrap_or(&tokens);
         // Upstream logs `⚠ Text truncated to fit embedding context (N tokens)`.
         tracing::warn!(
@@ -1269,9 +1280,11 @@ impl LlamaReranker {
     pub fn new(path: &Path, model_uri: &str, env: &Environment) -> Result<Self> {
         let gpu_mode =
             resolve_llama_gpu_mode(env.qmd_llama_gpu.as_deref(), env.qmd_force_cpu.as_deref());
+        // Upstream is silent on an invalid rerank context value.
         let ctx_size = context_size_env(
             env.qmd_rerank_context_size.as_deref(),
             DEFAULT_RERANK_CONTEXT_SIZE,
+            None,
         );
         let model = load_gguf(path, model_uri, gpu_mode)?;
         let template: Arc<str> = model
@@ -1516,6 +1529,7 @@ impl LlamaGenerator {
         let expand_ctx = context_size_env(
             env.qmd_expand_context_size.as_deref(),
             DEFAULT_EXPAND_CONTEXT_SIZE,
+            Some("QMD_EXPAND_CONTEXT_SIZE"),
         );
         let model = load_gguf(path, model_uri, gpu_mode)?;
         let pool = Pool::spawn(1, &model, GenWorker { expand_ctx })?;
@@ -1625,7 +1639,9 @@ impl Reranker for LazyLlamaReranker {
             // scoring every doc 0.5 (llm.ts:1743-1748). `LlamaReranker::new`
             // reports that one case as `Error::Inference`.
             Err(Error::Inference(e)) => {
-                tracing::warn!("reranker context unavailable ({e}); scoring all docs 0.5");
+                // Upstream `console.warn` (llm.ts:1381-1384), minus the
+                // CLI-only "--no-rerank" hint.
+                tracing::warn!("Reranker unavailable — skipping reranking ({e})");
                 Ok(vec![0.5; docs.len()])
             }
             // Model resolution/download/load failures propagate —
@@ -1731,15 +1747,26 @@ mod tests {
     #[test]
     fn context_size_env_parsing() {
         let d = DEFAULT_EMBED_CONTEXT_SIZE;
-        assert_eq!(context_size_env(Some("1024"), d), 1024);
-        assert_eq!(context_size_env(Some(" 512 "), d), 512);
+        assert_eq!(context_size_env(Some("1024"), d, None), 1024);
+        assert_eq!(context_size_env(Some(" 512 "), d, None), 512);
         // parseInt keeps the leading integer run
-        assert_eq!(context_size_env(Some("300x"), d), 300);
-        assert_eq!(context_size_env(Some("2048.9"), d), 2048);
+        assert_eq!(context_size_env(Some("300x"), d, None), 300);
+        assert_eq!(context_size_env(Some("2048.9"), d, None), 2048);
         for v in ["0", "-512", "abc", "", "x300", "NaN"] {
-            assert_eq!(context_size_env(Some(v), d), d, "value {v:?}");
+            assert_eq!(context_size_env(Some(v), d, None), d, "value {v:?}");
         }
-        assert_eq!(context_size_env(None, d), d);
+        assert_eq!(context_size_env(None, d, None), d);
+    }
+
+    // Upstream llm.test.ts:739-762 — the truncation limit is the active
+    // context size, not the model's train context.
+    #[test]
+    fn embed_truncation_uses_active_context_not_train_context() {
+        assert_eq!(embed_token_limit(DEFAULT_EMBED_CONTEXT_SIZE, 8192), 2048);
+        assert_eq!(embed_truncation_len(2048, 3000), Some(2044));
+        assert_eq!(embed_truncation_len(2048, 2048), None);
+        assert_eq!(embed_token_limit(4096, 0), 4096);
+        assert_eq!(embed_token_limit(4096, 1024), 1024);
     }
 
     // Upstream llm.test.ts: resolveLlamaGpuMode incl. QMD_FORCE_CPU.
@@ -2096,6 +2123,50 @@ mod tests {
         assert!(slot.is_loaded());
         drop(v);
     }
+
+    /// Upstream `llm.test.ts:845-872` — overlapping cold-start callers
+    /// observe a single build (upstream's shared
+    /// `rerankContextsCreatePromise`; here the build runs under the slot
+    /// lock, so the other threads wait and then clone the stored `Arc`).
+    #[test]
+    fn idle_slot_serializes_concurrent_cold_start() {
+        use std::sync::Barrier;
+
+        let slot = Arc::new(IdleSlot::<u32>::new(Duration::from_secs(60)));
+        let barrier = Arc::new(Barrier::new(3));
+        let builds = Arc::new(AtomicUsize::new(0));
+        let in_flight = Arc::new(AtomicUsize::new(0));
+        let max_in_flight = Arc::new(AtomicUsize::new(0));
+        let mut handles = Vec::with_capacity(3);
+        for _ in 0..3 {
+            let worker_slot = Arc::clone(&slot);
+            let worker_barrier = Arc::clone(&barrier);
+            let worker_builds = Arc::clone(&builds);
+            let worker_in_flight = Arc::clone(&in_flight);
+            let worker_max = Arc::clone(&max_in_flight);
+            let build = move || {
+                let n = worker_in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+                worker_max.fetch_max(n, Ordering::SeqCst);
+                let (_tx, wait) = mpsc::channel::<()>();
+                let _ignored = wait.recv_timeout(Duration::from_millis(30));
+                worker_in_flight.fetch_sub(1, Ordering::SeqCst);
+                worker_builds.fetch_add(1, Ordering::SeqCst);
+                Ok(7u32)
+            };
+            handles.push(std::thread::spawn(move || {
+                worker_barrier.wait();
+                worker_slot.get_or_try_init(build)
+            }));
+        }
+        let mut arcs = Vec::with_capacity(3);
+        for handle in handles {
+            arcs.push(handle.join().expect("worker panicked").unwrap());
+        }
+        assert_eq!(builds.load(Ordering::SeqCst), 1);
+        assert_eq!(max_in_flight.load(Ordering::SeqCst), 1);
+        let first = arcs.first().unwrap();
+        assert!(arcs.iter().all(|a| Arc::ptr_eq(first, a)));
+    }
 }
 
 /// AC4 real-model parity tests against vendored E0 upstream data
@@ -2223,6 +2294,14 @@ mod e0_parity {
         let env = Environment::default();
         let reranker = LlamaReranker::new(&path, crate::llm::DEFAULT_RERANK_MODEL, &env).unwrap();
         let items = fixture("rerank.json")["items"].as_array().unwrap().clone();
+        // H3 (research report §13.5): per-pair diffs feed the median
+        // check after the loop; ranking must match upstream exactly.
+        let mut diffs: Vec<f32> = Vec::new();
+        let order_desc = |v: &[f32]| {
+            let mut idx: Vec<usize> = (0..v.len()).collect();
+            idx.sort_by(|&a, &b| v[b].total_cmp(&v[a]).then(a.cmp(&b)));
+            idx
+        };
         for item in &items {
             let query = item["query"].as_str().unwrap();
             let score_items = item["scores"].as_array().unwrap();
@@ -2245,6 +2324,10 @@ mod e0_parity {
             // score parity
             let doc_refs: Vec<&str> = doc_texts.iter().map(String::as_str).collect();
             let got = reranker.rerank(query, &doc_refs).unwrap();
+            let want_scores: Vec<f32> = score_items
+                .iter()
+                .map(|s| s["score"].as_f64().unwrap() as f32)
+                .collect();
             for (i, s) in score_items.iter().enumerate() {
                 let want = s["score"].as_f64().unwrap() as f32;
                 assert!(
@@ -2255,23 +2338,23 @@ mod e0_parity {
                     got[i]
                 );
             }
-            // argmax parity: the top doc must match upstream's winner
-            let argmax = |v: &[f32]| {
-                v.iter()
-                    .enumerate()
-                    .max_by(|a, b| a.1.total_cmp(b.1))
-                    .map(|x| x.0)
-            };
-            let want_scores: Vec<f32> = score_items
-                .iter()
-                .map(|s| s["score"].as_f64().unwrap() as f32)
-                .collect();
+            for (g, w) in got.iter().zip(&want_scores) {
+                diffs.push((g - w).abs());
+            }
             assert_eq!(
-                argmax(&got),
-                argmax(&want_scores),
-                "argmax diverged for {query}"
+                order_desc(&got),
+                order_desc(&want_scores),
+                "H3: ranking diverged for {query}"
             );
         }
+        diffs.sort_by(f32::total_cmp);
+        let n = diffs.len();
+        let median = f32::midpoint(diffs[(n - 1) / 2], diffs[n / 2]);
+        eprintln!("H3: median |score diff| {median} over {n} pairs");
+        assert!(
+            median <= 0.01,
+            "H3: median |score diff| {median} > 0.01 over {n} pairs"
+        );
 
         // Truncation path (review fix): a document past the context budget
         // is cut via `slice_head`, not passed through — it must score
@@ -2423,5 +2506,74 @@ mod e0_parity {
             kinds.2 |= line.starts_with("hyde: ");
         }
         assert!(kinds.0 && kinds.1 && kinds.2, "missing a line kind: {out}");
+    }
+
+    /// AC4 / H4 (research report §13.5): over the E0 query set (10 queries ×
+    /// 5 samples, the same draw as upstream's reference) every expansion is
+    /// non-empty and grammar-valid. Reward parity is scored offline with
+    /// upstream `finetune/reward.py`: set `QMD_H4_OUT` to write the samples
+    /// in the E0 `generate.json` shape.
+    #[test]
+    #[ignore = "requires cached GGUF models"]
+    fn expand_grammar_valid_over_e0_queries() {
+        let path = model_file("hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf");
+        assert!(path.exists(), "model cache missing: {}", path.display());
+        let generator = LlamaGenerator::new(
+            &path,
+            crate::llm::DEFAULT_GENERATE_MODEL,
+            &Environment::default(),
+        )
+        .unwrap();
+        let reference = fixture("generate.json")["items"]
+            .as_array()
+            .unwrap()
+            .clone();
+        let mut queries: Vec<String> = Vec::new();
+        for it in &reference {
+            let q = it["query"].as_str().unwrap().to_owned();
+            if !queries.contains(&q) {
+                queries.push(q);
+            }
+        }
+        let per_query = reference.len() / queries.len();
+        let valid_line = |l: &str| {
+            ["lex: ", "vec: ", "hyde: "]
+                .iter()
+                .any(|p| l.strip_prefix(p).is_some_and(|rest| !rest.is_empty()))
+        };
+        let mut samples = Vec::new();
+        for q in &queries {
+            for s in 0..per_query {
+                let t = std::time::Instant::now();
+                let out = generator.expand(q).unwrap();
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                samples.push((q.clone(), s, ms, out));
+            }
+        }
+        let mut valid = 0usize;
+        for (q, _s, _ms, out) in &samples {
+            let lines: Vec<&str> = out.lines().filter(|l| !l.is_empty()).collect();
+            if !lines.is_empty() && lines.iter().all(|l| valid_line(l)) {
+                valid += 1;
+            } else {
+                eprintln!("H4: invalid expansion for {q:?}: {out:?}");
+            }
+        }
+        if let Ok(dest) = std::env::var("QMD_H4_OUT") {
+            let items: Vec<_> = samples
+                .iter()
+                .map(|(q, s, ms, out)| {
+                    serde_json::json!({"query": q, "sample": s, "ms": ms, "output": out})
+                })
+                .collect();
+            let doc = serde_json::json!({"load_ms": 0, "rss_mb": 0, "items": items});
+            std::fs::write(&dest, serde_json::to_string_pretty(&doc).unwrap()).unwrap();
+        }
+        assert_eq!(
+            valid,
+            samples.len(),
+            "H4: grammar-valid {valid}/{}",
+            samples.len()
+        );
     }
 }
