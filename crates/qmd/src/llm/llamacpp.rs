@@ -1,10 +1,12 @@
 //! llama.cpp inference backend (`llm::llamacpp`).
 //!
 //! One [`LlamaBackend`] behind a [`OnceLock`], and a per-model worker pool
-//! per backend struct (T3/T4): [`LlamaContext`] is `!Send`, so each worker
+//! per backend struct (T3): [`LlamaContext`] is `!Send`, so each worker
 //! thread owns its context for the whole pool lifetime. `LlamaModel` is
-//! loaded once per backend struct and deliberately leaked to `'static` so
-//! worker-held contexts never dangle; the mapping lives for the process.
+//! reference-counted (`Arc<LlamaModel>`) and shared by the workers; the
+//! lazy backends unload their pool and model after 5 minutes idle (T4,
+//! upstream SDK `index.ts:415-423` / `llm.ts:896-985`) and reload on the
+//! next call. Dropping a backend joins its worker threads.
 //!
 //! Semantics ported from upstream `src/llm.ts`:
 //! - embed: `truncateToContextSize` (token limit `min(ctx, n_ctx_train)`,
@@ -24,6 +26,7 @@ use std::num::NonZeroU32;
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, mpsc};
+use std::time::Duration;
 
 use llama_cpp_2::context::LlamaContext;
 use llama_cpp_2::context::params::{LlamaContextParams, LlamaPoolingType};
@@ -338,16 +341,10 @@ fn model_params(mode: LlamaGpuMode) -> Result<LlamaModelParams, InferenceError> 
     Ok(params)
 }
 
-fn load_leaked_model(
-    path: &Path,
-    params: &LlamaModelParams,
-) -> Result<&'static LlamaModel, InferenceError> {
-    let model = LlamaModel::load_from_file(backend()?, path, params)
-        .map_err(|e| InferenceError::Backend(e.to_string()))?;
-    // The model must outlive every context created from it; workers hold
-    // their contexts for the pool's lifetime, so the model is intentionally
-    // leaked to 'static. The OS reclaims the mapping at process exit.
-    Ok(Box::leak(Box::new(model)))
+fn load_model(path: &Path, params: &LlamaModelParams) -> Result<Arc<LlamaModel>, InferenceError> {
+    LlamaModel::load_from_file(backend()?, path, params)
+        .map(Arc::new)
+        .map_err(|e| InferenceError::Backend(e.to_string()))
 }
 
 /// Resolve `gpu_mode` to model params and load the GGUF. Both steps are
@@ -355,19 +352,19 @@ fn load_leaked_model(
 /// throws (llm.ts:1365, 1635-1636) — so any failure here is
 /// [`Error::Model`], keeping `Error::Inference` for context-creation
 /// failures only.
-fn load_gguf(path: &Path, model_uri: &str, mode: LlamaGpuMode) -> Result<&'static LlamaModel> {
+fn load_gguf(path: &Path, model_uri: &str, mode: LlamaGpuMode) -> Result<Arc<LlamaModel>> {
     let params = model_params(mode).map_err(|source| Error::Model {
         uri: model_uri.to_owned(),
         source,
     })?;
-    load_leaked_model(path, &params).map_err(|source| Error::Model {
+    load_model(path, &params).map_err(|source| Error::Model {
         uri: model_uri.to_owned(),
         source,
     })
 }
 
 // ============================================================================
-// Worker pool (T3/T4)
+// Worker pool (T3)
 // ============================================================================
 
 struct Job<R, O> {
@@ -376,13 +373,41 @@ struct Job<R, O> {
     reply: mpsc::Sender<Result<O, InferenceError>>,
 }
 
-/// A fixed-size pool of worker threads; each owns its `W` for life.
-/// Contexts stay on the thread that created them (`LlamaContext: !Send`).
-struct Pool<R, O> {
-    senders: Vec<mpsc::Sender<Job<R, O>>>,
+/// One pool's worker behavior: per-thread state borrowed from the shared
+/// value. `LlamaContext<'m>` borrows its `LlamaModel`, so the state GAT
+/// lets each worker's context point into its own `Arc<Shared>` clone —
+/// the model is freed only when the last worker exits.
+trait WorkerKind: Send + Sync + 'static {
+    /// Value shared by every worker (e.g. the model).
+    type Shared: Send + Sync + 'static;
+    /// Job request.
+    type Req: Send + 'static;
+    /// Job result.
+    type Out: Send + 'static;
+    /// Per-worker state — deliberately no `Send` bound: `LlamaContext` is
+    /// `!Send` and never leaves its thread; that is why this pool exists.
+    type State<'s>;
+    /// Build the worker's state from the shared value (e.g. a context).
+    fn init<'s>(&self, shared: &'s Self::Shared) -> Result<Self::State<'s>, String>;
+    /// Serve one job on the worker's state.
+    fn handle(
+        &self,
+        state: &mut Self::State<'_>,
+        req: Self::Req,
+        cancel: &CancelToken,
+    ) -> Result<Self::Out, InferenceError>;
 }
 
-impl<R, O> std::fmt::Debug for Pool<R, O> {
+/// A fixed-size pool of worker threads; each owns its `State` for life.
+/// Contexts stay on the thread that created them (`LlamaContext: !Send`).
+struct Pool<K: WorkerKind> {
+    senders: Vec<mpsc::Sender<Job<K::Req, K::Out>>>,
+    /// Kept so `Drop` can join every worker — even init-failed ones —
+    /// releasing their `Shared` clones before this `Pool` is gone.
+    handles: Vec<std::thread::JoinHandle<()>>,
+}
+
+impl<K: WorkerKind> std::fmt::Debug for Pool<K> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Pool")
             .field("workers", &self.senders.len())
@@ -390,34 +415,40 @@ impl<R, O> std::fmt::Debug for Pool<R, O> {
     }
 }
 
-impl<R: Send + 'static, O: Send + 'static> Pool<R, O> {
-    /// Spawn `n` workers. Each runs `init()` for its owned state, then
-    /// serves jobs via `handle(&mut worker, req, cancel)`.
+impl<K: WorkerKind> Drop for Pool<K> {
+    fn drop(&mut self) {
+        // Close every channel first so workers exit their recv loop,
+        // drop their context and `Shared` clone, and terminate.
+        self.senders.clear();
+        for h in self.handles.drain(..) {
+            drop(h.join());
+        }
+    }
+}
+
+impl<K: WorkerKind> Pool<K> {
+    /// Spawn `n` workers sharing `shared`. Each runs `kind.init(&shared)`
+    /// for its owned state, then serves jobs via `kind.handle`.
     ///
     /// Upstream keeps whatever contexts it could create (reduced
     /// parallelism); only a zero-worker pool is an error here.
-    fn spawn<Init, W, Handle>(n: usize, init: Init, handle: Handle) -> Result<Self, InferenceError>
-    where
-        Init: Fn() -> Result<W, String> + Send + Sync + 'static,
-        // `W` is created inside the worker thread and never leaves it —
-        // deliberately no `Send` bound: `LlamaContext` is `!Send` and that
-        // is exactly why this pool exists.
-        W: 'static,
-        Handle: Fn(&mut W, R, &CancelToken) -> Result<O, InferenceError> + Send + Sync + 'static,
-    {
-        let init = Arc::new(init);
-        let handle = Arc::new(handle);
+    fn spawn(n: usize, shared: &Arc<K::Shared>, kind: K) -> Result<Self, InferenceError> {
+        let kind = Arc::new(kind);
         let (report_tx, report_rx) = mpsc::channel::<(usize, Result<(), String>)>();
         let mut txs = Vec::with_capacity(n);
+        let mut handles = Vec::with_capacity(n);
         for i in 0..n {
-            let (tx, rx) = mpsc::channel::<Job<R, O>>();
+            let (tx, rx) = mpsc::channel::<Job<K::Req, K::Out>>();
             txs.push(tx);
-            let init = Arc::clone(&init);
-            let handle = Arc::clone(&handle);
+            let kind = Arc::clone(&kind);
+            let shared = Arc::clone(shared);
             let report_tx = report_tx.clone();
-            std::thread::spawn(move || {
-                worker_thread(i, init.as_ref(), handle.as_ref(), &rx, &report_tx);
-            });
+            // The closure owns the `Arc` clones; `worker_thread` borrows
+            // them, so its `state` local drops when it returns — before
+            // the captured `Arc<K::Shared>` (context before model).
+            handles.push(std::thread::spawn(move || {
+                worker_thread(i, &*kind, &*shared, &rx, &report_tx);
+            }));
         }
         drop(report_tx);
         let mut senders = Vec::with_capacity(n);
@@ -435,7 +466,7 @@ impl<R: Send + 'static, O: Send + 'static> Pool<R, O> {
                 last_err.unwrap_or_else(|| "no workers started".to_owned())
             )));
         }
-        Ok(Self { senders })
+        Ok(Self { senders, handles })
     }
 
     const fn worker_count(&self) -> usize {
@@ -445,7 +476,11 @@ impl<R: Send + 'static, O: Send + 'static> Pool<R, O> {
     /// Dispatch `reqs[i]` to worker `i % workers` and collect results in
     /// submission order (upstream's contiguous-chunk fan-out: callers chunk
     /// so `reqs.len() <= workers`).
-    fn dispatch_each(&self, reqs: Vec<R>, cancel: &CancelToken) -> Vec<Result<O, InferenceError>> {
+    fn dispatch_each(
+        &self,
+        reqs: Vec<K::Req>,
+        cancel: &CancelToken,
+    ) -> Vec<Result<K::Out, InferenceError>> {
         let n_workers = self.senders.len();
         let mut rxs = Vec::with_capacity(reqs.len());
         for (i, req) in reqs.into_iter().enumerate() {
@@ -469,7 +504,7 @@ impl<R: Send + 'static, O: Send + 'static> Pool<R, O> {
     }
 
     /// Dispatch a single request (to worker 0 — single-worker pools only).
-    fn dispatch(&self, req: R, cancel: &CancelToken) -> Result<O, InferenceError> {
+    fn dispatch(&self, req: K::Req, cancel: &CancelToken) -> Result<K::Out, InferenceError> {
         self.dispatch_each(vec![req], cancel)
             .into_iter()
             .next()
@@ -479,23 +514,161 @@ impl<R: Send + 'static, O: Send + 'static> Pool<R, O> {
 
 /// Worker thread body: build the worker state, report init status, then
 /// serve jobs until the pool's senders drop.
-fn worker_thread<W, R, O, Init, H>(
+fn worker_thread<K: WorkerKind>(
     i: usize,
-    init: &Init,
-    handle: &H,
-    rx: &mpsc::Receiver<Job<R, O>>,
+    kind: &K,
+    shared: &K::Shared,
+    rx: &mpsc::Receiver<Job<K::Req, K::Out>>,
     report: &mpsc::Sender<(usize, Result<(), String>)>,
-) where
-    Init: Fn() -> Result<W, String>,
-    H: Fn(&mut W, R, &CancelToken) -> Result<O, InferenceError>,
-{
-    let worker = init();
-    let status = worker.as_ref().map(|_| ()).map_err(Clone::clone);
+) {
+    let state = kind.init(shared);
+    let status = state.as_ref().map(|_| ()).map_err(Clone::clone);
     drop(report.send((i, status)));
-    let Ok(mut worker) = worker else { return };
+    let Ok(mut state) = state else { return };
     while let Ok(job) = rx.recv() {
-        let out = handle(&mut worker, job.req, &job.cancel);
+        let out = kind.handle(&mut state, job.req, &job.cancel);
         drop(job.reply.send(out));
+    }
+}
+
+// ============================================================================
+// Idle unload (T4)
+// ============================================================================
+
+/// Upstream SDK `inactivityTimeoutMs` (`index.ts:421`): five minutes.
+const IDLE_UNLOAD_TIMEOUT: Duration = Duration::from_mins(5);
+
+/// Backend state that unloads itself after `idle` without use — upstream
+/// `touchActivity` + `unloadIdleResources` (llm.ts:896-985): each op
+/// re-arms the timer; when it fires and nothing is in flight (only the
+/// slot holds the `Arc`), the backend's pool and model are freed and the
+/// next call rebuilds them. Each lazy backend has its own clock and
+/// unloads independently (upstream's single per-store timer only arms
+/// while contexts exist).
+struct IdleSlot<T: Send + Sync + 'static> {
+    value: Arc<Mutex<Option<Arc<T>>>>,
+    idle: Duration,
+    reaper: OnceLock<Reaper>,
+}
+
+/// The reaper thread's ends: `tx` is the activity channel `touch` sends
+/// on, `handle` joins the thread on drop. Dropping `tx` first makes the
+/// blocked `recv` observe `Disconnected` before `handle.join()`.
+struct Reaper {
+    tx: Option<mpsc::Sender<()>>,
+    handle: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Reaper {
+    fn spawn<T: Send + Sync + 'static>(value: Arc<Mutex<Option<Arc<T>>>>, idle: Duration) -> Self {
+        let (tx, rx) = mpsc::channel::<()>();
+        // `Option` only so `Drop` can `take()` the handle to join it.
+        let handle = std::thread::spawn(move || reaper_loop(&value, &rx, idle));
+        Self {
+            tx: Some(tx),
+            handle: Some(handle),
+        }
+    }
+}
+
+impl Drop for Reaper {
+    fn drop(&mut self) {
+        self.tx.take();
+        if let Some(h) = self.handle.take() {
+            drop(h.join());
+        }
+    }
+}
+
+/// Reaper loop: block while empty; while loaded, wake on activity or
+/// after `idle`. On timeout, unload only when the slot is the sole
+/// `Arc` holder — a strong count above 1 means an op is in flight, so
+/// upstream's reschedule is a full-period re-wait.
+fn reaper_loop<T: Send + Sync + 'static>(
+    value: &Arc<Mutex<Option<Arc<T>>>>,
+    rx: &mpsc::Receiver<()>,
+    idle: Duration,
+) {
+    loop {
+        let loaded = value
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some();
+        let r = if loaded {
+            rx.recv_timeout(idle)
+        } else {
+            rx.recv().map_err(|_| mpsc::RecvTimeoutError::Disconnected)
+        };
+        match r {
+            Ok(()) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                let mut slot = value
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                if slot.as_ref().is_some_and(|a| Arc::strong_count(a) == 1) {
+                    // Dropped under the lock so a concurrent reload waits
+                    // for the pool to join its workers before rebuilding.
+                    *slot = None;
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+}
+
+impl<T: Send + Sync + 'static> IdleSlot<T> {
+    fn new(idle: Duration) -> Self {
+        Self {
+            value: Arc::new(Mutex::new(None)),
+            idle,
+            reaper: OnceLock::new(),
+        }
+    }
+
+    /// The shared backend, building it under the lock when absent — a
+    /// failed build leaves the slot empty so the next call retries
+    /// (upstream clears the load promise on rejection). Spawns the
+    /// reaper lazily on first successful fill.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the init lock must stay held across check-and-fill"
+    )]
+    fn get_or_try_init(&self, build: impl FnOnce() -> Result<T>) -> Result<Arc<T>> {
+        let mut slot = self
+            .value
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let built = if let Some(v) = slot.as_ref() {
+            Arc::clone(v)
+        } else {
+            let v = Arc::new(build()?);
+            *slot = Some(Arc::clone(&v));
+            v
+        };
+        drop(slot);
+        self.reaper
+            .get_or_init(|| Reaper::spawn(Arc::clone(&self.value), self.idle));
+        self.touch();
+        Ok(built)
+    }
+
+    /// Re-arm the idle timer after an op (upstream `touchActivity`).
+    /// No-op before the reaper exists or after its channel closed.
+    fn touch(&self) {
+        if let Some(reaper) = self.reaper.get()
+            && let Some(tx) = &reaper.tx
+        {
+            // A closed channel just means the reaper is gone.
+            let _ignored = tx.send(());
+        }
+    }
+
+    #[cfg(test)]
+    fn is_loaded(&self) -> bool {
+        self.value
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some()
     }
 }
 
@@ -610,11 +783,49 @@ fn embed_batch(
     Ok(out)
 }
 
+/// Embed-worker context: `ctx_size`-sized context with `n_ubatch`
+/// (`UPSTREAM_UBATCH` upstream, `ctx_size` for `FullSequence`).
+struct EmbedWorker {
+    ctx_size: u32,
+    n_ubatch: u32,
+    threads: Option<i32>,
+}
+
+impl WorkerKind for EmbedWorker {
+    type Shared = LlamaModel;
+    type Req = Vec<String>;
+    type Out = Vec<Vec<f32>>;
+    type State<'s> = LlamaContext<'s>;
+
+    fn init<'s>(&self, shared: &'s LlamaModel) -> Result<LlamaContext<'s>, String> {
+        let mut params = LlamaContextParams::default()
+            .with_n_ctx(NonZeroU32::new(self.ctx_size))
+            .with_n_batch(self.n_ubatch)
+            .with_n_ubatch(self.n_ubatch)
+            .with_embeddings(true);
+        if let Some(t) = self.threads {
+            params = params.with_n_threads(t);
+        }
+        shared
+            .new_context(backend().map_err(|e| e.to_string())?, params)
+            .map_err(|e| e.to_string())
+    }
+
+    fn handle(
+        &self,
+        state: &mut LlamaContext<'_>,
+        texts: Vec<String>,
+        cancel: &CancelToken,
+    ) -> Result<Vec<Vec<f32>>, InferenceError> {
+        embed_batch(state, &texts, cancel)
+    }
+}
+
 /// llama.cpp embedding backend — upstream `LlamaCpp.embed`/`embedBatch`.
 pub struct LlamaEmbedder {
     uri: String,
-    model: &'static LlamaModel,
-    pool: Pool<Vec<String>, Vec<Vec<f32>>>,
+    model: Arc<LlamaModel>,
+    pool: Pool<EmbedWorker>,
     token_limit: usize,
     mode: EmbeddingMode,
 }
@@ -691,21 +902,11 @@ impl LlamaEmbedder {
         };
         let pool = Pool::spawn(
             n,
-            move || {
-                let mut params = LlamaContextParams::default()
-                    .with_n_ctx(NonZeroU32::new(ctx_size))
-                    .with_n_batch(n_ubatch)
-                    .with_n_ubatch(n_ubatch)
-                    .with_embeddings(true);
-                if let Some(t) = threads {
-                    params = params.with_n_threads(t);
-                }
-                model
-                    .new_context(backend().map_err(|e| e.to_string())?, params)
-                    .map_err(|e| e.to_string())
-            },
-            |ctx: &mut LlamaContext<'_>, texts: Vec<String>, cancel: &CancelToken| {
-                embed_batch(ctx, &texts, cancel)
+            &model,
+            EmbedWorker {
+                ctx_size,
+                n_ubatch,
+                threads,
             },
         )?;
         Ok(Self {
@@ -806,12 +1007,14 @@ impl Embedder for LlamaEmbedder {
 /// handle immediately; the GGUF download, model load and worker-pool
 /// spin-up happen on the first `tokenize`/`embed` call, and a failed
 /// build leaves the slot empty so the next call retries (upstream
-/// clears the load promise on rejection).
+/// clears the load promise on rejection). The backend unloads after
+/// `IDLE_UNLOAD_TIMEOUT` (5 min) without use (T4) and reloads on next
+/// call.
 pub struct LazyLlamaEmbedder {
     model_uri: String,
     env: Environment,
     mode: EmbeddingMode,
-    inner: Mutex<Option<Arc<LlamaEmbedder>>>,
+    slot: IdleSlot<LlamaEmbedder>,
 }
 
 impl LazyLlamaEmbedder {
@@ -819,27 +1022,29 @@ impl LazyLlamaEmbedder {
     /// touching the network or the model file. `mode` is the
     /// configured pooling (`upstream_tail` default).
     #[must_use]
-    pub const fn new(model_uri: String, env: Environment, mode: EmbeddingMode) -> Self {
+    pub fn new(model_uri: String, env: Environment, mode: EmbeddingMode) -> Self {
         Self {
             model_uri,
             env,
             mode,
-            inner: Mutex::new(None),
+            slot: IdleSlot::new(IDLE_UNLOAD_TIMEOUT),
         }
     }
 
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the init lock must stay held across check-and-fill"
-    )]
-    fn get(&self) -> Result<Arc<LlamaEmbedder>> {
-        let mut slot = self
-            .inner
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(e) = slot.as_ref() {
-            return Ok(Arc::clone(e));
-        }
+    #[cfg(test)]
+    fn with_idle_timeout(mut self, idle: Duration) -> Self {
+        self.slot = IdleSlot::new(idle);
+        self
+    }
+
+    #[cfg(test)]
+    fn is_loaded(&self) -> bool {
+        self.slot.is_loaded()
+    }
+
+    /// Resolve `model_uri` to a local GGUF and build the backend —
+    /// runs inside the slot lock so concurrent first-calls serialize.
+    fn build(&self) -> Result<LlamaEmbedder> {
         let pulled = super::download::pull_models(
             std::slice::from_ref(&self.model_uri),
             &self.env,
@@ -852,23 +1057,20 @@ impl LazyLlamaEmbedder {
             .ok_or_else(|| Error::InvalidInput {
                 reason: format!("model resolution returned no path for {}", self.model_uri),
             })?;
-        let built = Arc::new(LlamaEmbedder::new(
-            &path,
-            &self.model_uri,
-            &self.env,
-            self.mode,
-        )?);
-        *slot = Some(Arc::clone(&built));
-        Ok(built)
+        LlamaEmbedder::new(&path, &self.model_uri, &self.env, self.mode)
     }
 
     fn delegate<T>(
         &self,
         f: impl FnOnce(&LlamaEmbedder) -> Result<T, InferenceError>,
     ) -> Result<T, InferenceError> {
-        self.get()
+        let out = self
+            .slot
+            .get_or_try_init(|| self.build())
             .map_err(|e| InferenceError::ModelLoad(e.to_string()))
-            .and_then(|e| f(&e))
+            .and_then(|e| f(&e));
+        self.slot.touch();
+        out
     }
 }
 
@@ -999,11 +1201,51 @@ fn rerank_batch(
     Ok(scores)
 }
 
+/// Rerank-worker context: `ctx_size`-sized Rank-pooling context.
+/// `template` (`tokenizer.chat_template.rerank`) travels with the kind
+/// because `handle` needs it, not `init`.
+struct RerankWorker {
+    ctx_size: u32,
+    threads: Option<i32>,
+    template: Arc<str>,
+}
+
+impl WorkerKind for RerankWorker {
+    type Shared = LlamaModel;
+    type Req = RerankJob;
+    type Out = Vec<f32>;
+    type State<'s> = LlamaContext<'s>;
+
+    fn init<'s>(&self, shared: &'s LlamaModel) -> Result<LlamaContext<'s>, String> {
+        let mut params = LlamaContextParams::default()
+            .with_n_ctx(NonZeroU32::new(self.ctx_size))
+            .with_n_batch(self.ctx_size)
+            .with_n_ubatch(self.ctx_size)
+            .with_embeddings(true)
+            .with_pooling_type(LlamaPoolingType::Rank);
+        if let Some(t) = self.threads {
+            params = params.with_n_threads(t);
+        }
+        shared
+            .new_context(backend().map_err(|e| e.to_string())?, params)
+            .map_err(|e| e.to_string())
+    }
+
+    fn handle(
+        &self,
+        state: &mut LlamaContext<'_>,
+        job: RerankJob,
+        cancel: &CancelToken,
+    ) -> Result<Vec<f32>, InferenceError> {
+        rerank_batch(state, &self.template, &job, cancel)
+    }
+}
+
 /// llama.cpp reranker — upstream `LlamaRankingContext` + `rerank`.
 pub struct LlamaReranker {
     uri: String,
-    model: &'static LlamaModel,
-    pool: Pool<RerankJob, Vec<f32>>,
+    model: Arc<LlamaModel>,
+    pool: Pool<RerankWorker>,
     ctx_size: u32,
 }
 
@@ -1042,25 +1284,13 @@ impl LlamaReranker {
         let gpu = gpu_free_mb(gpu_mode).is_some();
         let n = pool_size(gpu_mode, 1000, 0, 8, env).min(4);
         let threads = threads_per_context(gpu, n);
-        let worker_template = Arc::clone(&template);
         let pool = Pool::spawn(
             n,
-            move || {
-                let mut params = LlamaContextParams::default()
-                    .with_n_ctx(NonZeroU32::new(ctx_size))
-                    .with_n_batch(ctx_size)
-                    .with_n_ubatch(ctx_size)
-                    .with_embeddings(true)
-                    .with_pooling_type(LlamaPoolingType::Rank);
-                if let Some(t) = threads {
-                    params = params.with_n_threads(t);
-                }
-                model
-                    .new_context(backend().map_err(|e| e.to_string())?, params)
-                    .map_err(|e| e.to_string())
-            },
-            move |ctx: &mut LlamaContext<'_>, job: RerankJob, cancel: &CancelToken| {
-                rerank_batch(ctx, &worker_template, &job, cancel)
+            &model,
+            RerankWorker {
+                ctx_size,
+                threads,
+                template,
             },
         )?;
         Ok(Self {
@@ -1228,13 +1458,39 @@ fn run_expansion(
     Ok(String::from_utf8_lossy(&vocab.detokenize(&out, true, false)).into_owned())
 }
 
+/// Generator worker: the state is just the shared model — a fresh
+/// context is built per call, like upstream's per-call `LlamaContext`.
+struct GenWorker {
+    expand_ctx: u32,
+}
+
+impl WorkerKind for GenWorker {
+    type Shared = LlamaModel;
+    type Req = GenJob;
+    type Out = String;
+    type State<'s> = &'s LlamaModel;
+
+    fn init<'s>(&self, shared: &'s LlamaModel) -> Result<&'s LlamaModel, String> {
+        Ok(shared)
+    }
+
+    fn handle(
+        &self,
+        state: &mut &LlamaModel,
+        job: GenJob,
+        _cancel: &CancelToken,
+    ) -> Result<String, InferenceError> {
+        run_expansion(state, self.expand_ctx, &job)
+    }
+}
+
 /// llama.cpp query-expansion backend — upstream `expandQueryWithLlm`.
 ///
 /// Returns the raw model output (`lex:`/`vec:`/`hyde:` lines); parsing
 /// lives in the core layer.
 pub struct LlamaGenerator {
     uri: String,
-    pool: Pool<GenJob, String>,
+    pool: Pool<GenWorker>,
     seed: AtomicU32,
 }
 
@@ -1262,13 +1518,7 @@ impl LlamaGenerator {
             DEFAULT_EXPAND_CONTEXT_SIZE,
         );
         let model = load_gguf(path, model_uri, gpu_mode)?;
-        let pool = Pool::spawn(
-            1,
-            move || Ok(model),
-            move |model: &mut &'static LlamaModel, job: GenJob, _cancel: &CancelToken| {
-                run_expansion(model, expand_ctx, &job)
-            },
-        )?;
+        let pool = Pool::spawn(1, &model, GenWorker { expand_ctx })?;
         let seed = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.subsec_nanos());
@@ -1303,37 +1553,41 @@ impl Generator for LlamaGenerator {
 // ============================================================================
 
 /// Lazily-built [`LlamaReranker`] — resolves the GGUF path and loads
-/// the model on first rerank call.
+/// the model on first rerank call; unloads after
+/// `IDLE_UNLOAD_TIMEOUT` (5 min) without use (T4) and reloads on next
+/// call.
 pub struct LazyLlamaReranker {
     model_uri: String,
     env: Environment,
-    inner: Mutex<Option<Arc<LlamaReranker>>>,
+    slot: IdleSlot<LlamaReranker>,
 }
 
 impl LazyLlamaReranker {
     /// Wrap the reranker for `model_uri` without touching the network
     /// or the model file.
     #[must_use]
-    pub const fn new(model_uri: String, env: Environment) -> Self {
+    pub fn new(model_uri: String, env: Environment) -> Self {
         Self {
             model_uri,
             env,
-            inner: Mutex::new(None),
+            slot: IdleSlot::new(IDLE_UNLOAD_TIMEOUT),
         }
     }
 
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the init lock must stay held across check-and-fill"
-    )]
-    fn get(&self) -> Result<Arc<LlamaReranker>> {
-        let mut slot = self
-            .inner
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(r) = slot.as_ref() {
-            return Ok(Arc::clone(r));
-        }
+    #[cfg(test)]
+    fn with_idle_timeout(mut self, idle: Duration) -> Self {
+        self.slot = IdleSlot::new(idle);
+        self
+    }
+
+    #[cfg(test)]
+    fn is_loaded(&self) -> bool {
+        self.slot.is_loaded()
+    }
+
+    /// Resolve `model_uri` to a local GGUF and build the backend —
+    /// runs inside the slot lock so concurrent first-calls serialize.
+    fn build(&self) -> Result<LlamaReranker> {
         let pulled = super::download::pull_models(
             std::slice::from_ref(&self.model_uri),
             &self.env,
@@ -1346,9 +1600,7 @@ impl LazyLlamaReranker {
             .ok_or_else(|| Error::InvalidInput {
                 reason: format!("model resolution returned no path for {}", self.model_uri),
             })?;
-        let built = Arc::new(LlamaReranker::new(&path, &self.model_uri, &self.env)?);
-        *slot = Some(Arc::clone(&built));
-        Ok(built)
+        LlamaReranker::new(&path, &self.model_uri, &self.env)
     }
 }
 
@@ -1366,7 +1618,7 @@ impl Reranker for LazyLlamaReranker {
     }
 
     fn rerank(&self, query: &str, docs: &[&str]) -> Result<Vec<f32>, InferenceError> {
-        match self.get() {
+        let out = match self.slot.get_or_try_init(|| self.build()) {
             Ok(r) => r.rerank(query, docs),
             // Only ranking-context creation failure degrades — upstream
             // catches just `createRankingContext` (llm.ts:1374-1386),
@@ -1379,42 +1631,37 @@ impl Reranker for LazyLlamaReranker {
             // Model resolution/download/load failures propagate —
             // `ensureRerankModel` throws before the try (llm.ts:1365).
             Err(e) => Err(InferenceError::ModelLoad(e.to_string())),
-        }
+        };
+        self.slot.touch();
+        out
     }
 }
 
 /// Lazily-built [`LlamaGenerator`] — resolves the GGUF path and loads
-/// the model on first expand call.
+/// the model on first expand call; unloads after
+/// `IDLE_UNLOAD_TIMEOUT` (5 min) without use (T4) and reloads on next
+/// call.
 pub struct LazyLlamaGenerator {
     model_uri: String,
     env: Environment,
-    inner: Mutex<Option<Arc<LlamaGenerator>>>,
+    slot: IdleSlot<LlamaGenerator>,
 }
 
 impl LazyLlamaGenerator {
     /// Wrap the generator for `model_uri` without touching the network
     /// or the model file.
     #[must_use]
-    pub const fn new(model_uri: String, env: Environment) -> Self {
+    pub fn new(model_uri: String, env: Environment) -> Self {
         Self {
             model_uri,
             env,
-            inner: Mutex::new(None),
+            slot: IdleSlot::new(IDLE_UNLOAD_TIMEOUT),
         }
     }
 
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the init lock must stay held across check-and-fill"
-    )]
-    fn get(&self) -> Result<Arc<LlamaGenerator>> {
-        let mut slot = self
-            .inner
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(g) = slot.as_ref() {
-            return Ok(Arc::clone(g));
-        }
+    /// Resolve `model_uri` to a local GGUF and build the backend —
+    /// runs inside the slot lock so concurrent first-calls serialize.
+    fn build(&self) -> Result<LlamaGenerator> {
         let pulled = super::download::pull_models(
             std::slice::from_ref(&self.model_uri),
             &self.env,
@@ -1427,9 +1674,7 @@ impl LazyLlamaGenerator {
             .ok_or_else(|| Error::InvalidInput {
                 reason: format!("model resolution returned no path for {}", self.model_uri),
             })?;
-        let built = Arc::new(LlamaGenerator::new(&path, &self.model_uri, &self.env)?);
-        *slot = Some(Arc::clone(&built));
-        Ok(built)
+        LlamaGenerator::new(&path, &self.model_uri, &self.env)
     }
 }
 
@@ -1447,9 +1692,13 @@ impl Generator for LazyLlamaGenerator {
     }
 
     fn expand(&self, query: &str) -> Result<String, InferenceError> {
-        self.get()
+        let out = self
+            .slot
+            .get_or_try_init(|| self.build())
             .map_err(|e| InferenceError::ModelLoad(e.to_string()))
-            .and_then(|g| g.expand(query))
+            .and_then(|g| g.expand(query));
+        self.slot.touch();
+        out
     }
 }
 
@@ -1632,6 +1881,221 @@ mod tests {
         // CPU path: computed is cpu_context_count() (>=1), override wins.
         assert_eq!(pool_size(LlamaGpuMode::Cpu, 1000, 0, 8, &env), 2);
     }
+
+    // ── WorkerKind pool + IdleSlot (T4) ──────────────────────────────
+
+    use std::sync::atomic::AtomicUsize;
+
+    /// Counts live worker states via its shared counter; handle doubles.
+    struct CountKind;
+
+    struct LiveGuard<'s> {
+        counter: &'s AtomicUsize,
+    }
+
+    impl Drop for LiveGuard<'_> {
+        fn drop(&mut self) {
+            self.counter.fetch_sub(1, Ordering::SeqCst);
+        }
+    }
+
+    impl WorkerKind for CountKind {
+        type Shared = AtomicUsize;
+        type Req = i32;
+        type Out = i32;
+        type State<'s> = LiveGuard<'s>;
+
+        fn init<'s>(&self, shared: &'s AtomicUsize) -> Result<LiveGuard<'s>, String> {
+            shared.fetch_add(1, Ordering::SeqCst);
+            Ok(LiveGuard { counter: shared })
+        }
+
+        fn handle(
+            &self,
+            _state: &mut LiveGuard<'_>,
+            req: i32,
+            _cancel: &CancelToken,
+        ) -> Result<i32, InferenceError> {
+            Ok(req * 2)
+        }
+    }
+
+    #[test]
+    fn pool_drop_joins_workers_and_releases_shared() {
+        let shared = Arc::new(AtomicUsize::new(0));
+        let pool = Pool::spawn(3, &shared, CountKind).unwrap();
+        let got: Vec<i32> = pool
+            .dispatch_each(vec![1, 2, 3], &CancelToken::new())
+            .into_iter()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(got, [2, 4, 6]);
+        assert_eq!(shared.load(Ordering::SeqCst), 3);
+        drop(pool);
+        // Drop joined the workers: states are gone and only our Arc
+        // remains.
+        assert_eq!(shared.load(Ordering::SeqCst), 0);
+        assert_eq!(Arc::strong_count(&shared), 1);
+    }
+
+    /// First `init` call fails, the rest succeed.
+    struct FlakyKind;
+
+    impl WorkerKind for FlakyKind {
+        type Shared = AtomicUsize;
+        type Req = i32;
+        type Out = i32;
+        type State<'s> = &'s AtomicUsize;
+
+        fn init<'s>(&self, shared: &'s AtomicUsize) -> Result<&'s AtomicUsize, String> {
+            if shared.fetch_add(1, Ordering::SeqCst) == 0 {
+                Err("init failed".to_owned())
+            } else {
+                Ok(shared)
+            }
+        }
+
+        fn handle(
+            &self,
+            _state: &mut &AtomicUsize,
+            req: i32,
+            _cancel: &CancelToken,
+        ) -> Result<i32, InferenceError> {
+            Ok(req)
+        }
+    }
+
+    /// Every `init` call fails.
+    struct DeadKind;
+
+    impl WorkerKind for DeadKind {
+        type Shared = AtomicUsize;
+        type Req = i32;
+        type Out = i32;
+        type State<'s> = &'s AtomicUsize;
+
+        fn init<'s>(&self, _shared: &'s AtomicUsize) -> Result<&'s AtomicUsize, String> {
+            Err("always fails".to_owned())
+        }
+
+        fn handle(
+            &self,
+            _state: &mut &AtomicUsize,
+            req: i32,
+            _cancel: &CancelToken,
+        ) -> Result<i32, InferenceError> {
+            Ok(req)
+        }
+    }
+
+    #[test]
+    fn pool_keeps_workers_that_initialised() {
+        let shared = Arc::new(AtomicUsize::new(0));
+        let pool = Pool::spawn(3, &shared, FlakyKind).unwrap();
+        assert_eq!(pool.worker_count(), 2);
+        assert_eq!(pool.dispatch(7, &CancelToken::new()).unwrap(), 7);
+
+        let dead_shared = Arc::new(AtomicUsize::new(0));
+        let err = Pool::spawn(2, &dead_shared, DeadKind).unwrap_err();
+        assert!(
+            matches!(err, InferenceError::Backend(ref m) if m.contains("failed to create any worker contexts")),
+            "{err:?}"
+        );
+    }
+
+    /// Sends on `tx` when dropped — the unload/reload witness.
+    struct Dropper {
+        tx: mpsc::Sender<()>,
+    }
+
+    impl Drop for Dropper {
+        fn drop(&mut self) {
+            let _ignored = self.tx.send(());
+        }
+    }
+
+    fn dropper(tx: &mpsc::Sender<()>) -> Dropper {
+        Dropper { tx: tx.clone() }
+    }
+
+    #[test]
+    fn idle_slot_unloads_after_timeout_and_reloads() {
+        let (drop_tx, drop_rx) = mpsc::channel::<()>();
+        let builds = AtomicUsize::new(0);
+        let slot = IdleSlot::new(Duration::from_millis(50));
+        let v = slot
+            .get_or_try_init(|| {
+                builds.fetch_add(1, Ordering::SeqCst);
+                Ok(dropper(&drop_tx))
+            })
+            .unwrap();
+        drop(v);
+        slot.touch();
+        drop_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("value was not unloaded after the idle timeout");
+        assert!(!slot.is_loaded());
+        let v2 = slot
+            .get_or_try_init(|| {
+                builds.fetch_add(1, Ordering::SeqCst);
+                Ok(dropper(&drop_tx))
+            })
+            .unwrap();
+        assert_eq!(builds.load(Ordering::SeqCst), 2);
+        drop(v2);
+    }
+
+    #[test]
+    fn idle_slot_defers_unload_while_value_in_use() {
+        let idle = Duration::from_millis(50);
+        let (drop_tx, drop_rx) = mpsc::channel::<()>();
+        let slot = IdleSlot::new(idle);
+        let v = slot.get_or_try_init(|| Ok(dropper(&drop_tx))).unwrap();
+        // A held Arc (strong count 2) must survive several idle periods.
+        assert!(
+            matches!(
+                drop_rx.recv_timeout(idle * 6),
+                Err(mpsc::RecvTimeoutError::Timeout)
+            ),
+            "unloaded while a caller still held the backend"
+        );
+        assert!(slot.is_loaded());
+        drop(v);
+        slot.touch();
+        drop_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("value not unloaded after release");
+        assert!(!slot.is_loaded());
+    }
+
+    #[test]
+    fn idle_slot_drop_releases_value_and_joins_reaper() {
+        let (drop_tx, drop_rx) = mpsc::channel::<()>();
+        let slot = IdleSlot::new(Duration::from_secs(60));
+        let v = slot.get_or_try_init(|| Ok(dropper(&drop_tx))).unwrap();
+        drop(v);
+        drop(slot);
+        // Reaper joined during drop: the value was released already.
+        drop_rx
+            .try_recv()
+            .expect("value still held after IdleSlot drop");
+    }
+
+    #[test]
+    fn idle_slot_failed_build_leaves_slot_empty() {
+        let (drop_tx, _drop_rx) = mpsc::channel::<()>();
+        let slot = IdleSlot::new(Duration::from_secs(60));
+        let r = slot.get_or_try_init(|| -> Result<Dropper> {
+            Err(Error::InvalidInput {
+                reason: "boom".to_owned(),
+            })
+        });
+        assert!(r.is_err());
+        assert!(!slot.is_loaded());
+        let v = slot.get_or_try_init(|| Ok(dropper(&drop_tx))).unwrap();
+        assert!(slot.is_loaded());
+        drop(v);
+    }
 }
 
 /// AC4 real-model parity tests against vendored E0 upstream data
@@ -1751,7 +2215,7 @@ mod e0_parity {
     fn rerank_matches_e0() {
         let path = model_file("hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf");
         assert!(path.exists(), "model cache missing: {}", path.display());
-        let model = load_leaked_model(&path, &model_params(LlamaGpuMode::Auto).unwrap()).unwrap();
+        let model = load_model(&path, &model_params(LlamaGpuMode::Auto).unwrap()).unwrap();
         let template = model
             .meta_val_str("tokenizer.chat_template.rerank")
             .unwrap();
@@ -1851,6 +2315,57 @@ mod e0_parity {
         assert!(reranker.rerank("q", &[]).unwrap().is_empty());
     }
 
+    /// T4: after the idle timeout both lazy backends unload their
+    /// worker contexts and model, then rebuild on the next call and
+    /// produce identical results.
+    #[test]
+    #[ignore = "requires cached GGUF models"]
+    fn lazy_backends_reload_after_idle_unload() {
+        use std::time::{Duration, Instant};
+
+        let embed_path = model_file("hf_ggml-org_embeddinggemma-300M-Q8_0.gguf");
+        let rerank_path = model_file("hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf");
+        assert!(
+            embed_path.exists(),
+            "model cache missing: {}",
+            embed_path.display()
+        );
+        assert!(
+            rerank_path.exists(),
+            "model cache missing: {}",
+            rerank_path.display()
+        );
+
+        let embedder = LazyLlamaEmbedder::new(
+            embed_path.to_string_lossy().into_owned(),
+            Environment::default(),
+            EmbeddingMode::UpstreamTail,
+        )
+        .with_idle_timeout(Duration::from_millis(200));
+        let reranker = LazyLlamaReranker::new(
+            rerank_path.to_string_lossy().into_owned(),
+            Environment::default(),
+        )
+        .with_idle_timeout(Duration::from_millis(200));
+
+        let v1 = embedder.embed(&["hello world"]).unwrap();
+        let s1 = reranker.rerank("q", &["doc a", "doc b"]).unwrap();
+
+        // Poll until both backends unload, bounded at 10s.
+        let (_tx, wait_rx) = mpsc::channel::<()>();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while Instant::now() < deadline && (embedder.is_loaded() || reranker.is_loaded()) {
+            let _ignored = wait_rx.recv_timeout(Duration::from_millis(50));
+        }
+        assert!(!embedder.is_loaded(), "embedder still loaded after 10s");
+        assert!(!reranker.is_loaded(), "reranker still loaded after 10s");
+
+        let v2 = embedder.embed(&["hello world"]).unwrap();
+        let s2 = reranker.rerank("q", &["doc a", "doc b"]).unwrap();
+        assert_eq!(v1, v2);
+        assert_eq!(s1, s2);
+    }
+
     /// AC4: the rendered expansion prompt tokenizes identically to
     /// upstream's `QwenChatWrapper` output.
     #[test]
@@ -1858,7 +2373,7 @@ mod e0_parity {
     fn expansion_prompt_matches_e0() {
         let path = model_file("hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf");
         assert!(path.exists(), "model cache missing: {}", path.display());
-        let model = load_leaked_model(&path, &model_params(LlamaGpuMode::Auto).unwrap()).unwrap();
+        let model = load_model(&path, &model_params(LlamaGpuMode::Auto).unwrap()).unwrap();
         // byte-parity against the recorded rendered prompt — upstream's
         // capture concatenates the sampled output after `assistant\n`, so
         // our render must be an exact prefix of it.
@@ -1870,7 +2385,7 @@ mod e0_parity {
             .clone();
         for item in &items {
             let query = item["query"].as_str().unwrap();
-            let rendered = render_expansion_prompt(model, query).unwrap();
+            let rendered = render_expansion_prompt(&model, query).unwrap();
             if query == "API versioning" {
                 assert!(
                     want_text.starts_with(&rendered),

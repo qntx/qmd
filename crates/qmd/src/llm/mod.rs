@@ -77,13 +77,17 @@ pub fn format_doc_for_embedding(
 }
 
 /// Upstream `resolveEmbedModel` (llm.ts:303-305): `config.embed` →
-/// `QMD_EMBED_MODEL` → [`DEFAULT_EMBED_MODEL`]. Empty values are unset.
+/// `QMD_EMBED_MODEL` → [`DEFAULT_EMBED_MODEL`].
+///
+/// Empty values are unset (upstream's `||` chain treats `""` as falsy),
+/// so each level is filtered before falling through — an empty config
+/// value must not shadow a set env var.
 #[must_use]
 pub fn resolve_embed_model(models: Option<&ModelsConfig>, env: &Environment) -> String {
     models
         .and_then(|m| m.embed.as_deref())
-        .or(env.qmd_embed_model.as_deref())
         .filter(|s| !s.is_empty())
+        .or_else(|| env.qmd_embed_model.as_deref().filter(|s| !s.is_empty()))
         .unwrap_or(DEFAULT_EMBED_MODEL)
         .to_owned()
 }
@@ -93,8 +97,8 @@ pub fn resolve_embed_model(models: Option<&ModelsConfig>, env: &Environment) -> 
 pub fn resolve_generate_model(models: Option<&ModelsConfig>, env: &Environment) -> String {
     models
         .and_then(|m| m.generate.as_deref())
-        .or(env.qmd_generate_model.as_deref())
         .filter(|s| !s.is_empty())
+        .or_else(|| env.qmd_generate_model.as_deref().filter(|s| !s.is_empty()))
         .unwrap_or(DEFAULT_GENERATE_MODEL)
         .to_owned()
 }
@@ -104,8 +108,8 @@ pub fn resolve_generate_model(models: Option<&ModelsConfig>, env: &Environment) 
 pub fn resolve_rerank_model(models: Option<&ModelsConfig>, env: &Environment) -> String {
     models
         .and_then(|m| m.rerank.as_deref())
-        .or(env.qmd_rerank_model.as_deref())
         .filter(|s| !s.is_empty())
+        .or_else(|| env.qmd_rerank_model.as_deref().filter(|s| !s.is_empty()))
         .unwrap_or(DEFAULT_RERANK_MODEL)
         .to_owned()
 }
@@ -173,4 +177,148 @@ pub fn embedding_fingerprint(model: &str, extra: Option<&str>) -> String {
         s.push(char::from_digit(u32::from(b & 0x0f), 16).unwrap_or('0'));
     }
     s
+}
+
+#[cfg(test)]
+mod tests {
+    //! Ports upstream `test/llm.test.ts:694-736` "`LlamaCpp` model
+    //! resolution (config > env > default)".
+
+    use super::*;
+
+    const ENV_URI: &str = "hf:org/env-model.gguf";
+    const CFG_URI: &str = "hf:org/config-model.gguf";
+
+    fn cfg_models(
+        embed: Option<&str>,
+        rerank: Option<&str>,
+        generate: Option<&str>,
+    ) -> ModelsConfig {
+        ModelsConfig {
+            embed: embed.map(str::to_owned),
+            rerank: rerank.map(str::to_owned),
+            generate: generate.map(str::to_owned),
+            ..Default::default()
+        }
+    }
+
+    // ── embed ────────────────────────────────────────────────────────
+
+    #[test]
+    fn embed_default_when_no_config_or_env() {
+        let env = Environment::default();
+        assert_eq!(resolve_embed_model(None, &env), DEFAULT_EMBED_MODEL);
+        let cfg = cfg_models(None, None, None);
+        assert_eq!(resolve_embed_model(Some(&cfg), &env), DEFAULT_EMBED_MODEL);
+    }
+
+    #[test]
+    fn embed_env_overrides_default() {
+        let env = Environment {
+            qmd_embed_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(resolve_embed_model(None, &env), ENV_URI);
+    }
+
+    #[test]
+    fn embed_config_overrides_env() {
+        let env = Environment {
+            qmd_embed_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(Some(CFG_URI), None, None);
+        assert_eq!(resolve_embed_model(Some(&cfg), &env), CFG_URI);
+    }
+
+    #[test]
+    fn embed_empty_config_falls_through_to_env() {
+        let env = Environment {
+            qmd_embed_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(Some(""), None, None);
+        assert_eq!(resolve_embed_model(Some(&cfg), &env), ENV_URI);
+    }
+
+    // ── rerank ───────────────────────────────────────────────────────
+
+    #[test]
+    fn rerank_default_when_no_config_or_env() {
+        let env = Environment::default();
+        assert_eq!(resolve_rerank_model(None, &env), DEFAULT_RERANK_MODEL);
+        let cfg = cfg_models(None, None, None);
+        assert_eq!(resolve_rerank_model(Some(&cfg), &env), DEFAULT_RERANK_MODEL);
+    }
+
+    #[test]
+    fn rerank_env_overrides_default() {
+        let env = Environment {
+            qmd_rerank_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(resolve_rerank_model(None, &env), ENV_URI);
+    }
+
+    #[test]
+    fn rerank_config_overrides_env() {
+        let env = Environment {
+            qmd_rerank_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(None, Some(CFG_URI), None);
+        assert_eq!(resolve_rerank_model(Some(&cfg), &env), CFG_URI);
+    }
+
+    #[test]
+    fn rerank_empty_config_falls_through_to_env() {
+        let env = Environment {
+            qmd_rerank_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(None, Some(""), None);
+        assert_eq!(resolve_rerank_model(Some(&cfg), &env), ENV_URI);
+    }
+
+    // ── generate ─────────────────────────────────────────────────────
+
+    #[test]
+    fn generate_default_when_no_config_or_env() {
+        let env = Environment::default();
+        assert_eq!(resolve_generate_model(None, &env), DEFAULT_GENERATE_MODEL);
+        let cfg = cfg_models(None, None, None);
+        assert_eq!(
+            resolve_generate_model(Some(&cfg), &env),
+            DEFAULT_GENERATE_MODEL
+        );
+    }
+
+    #[test]
+    fn generate_env_overrides_default() {
+        let env = Environment {
+            qmd_generate_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        assert_eq!(resolve_generate_model(None, &env), ENV_URI);
+    }
+
+    #[test]
+    fn generate_config_overrides_env() {
+        let env = Environment {
+            qmd_generate_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(None, None, Some(CFG_URI));
+        assert_eq!(resolve_generate_model(Some(&cfg), &env), CFG_URI);
+    }
+
+    #[test]
+    fn generate_empty_config_falls_through_to_env() {
+        let env = Environment {
+            qmd_generate_model: Some(ENV_URI.to_owned()),
+            ..Default::default()
+        };
+        let cfg = cfg_models(None, None, Some(""));
+        assert_eq!(resolve_generate_model(Some(&cfg), &env), ENV_URI);
+    }
 }
