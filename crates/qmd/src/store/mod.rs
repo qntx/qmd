@@ -6,8 +6,9 @@
 //!   dropped: it is the only copy of the collection definitions when a
 //!   database is reopened without its config file.
 //! - **structural layer** (`content`, `documents`, `documents_fts`,
-//!   `llm_cache`) is dropped and recreated when `schema_version` changes,
-//!   and `reindex_required` is flagged so callers re-index.
+//!   `llm_cache`, `document_metadata`, `document_metadata_values`) is
+//!   dropped and recreated when `schema_version` changes, and
+//!   `reindex_required` is flagged so callers re-index.
 //! - **vector layer** (`content_vectors`, `vectors_vec`) is recreated when
 //!   `vector_schema_version` changes; content is preserved so vectors can
 //!   be regenerated without re-scanning files.
@@ -23,6 +24,7 @@ pub(crate) mod embed;
 pub(crate) mod fts;
 pub(crate) mod hybrid;
 pub(crate) mod maintenance;
+pub(crate) mod metadata;
 pub(crate) mod rrf;
 pub(crate) mod search;
 pub(crate) mod status;
@@ -42,8 +44,9 @@ use crate::paths::busy_timeout_ms;
 const APPLICATION_ID: i64 = 0x516D_6452;
 
 /// Structural schema version for this implementation (independent from
-/// upstream's 15).
-const SCHEMA_VERSION: &str = "1";
+/// upstream's 15). `2` adds `document_metadata` and
+/// `document_metadata_values` (P3.1).
+const SCHEMA_VERSION: &str = "2";
 /// Vector schema version for this implementation. `2` adds
 /// `embed_fingerprint`/`total_chunks` to `content_vectors` so
 /// `getHashesNeedingEmbedding` matches upstream (P1.4).
@@ -105,8 +108,17 @@ CREATE INDEX IF NOT EXISTS idx_content_vectors_model_fingerprint
   ON content_vectors(model, embed_fingerprint, hash, total_chunks);
 ";
 
-/// Structural tables dropped on a `schema_version` mismatch.
-const STRUCTURAL_TABLES: &[&str] = &["documents_fts", "documents", "content", "llm_cache"];
+/// Structural tables dropped on a `schema_version` mismatch — child
+/// tables (`document_metadata_values`, `document_metadata`) before
+/// `documents`, matching upstream's drop order.
+const STRUCTURAL_TABLES: &[&str] = &[
+    "document_metadata_values",
+    "document_metadata",
+    "documents_fts",
+    "documents",
+    "content",
+    "llm_cache",
+];
 
 /// Vector tables dropped on a `vector_schema_version` mismatch.
 /// `vectors_vec` may be a virtual shadow table owned by `vec0`; it is
@@ -271,6 +283,7 @@ fn initialize(conn: &mut Connection, path: &Path) -> Result<()> {
         if config_get(&tx, "schema_version")?.as_deref() != Some(SCHEMA_VERSION) {
             drop_tables(&tx, STRUCTURAL_TABLES)?;
             tx.execute_batch(STRUCTURAL_DDL).map_err(DbError::from)?;
+            metadata::create_tables(&tx)?;
             config_set(&tx, "schema_version", SCHEMA_VERSION)?;
             // Structural rebuild loses the document index; callers must
             // re-index before searching.
@@ -283,6 +296,7 @@ fn initialize(conn: &mut Connection, path: &Path) -> Result<()> {
         }
     } else {
         tx.execute_batch(STRUCTURAL_DDL).map_err(DbError::from)?;
+        metadata::create_tables(&tx)?;
         tx.execute_batch(VECTOR_DDL).map_err(DbError::from)?;
         config_set(&tx, "schema_version", SCHEMA_VERSION)?;
         config_set(&tx, "vector_schema_version", VECTOR_SCHEMA_VERSION)?;

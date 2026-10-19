@@ -598,6 +598,7 @@ name = "qmd"
 version = "0.6.0"
 dependencies = [
  "globset",
+ "granit-parser",
  "indexmap",
  "llama-cpp-2",
  "regex",

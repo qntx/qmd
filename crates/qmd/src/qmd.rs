@@ -152,7 +152,7 @@ pub struct StatusCollection {
 
 /// [`Qmd::status`] result — upstream `IndexStatus` (store.ts:2533-2540)
 /// plus the CLI `status` aggregates (cli/qmd.ts:540-583) and the
-/// `reindex_required` flag (P1-D2). `pending_metadata` arrives with P3.
+/// `reindex_required` flag (P1-D2).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct Status {
@@ -171,6 +171,10 @@ pub struct Status {
     pub latest_modified: Option<String>,
     /// Schema rebuild requires re-indexing before search works.
     pub reindex_required: bool,
+    /// Active documents missing a metadata row, carrying a stale
+    /// extraction version, or holding an extraction error —
+    /// `countDocumentsPendingMetadata` (metadata-store.ts:167-179).
+    pub pending_metadata: usize,
     /// Per-collection rows, most recently updated first.
     pub collections: Vec<StatusCollection>,
 }
@@ -436,6 +440,9 @@ pub struct UpdateReport {
     pub removed: usize,
     /// Files skipped (unreadable, out of root, ...).
     pub skipped: usize,
+    /// Documents whose frontmatter metadata failed extraction
+    /// (upstream `metadataErrors`).
+    pub metadata_errors: usize,
     /// Distinct active content hashes with no vector rows; the embedding
     /// pipeline arrives in P2, so every active hash counts for now.
     pub needs_embedding: usize,
@@ -1179,6 +1186,7 @@ impl Qmd {
             unchanged: 0,
             removed: 0,
             skipped: 0,
+            metadata_errors: 0,
             needs_embedding: 0,
         };
         for col in &filtered {
@@ -1210,6 +1218,7 @@ impl Qmd {
             report.unchanged += r.unchanged;
             report.removed += r.removed;
             report.skipped += r.skipped_files.len();
+            report.metadata_errors += r.metadata_errors;
         }
         report.needs_embedding = store::status::hashes_needing_embedding(
             &conn,
@@ -1317,6 +1326,7 @@ impl Qmd {
             orphaned_vectors: row.orphaned_vectors,
             latest_modified: row.latest_modified,
             reindex_required: row.reindex_required,
+            pending_metadata: row.pending_metadata,
             collections: row
                 .collections
                 .into_iter()
