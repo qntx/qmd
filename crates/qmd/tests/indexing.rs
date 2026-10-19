@@ -394,6 +394,22 @@ fn empty_file_is_not_indexed() {
 }
 
 #[test]
+fn whitespace_only_file_uses_js_whitespace_semantics() {
+    // Upstream gates on `content.trim()` with the JS `\s` set: U+FEFF
+    // counts as whitespace (file skipped), U+0085 (NEL) does not.
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = tmp.path().join("docs");
+    write(&docs, "bom.md", "\u{feff}");
+    write(&docs, "nel.md", "\u{85}");
+    let db = tmp.path().join("i.sqlite");
+    let qmd = open_with_docs(&docs, &db);
+
+    let report = update(&qmd);
+    assert_eq!(report.indexed, 1);
+    assert_eq!(qmd.collections().unwrap()[0].active_count, 1);
+}
+
+#[test]
 fn file_emptied_after_indexing_keeps_document_active() {
     // Upstream marks the file seen before reading, so an emptied file
     // does not deactivate its document (store.ts:1685-1687).

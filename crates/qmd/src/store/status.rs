@@ -29,7 +29,7 @@ pub(crate) struct StatusCollection {
 /// Upstream `IndexStatus` (store.ts:2533-2540) plus the extra aggregates
 /// the CLI `status` command queries directly (vector counts, orphans,
 /// `latest_modified`) and this implementation's `reindex_required`
-/// flag. `pendingMetadata` arrives with P3.
+/// flag.
 pub(crate) struct StatusRow {
     /// Active documents.
     pub(crate) total_documents: usize,
@@ -45,6 +45,8 @@ pub(crate) struct StatusRow {
     pub(crate) latest_modified: Option<String>,
     /// Schema rebuild flagged a required re-index (`store_config`).
     pub(crate) reindex_required: bool,
+    /// `countDocumentsPendingMetadata` (metadata-store.ts:167-179).
+    pub(crate) pending_metadata: usize,
     /// Per-collection rows, most recently updated first.
     pub(crate) collections: Vec<StatusCollection>,
 }
@@ -195,6 +197,7 @@ pub(crate) fn get_status(
         orphaned_vectors: count_orphaned_vectors(conn)?,
         latest_modified: latest_modified(conn)?,
         reindex_required: super::config_get(conn, "reindex_required")?.as_deref() == Some("1"),
+        pending_metadata: super::metadata::count_documents_pending_metadata(conn)?,
         collections,
     })
 }

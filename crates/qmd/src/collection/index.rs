@@ -5,7 +5,6 @@
 //! - The whole pass runs inside one transaction; upstream's statements
 //!   autocommit. A mid-pass failure here rolls back instead of leaving a
 //!   half-indexed collection.
-//! - `syncDocumentMetadata` / `metadataErrors` are deferred to P3.
 //! - `findOrMigrateLegacyDocument` is not ported (no handelized legacy
 //!   paths exist in this store).
 //! - Error codes map [`std::io::ErrorKind`] to the closest Node errno
@@ -43,8 +42,7 @@ pub(crate) struct SkippedFile {
     pub(crate) code: String,
 }
 
-/// Per-collection result, mirroring upstream `ReindexResult` minus
-/// `metadataErrors` (deferred to P3).
+/// Per-collection result, mirroring upstream `ReindexResult`.
 #[derive(Debug, Default)]
 pub(crate) struct ReindexReport {
     /// Newly indexed files.
@@ -59,6 +57,8 @@ pub(crate) struct ReindexReport {
     pub(crate) orphaned_cleaned: usize,
     /// Files skipped (see [`SkippedFile::code`]).
     pub(crate) skipped_files: Vec<SkippedFile>,
+    /// Documents whose frontmatter metadata failed extraction.
+    pub(crate) metadata_errors: usize,
 }
 
 /// Upstream `fsErrorCode` (store.ts:1582-1589): Node errno names for the
@@ -156,7 +156,7 @@ pub(crate) fn reindex_collection(
 
         // Whitespace-only files are skipped *after* being marked seen:
         // upstream keeps the previous document active (store.ts:1685-1687).
-        if content.trim().is_empty() {
+        if crate::chunk::js_trim(&content).is_empty() {
             processed += 1;
             on_progress(&FileProgress {
                 file: relative_file,
@@ -170,8 +170,12 @@ pub(crate) fn reindex_collection(
         let title = documents::extract_title(&content, relative_file);
         let existing = documents::find_active_document(&tx, collection_name, relative_file)?;
 
+        let document_id;
+        let mut content_changed = true;
         match existing {
             Some(doc) if doc.hash == hash => {
+                document_id = doc.id;
+                content_changed = false;
                 if doc.title == title {
                     report.unchanged += 1;
                 } else {
@@ -180,6 +184,7 @@ pub(crate) fn reindex_collection(
                 }
             }
             Some(doc) => {
+                document_id = doc.id;
                 documents::insert_content(&tx, &hash, &content, &now)?;
                 let (_, modified) = file_timestamps(&filepath, &now);
                 documents::update_document(&tx, doc.id, &title, &hash, &modified)?;
@@ -188,7 +193,7 @@ pub(crate) fn reindex_collection(
             None => {
                 documents::insert_content(&tx, &hash, &content, &now)?;
                 let (created, modified) = file_timestamps(&filepath, &now);
-                documents::insert_document(
+                document_id = documents::insert_document(
                     &tx,
                     collection_name,
                     relative_file,
@@ -199,6 +204,19 @@ pub(crate) fn reindex_collection(
                 )?;
                 report.indexed += 1;
             }
+        }
+
+        // Unchanged content still backfills missing or stale extraction
+        // state (upstream `syncDocumentMetadata`, store.ts:1725-1728).
+        let extraction = crate::store::metadata::sync_document_metadata(
+            &tx,
+            document_id,
+            &content,
+            relative_file,
+            !content_changed,
+        )?;
+        if extraction.is_some_and(|e| e.error.is_some()) {
+            report.metadata_errors += 1;
         }
 
         processed += 1;

@@ -51,6 +51,7 @@ mod env;
 mod error;
 pub mod llm;
 pub mod maintenance;
+pub mod metadata;
 pub mod paths;
 mod qmd;
 pub mod query;
@@ -80,6 +81,10 @@ pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};
 pub use llm::{CancelToken, Capability, Embedder, Generator, InferenceError, Reranker};
 pub use maintenance::{CleanupCounts, Maintenance};
+pub use metadata::{
+    DocumentMetadata, METADATA_EXTRACTION_VERSION, METADATA_LIMITS, MetadataExtraction,
+    MetadataLimits, MetadataValue, extract_document_metadata,
+};
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
     ContextEntry, EmbedFailure, EmbedOptions, EmbedProgress, EmbedReport, IndexHealth, LexOptions,
