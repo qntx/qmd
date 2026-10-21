@@ -17,6 +17,7 @@ use rusqlite::Connection;
 use super::cache::{
     CacheKeyBody, cache_key, delete_expansion_cache_entry, get_cached_result, set_cached_result,
 };
+use super::metadata::get_metadata_by_filepath;
 use super::rrf::{
     FileRrfTrace, RRF_K, RankedListMeta, RankedResult, RrfContribution, build_rrf_trace,
     get_hybrid_rrf_weights, reciprocal_rank_fusion,
@@ -28,6 +29,8 @@ use crate::chunk::{
 };
 use crate::error::{Error, Result};
 use crate::llm::{Embedder, Generator, InferenceError, Reranker};
+use crate::metadata::DocumentMetadata;
+use crate::metadata::filter::MetadataFilter;
 use crate::query::{
     ExpandedQuery, INTENT_WEIGHT_CHUNK, QueryKind, expansion_error_fallback,
     expansion_parse_fallback, extract_intent_terms, parse_expansion_output,
@@ -92,6 +95,21 @@ fn search_result_to_ranked(r: &SearchResult) -> RankedResult {
         docid: r.docid.clone(),
         context: r.context.clone(),
     }
+}
+
+/// Upstream `attachResultMetadata` (store.ts:5496-5504): attach canonical
+/// metadata to final results with ONE batch query, after RRF/reranking
+/// so metadata is never duplicated through the intermediate ranked
+/// lists. Results without a metadata row get `{}`.
+fn attach_result_metadata(conn: &Connection, results: &mut [HybridResult]) -> Result<()> {
+    let filepaths: Vec<String> = results.iter().map(|r| r.filepath.clone()).collect();
+    let by_filepath = get_metadata_by_filepath(conn, &filepaths)?;
+    for r in results.iter_mut() {
+        if let Some(m) = by_filepath.get(&r.filepath) {
+            r.metadata = m.clone();
+        }
+    }
+    Ok(())
 }
 
 // =============================================================================
@@ -343,7 +361,7 @@ pub struct RrfTrace {
     pub contributions: Vec<RrfContribution>,
 }
 
-/// Upstream `HybridQueryResult` minus the P3 `metadata` field.
+/// Upstream `HybridQueryResult` (store.ts:5745-5758).
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct HybridResult {
@@ -365,6 +383,9 @@ pub struct HybridResult {
     pub context: Option<String>,
     /// Short docid (first 6 hash chars).
     pub docid: String,
+    /// Canonical metadata (`{}` when absent) — attached after ranking
+    /// via one batch query (upstream `attachResultMetadata`).
+    pub metadata: DocumentMetadata,
     /// Score trace when `explain` was requested.
     pub explain: Option<Box<Explain>>,
 }
@@ -540,6 +561,9 @@ fn run_pipeline(
                     score: rrf_score,
                     context: cand.context.clone(),
                     docid: cand.docid.clone(),
+                    // Filled by `attach_result_metadata` after ranking —
+                    // upstream never carries metadata through the lists.
+                    metadata: DocumentMetadata::default(),
                     explain: opts.explain.then(|| {
                         Box::new(build_explain(
                             trace_of(&cand.file),
@@ -608,6 +632,7 @@ fn run_pipeline(
                 score: blended_score,
                 context: cand.context.clone(),
                 docid: cand.docid.clone(),
+                metadata: DocumentMetadata::default(),
                 explain: opts.explain.then(|| {
                     Box::new(build_explain(
                         trace_of(&file),
@@ -641,6 +666,9 @@ fn run_pipeline(
 pub(crate) struct HybridQueryOpts<'a> {
     /// Collection scope (`Option` = all collections).
     pub collections: Option<Vec<String>>,
+    /// Metadata filter applied to every retrieval call (upstream
+    /// `options.filter`, store.ts:5466).
+    pub filter: Option<&'a MetadataFilter>,
     /// See [`PipelineOpts`].
     pub intent: Option<&'a str>,
     /// See [`PipelineOpts`].
@@ -679,18 +707,26 @@ fn has_strong_signal(top: f64, second: f64, hits: usize, intent: Option<&str>) -
         && (top - second) >= STRONG_SIGNAL_MIN_GAP
 }
 
-pub(crate) fn hybrid_query(
+/// `hybridQuery` steps 1-3 — probe/expand/retrieve into ranked
+/// lists (upstream store.ts:5564-5671).
+fn gather_hybrid_lists(
     ctx: &SearchCtx<'_>,
     query: &str,
     opts: &HybridQueryOpts<'_>,
-) -> Result<Vec<HybridResult>> {
+    has_vectors: bool,
+) -> Result<(Vec<Vec<RankedResult>>, Vec<RankedListMeta>)> {
     let mut ranked_lists: Vec<Vec<RankedResult>> = Vec::new();
     let mut ranked_meta: Vec<RankedListMeta> = Vec::new();
-    let has_vectors = has_vectors_vec(ctx.conn)?;
 
     // Step 1: BM25 probe — strong signal skips expensive LLM expansion.
     // Intent disables the bypass (upstream comment store.ts:5561-5563).
-    let initial_fts = search_fts(ctx.conn, query, SUBQUERY_LIMIT, opts.collections.clone())?;
+    let initial_fts = search_fts(
+        ctx.conn,
+        query,
+        SUBQUERY_LIMIT,
+        opts.collections.clone(),
+        opts.filter,
+    )?;
     let top_score = initial_fts.first().map_or(0.0, |r| r.score);
     let second_score = initial_fts.get(1).map_or(0.0, |r| r.score);
     let strong_signal = has_strong_signal(top_score, second_score, initial_fts.len(), opts.intent);
@@ -721,7 +757,13 @@ pub(crate) fn hybrid_query(
     // Step 3a: FTS for lex expansions.
     for q in &expanded {
         if q.kind == QueryKind::Lex {
-            let hits = search_fts(ctx.conn, &q.query, SUBQUERY_LIMIT, opts.collections.clone())?;
+            let hits = search_fts(
+                ctx.conn,
+                &q.query,
+                SUBQUERY_LIMIT,
+                opts.collections.clone(),
+                opts.filter,
+            )?;
             if !hits.is_empty() {
                 ranked_lists.push(hits.iter().map(search_result_to_ranked).collect());
                 ranked_meta.push(RankedListMeta {
@@ -756,6 +798,7 @@ pub(crate) fn hybrid_query(
                 embedding,
                 SUBQUERY_LIMIT,
                 opts.collections.clone(),
+                opts.filter,
             )?;
             if hits.is_empty() {
                 continue;
@@ -784,6 +827,17 @@ pub(crate) fn hybrid_query(
         }
     }
 
+    Ok((ranked_lists, ranked_meta))
+}
+
+pub(crate) fn hybrid_query(
+    ctx: &SearchCtx<'_>,
+    query: &str,
+    opts: &HybridQueryOpts<'_>,
+) -> Result<Vec<HybridResult>> {
+    let has_vectors = has_vectors_vec(ctx.conn)?;
+    let (ranked_lists, ranked_meta) = gather_hybrid_lists(ctx, query, opts, has_vectors)?;
+
     // Step 4: RRF fusion.
     let weights = get_hybrid_rrf_weights(&ranked_meta);
     let fused = reciprocal_rank_fusion(&ranked_lists, &weights, RRF_K);
@@ -795,7 +849,7 @@ pub(crate) fn hybrid_query(
         return Ok(Vec::new());
     }
 
-    run_pipeline(
+    let mut results = run_pipeline(
         ctx,
         candidates,
         &PipelineOpts {
@@ -809,7 +863,9 @@ pub(crate) fn hybrid_query(
             chunk_strategy: opts.chunk_strategy,
             trace,
         },
-    )
+    )?;
+    attach_result_metadata(ctx.conn, &mut results)?;
+    Ok(results)
 }
 
 // =============================================================================
@@ -825,6 +881,9 @@ pub(crate) struct StructuredSearchOpts<'a> {
     /// internally `Some(vec![])` still yields no lists, mirroring
     /// `structuredSearch`'s own `[]`.
     pub collections: Option<Vec<String>>,
+    /// Metadata filter applied to every retrieval call (upstream
+    /// `options.filter`, store.ts:5929).
+    pub filter: Option<&'a MetadataFilter>,
     /// See [`PipelineOpts`].
     pub intent: Option<&'a str>,
     /// See [`PipelineOpts`].
@@ -848,13 +907,14 @@ fn push_lex_lists(
     ctx: &SearchCtx<'_>,
     searches: &[ExpandedQuery],
     collection_list: &[Option<String>],
+    filter: Option<&MetadataFilter>,
     ranked_lists: &mut Vec<Vec<RankedResult>>,
     ranked_meta: &mut Vec<RankedListMeta>,
 ) -> Result<()> {
     for search in searches.iter().filter(|s| s.kind == QueryKind::Lex) {
         for coll in collection_list {
             let scope = coll.clone().map(|c| vec![c]);
-            let hits = search_fts(ctx.conn, &search.query, SUBQUERY_LIMIT, scope)?;
+            let hits = search_fts(ctx.conn, &search.query, SUBQUERY_LIMIT, scope, filter)?;
             if hits.is_empty() {
                 continue;
             }
@@ -876,6 +936,7 @@ fn push_structured_vec_lists(
     vec_searches: &[&ExpandedQuery],
     collection_list: &[Option<String>],
     embeddings: &[Vec<f32>],
+    filter: Option<&MetadataFilter>,
     ranked_lists: &mut Vec<Vec<RankedResult>>,
     ranked_meta: &mut Vec<RankedListMeta>,
 ) -> Result<()> {
@@ -885,7 +946,8 @@ fn push_structured_vec_lists(
             continue;
         };
         for coll in collection_list {
-            let hits = search_vec_multi(ctx.conn, embedding, SUBQUERY_LIMIT, coll.as_deref())?;
+            let hits =
+                search_vec_multi(ctx.conn, embedding, SUBQUERY_LIMIT, coll.as_deref(), filter)?;
             if hits.is_empty() {
                 continue;
             }
@@ -966,6 +1028,7 @@ pub(crate) fn structured_search(
         ctx,
         searches,
         &collection_list,
+        opts.filter,
         &mut ranked_lists,
         &mut ranked_meta,
     )?;
@@ -985,6 +1048,7 @@ pub(crate) fn structured_search(
                 &vec_searches,
                 &collection_list,
                 &embeddings,
+                opts.filter,
                 &mut ranked_lists,
                 &mut ranked_meta,
             )?;
@@ -1026,7 +1090,7 @@ pub(crate) fn structured_search(
     .find(|q| !q.is_empty())
     .unwrap_or("");
 
-    run_pipeline(
+    let mut results = run_pipeline(
         ctx,
         candidates,
         &PipelineOpts {
@@ -1040,7 +1104,9 @@ pub(crate) fn structured_search(
             chunk_strategy: opts.chunk_strategy,
             trace,
         },
-    )
+    )?;
+    attach_result_metadata(ctx.conn, &mut results)?;
+    Ok(results)
 }
 
 // =============================================================================
@@ -1049,16 +1115,19 @@ pub(crate) fn structured_search(
 
 /// `vectorSearchQuery` options — upstream's `intent` parameter is
 /// ignored there too (quirk Q9), so the Rust API takes none.
-pub(crate) struct VectorQueryOpts {
+pub(crate) struct VectorQueryOpts<'a> {
     /// Collection scope (`Option` = all).
     pub collections: Option<Vec<String>>,
+    /// Metadata filter applied to every `searchVec` call (upstream
+    /// `options.filter`, store.ts:5841).
+    pub filter: Option<&'a MetadataFilter>,
     /// `limit` (default 10 upstream).
     pub limit: usize,
     /// `minScore` (default 0.3 upstream).
     pub min_score: f64,
 }
 
-/// Upstream `VectorSearchResult` minus the P3 `metadata` field.
+/// Upstream `VectorSearchResult` (store.ts:5906-5915).
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct VectorQueryResult {
@@ -1076,12 +1145,15 @@ pub struct VectorQueryResult {
     pub context: Option<String>,
     /// Short docid.
     pub docid: String,
+    /// Canonical metadata (`{}` when absent) — carried through from the
+    /// `searchVec` rows (upstream `r.metadata`).
+    pub metadata: DocumentMetadata,
 }
 
 pub(crate) fn vector_query(
     ctx: &SearchCtx<'_>,
     query: &str,
-    opts: &VectorQueryOpts,
+    opts: &VectorQueryOpts<'_>,
 ) -> Result<Vec<VectorQueryResult>> {
     if !has_vectors_vec(ctx.conn)? {
         return Ok(Vec::new());
@@ -1111,6 +1183,7 @@ pub(crate) fn vector_query(
             q,
             opts.limit,
             opts.collections.clone(),
+            opts.filter,
         )?;
         for r in &hits {
             match all_results.get_mut(&r.filepath) {
@@ -1123,6 +1196,7 @@ pub(crate) fn vector_query(
                         score: r.score,
                         context: r.context.clone(),
                         docid: r.docid.clone(),
+                        metadata: r.metadata.clone(),
                     };
                 }
                 Some(_) => {}
@@ -1137,6 +1211,7 @@ pub(crate) fn vector_query(
                             score: r.score,
                             context: r.context.clone(),
                             docid: r.docid.clone(),
+                            metadata: r.metadata.clone(),
                         },
                     );
                 }
@@ -1485,7 +1560,7 @@ mod eval {
                 let mut lists: Vec<Vec<RankedResult>> = Vec::new();
                 let fts = {
                     let conn = qmd.lock_conn();
-                    search_fts(&conn, eq.query, 20, None).unwrap()
+                    search_fts(&conn, eq.query, 20, None, None).unwrap()
                 };
                 if !fts.is_empty() {
                     lists.push(fts.iter().map(search_result_to_ranked).collect());

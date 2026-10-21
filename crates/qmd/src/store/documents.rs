@@ -10,8 +10,6 @@
 //!   delete trigger this implementation intentionally does not create.
 //! - `findOrMigrateLegacyDocument` is not ported: this store never wrote
 //!   handelized paths, so there is no legacy row to adopt.
-//! - `syncDocumentMetadata` / `metadataErrors` are deferred to P3 (document
-//!   metadata extraction).
 
 use std::sync::LazyLock;
 use std::time::SystemTime;

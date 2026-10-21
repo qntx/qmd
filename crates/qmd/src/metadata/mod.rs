@@ -8,7 +8,10 @@
 //! document is never modified — frontmatter stays part of the stored,
 //! indexed, chunked and embedded content. YAML composition lives in
 //! the private `yaml` submodule, which mirrors the npm `yaml` 2.9 core
-//! schema used upstream.
+//! schema used upstream. The `filter` submodule ports upstream
+//! `src/metadata-filter.ts` (P3.2).
+
+pub mod filter;
 
 mod yaml;
 
@@ -315,8 +318,10 @@ fn normalize_metadata_value(key: &str, value: &yaml::Js) -> Result<MetadataValue
     }
 }
 
-/// Resolved scalar — upstream `MetadataScalar`.
-enum MetadataScalar {
+/// Resolved scalar — upstream `MetadataScalar` (metadata.ts:26).
+/// Public because [`filter::MetadataFilter`] condition operands use it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MetadataScalar {
     /// `string`
     String(String),
     /// `number`

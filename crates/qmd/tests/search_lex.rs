@@ -74,6 +74,7 @@ fn lex(qmd: &Qmd, query: &str, limit: usize) -> Vec<qmd::SearchResult> {
         &LexOptions {
             limit: Some(limit),
             collections: None,
+            filter: None,
         },
     )
     .unwrap()
@@ -173,6 +174,7 @@ fn search_lex_matches_golden_fixture() {
                 &LexOptions {
                     limit: Some(limit),
                     collections,
+                    filter: None,
                 },
             )
             .unwrap();
@@ -234,6 +236,7 @@ fn eval_bm25_golden_matches_upstream() {
                 &LexOptions {
                     limit: Some(5),
                     collections: None,
+                    filter: None,
                 },
             )
             .unwrap();
@@ -349,6 +352,7 @@ fn search_lex_collection_scope_and_merge() {
             &LexOptions {
                 limit: Some(20),
                 collections: Some(vec!["ca".to_owned()]),
+                filter: None,
             },
         )
         .unwrap();
@@ -362,6 +366,7 @@ fn search_lex_collection_scope_and_merge() {
             &LexOptions {
                 limit: Some(20),
                 collections: Some(vec!["ca".to_owned(), "cb".to_owned()]),
+                filter: None,
             },
         )
         .unwrap();
@@ -374,6 +379,7 @@ fn search_lex_collection_scope_and_merge() {
             &LexOptions {
                 limit: Some(20),
                 collections: Some(vec!["nosuch".to_owned()]),
+                filter: None,
             },
         )
         .unwrap();
@@ -418,6 +424,7 @@ fn search_lex_merge_tie_order_is_stable() {
             &LexOptions {
                 limit: Some(20),
                 collections: Some(vec!["ca".to_owned(), "cb".to_owned()]),
+                filter: None,
             },
         )
         .unwrap();

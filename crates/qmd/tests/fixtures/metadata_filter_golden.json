@@ -1,0 +1,440 @@
+{
+  "upstream": {
+    "repo": "tobi/qmd",
+    "commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
+    "version": "2.8.3"
+  },
+  "generated": "2026-10-21T07:00:21.189Z",
+  "cases": [
+    {
+      "name": "and two conditions",
+      "input": "{\"operator\":\"and\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1},{\"key\":\"b\",\"operator\":\"eq\",\"value\":\"x\"}]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?) AND EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?))",
+      "params": "[\"a\",1,\"b\",\"x\"]"
+    },
+    {
+      "name": "or two conditions",
+      "input": "{\"operator\":\"or\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1},{\"key\":\"b\",\"operator\":\"eq\",\"value\":\"x\"}]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?) OR EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?))",
+      "params": "[\"a\",1,\"b\",\"x\"]"
+    },
+    {
+      "name": "not condition",
+      "input": "{\"operator\":\"not\",\"operand\":{\"key\":\"a\",\"operator\":\"eq\",\"value\":1}}",
+      "sql": "NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?)",
+      "params": "[\"a\",1]"
+    },
+    {
+      "name": "nested groups",
+      "input": "{\"operator\":\"and\",\"operands\":[{\"operator\":\"or\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1},{\"key\":\"b\",\"operator\":\"gt\",\"value\":2}]},{\"operator\":\"not\",\"operand\":{\"key\":\"c\",\"operator\":\"exists\",\"value\":false}}]}",
+      "sql": "((EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?) OR EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value > ?)) AND NOT NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ?))",
+      "params": "[\"a\",1,\"b\",2,\"c\"]"
+    },
+    {
+      "name": "single operand group",
+      "input": "{\"operator\":\"and\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1}]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?))",
+      "params": "[\"a\",1]"
+    },
+    {
+      "name": "eq string",
+      "input": "{\"key\":\"status\",\"operator\":\"eq\",\"value\":\"published\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?)",
+      "params": "[\"status\",\"published\"]"
+    },
+    {
+      "name": "eq number",
+      "input": "{\"key\":\"rating\",\"operator\":\"eq\",\"value\":4.5}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?)",
+      "params": "[\"rating\",4.5]"
+    },
+    {
+      "name": "eq bool",
+      "input": "{\"key\":\"draft\",\"operator\":\"eq\",\"value\":true}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value = ?)",
+      "params": "[\"draft\",1]"
+    },
+    {
+      "name": "ne string",
+      "input": "{\"key\":\"status\",\"operator\":\"ne\",\"value\":\"draft\"}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?))",
+      "params": "[\"status\",\"status\",\"draft\"]"
+    },
+    {
+      "name": "ne number",
+      "input": "{\"key\":\"rating\",\"operator\":\"ne\",\"value\":0}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?))",
+      "params": "[\"rating\",\"rating\",0]"
+    },
+    {
+      "name": "ne bool",
+      "input": "{\"key\":\"draft\",\"operator\":\"ne\",\"value\":false}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value = ?))",
+      "params": "[\"draft\",\"draft\",0]"
+    },
+    {
+      "name": "gt string",
+      "input": "{\"key\":\"name\",\"operator\":\"gt\",\"value\":\"m\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value > ?)",
+      "params": "[\"name\",\"m\"]"
+    },
+    {
+      "name": "gte number",
+      "input": "{\"key\":\"rating\",\"operator\":\"gte\",\"value\":4}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value >= ?)",
+      "params": "[\"rating\",4]"
+    },
+    {
+      "name": "lt number",
+      "input": "{\"key\":\"price\",\"operator\":\"lt\",\"value\":100}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value < ?)",
+      "params": "[\"price\",100]"
+    },
+    {
+      "name": "lte string",
+      "input": "{\"key\":\"name\",\"operator\":\"lte\",\"value\":\"z\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value <= ?)",
+      "params": "[\"name\",\"z\"]"
+    },
+    {
+      "name": "in strings",
+      "input": "{\"key\":\"status\",\"operator\":\"in\",\"value\":[\"a\",\"b\",\"c\"]}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value IN (?, ?, ?))",
+      "params": "[\"status\",\"a\",\"b\",\"c\"]"
+    },
+    {
+      "name": "in numbers",
+      "input": "{\"key\":\"rating\",\"operator\":\"in\",\"value\":[1,2,3]}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value IN (?, ?, ?))",
+      "params": "[\"rating\",1,2,3]"
+    },
+    {
+      "name": "in bools",
+      "input": "{\"key\":\"flag\",\"operator\":\"in\",\"value\":[true,false]}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value IN (?, ?))",
+      "params": "[\"flag\",1,0]"
+    },
+    {
+      "name": "nin strings",
+      "input": "{\"key\":\"status\",\"operator\":\"nin\",\"value\":[\"draft\",\"archived\"]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value IN (?, ?)))",
+      "params": "[\"status\",\"status\",\"draft\",\"archived\"]"
+    },
+    {
+      "name": "nin numbers",
+      "input": "{\"key\":\"n\",\"operator\":\"nin\",\"value\":[0,-1]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value IN (?, ?)))",
+      "params": "[\"n\",\"n\",0,-1]"
+    },
+    {
+      "name": "nin bools",
+      "input": "{\"key\":\"flag\",\"operator\":\"nin\",\"value\":[true]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean') AND NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value IN (?)))",
+      "params": "[\"flag\",\"flag\",1]"
+    },
+    {
+      "name": "all strings",
+      "input": "{\"key\":\"tags\",\"operator\":\"all\",\"value\":[\"rust\",\"sqlite\"]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?) AND EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?))",
+      "params": "[\"tags\",\"rust\",\"tags\",\"sqlite\"]"
+    },
+    {
+      "name": "all numbers",
+      "input": "{\"key\":\"dims\",\"operator\":\"all\",\"value\":[1,2]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?) AND EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value = ?))",
+      "params": "[\"dims\",1,\"dims\",2]"
+    },
+    {
+      "name": "all bools",
+      "input": "{\"key\":\"flags\",\"operator\":\"all\",\"value\":[true,false]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value = ?) AND EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'boolean' AND mv.boolean_value = ?))",
+      "params": "[\"flags\",1,\"flags\",0]"
+    },
+    {
+      "name": "all single",
+      "input": "{\"key\":\"tags\",\"operator\":\"all\",\"value\":[\"only\"]}",
+      "sql": "(EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?))",
+      "params": "[\"tags\",\"only\"]"
+    },
+    {
+      "name": "in dedup",
+      "input": "{\"key\":\"tags\",\"operator\":\"in\",\"value\":[\"a\",\"b\",\"a\",\"c\",\"b\"]}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value IN (?, ?, ?))",
+      "params": "[\"tags\",\"a\",\"b\",\"c\"]"
+    },
+    {
+      "name": "in neg zero",
+      "input": "{\"key\":\"n\",\"operator\":\"in\",\"value\":[0,0,1]}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value IN (?, ?))",
+      "params": "[\"n\",0,1]"
+    },
+    {
+      "name": "exists true",
+      "input": "{\"key\":\"author\",\"operator\":\"exists\",\"value\":true}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ?)",
+      "params": "[\"author\"]"
+    },
+    {
+      "name": "exists false",
+      "input": "{\"key\":\"author\",\"operator\":\"exists\",\"value\":false}",
+      "sql": "NOT EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ?)",
+      "params": "[\"author\"]"
+    },
+    {
+      "name": "key unicode",
+      "input": "{\"key\":\"café☕\",\"operator\":\"eq\",\"value\":\"x\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?)",
+      "params": "[\"café☕\",\"x\"]"
+    },
+    {
+      "name": "key sql injection",
+      "input": "{\"key\":\"k'; DROP TABLE documents; --\",\"operator\":\"eq\",\"value\":\"x\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?)",
+      "params": "[\"k'; DROP TABLE documents; --\",\"x\"]"
+    },
+    {
+      "name": "value sql injection",
+      "input": "{\"key\":\"k\",\"operator\":\"eq\",\"value\":\"v' OR '1'='1\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?)",
+      "params": "[\"k\",\"v' OR '1'='1\"]"
+    },
+    {
+      "name": "value with quotes",
+      "input": "{\"key\":\"k\",\"operator\":\"eq\",\"value\":\"a\\\"b'c\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value = ?)",
+      "params": "[\"k\",\"a\\\"b'c\"]"
+    },
+    {
+      "name": "input null",
+      "input": "null",
+      "error": "Invalid metadata filter at $: each filter node must be an object"
+    },
+    {
+      "name": "input string",
+      "input": "\"eq\"",
+      "error": "Invalid metadata filter at $: each filter node must be an object"
+    },
+    {
+      "name": "input number",
+      "input": "42",
+      "error": "Invalid metadata filter at $: each filter node must be an object"
+    },
+    {
+      "name": "input array",
+      "input": "[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1}]",
+      "error": "Invalid metadata filter at $: each filter node must be an object"
+    },
+    {
+      "name": "input bool",
+      "input": "true",
+      "error": "Invalid metadata filter at $: each filter node must be an object"
+    },
+    {
+      "name": "missing operator",
+      "input": "{\"key\":\"a\",\"value\":1}",
+      "error": "Invalid metadata filter at $: missing 'operator' property"
+    },
+    {
+      "name": "operator not string",
+      "input": "{\"operator\":5,\"operands\":[]}",
+      "error": "Invalid metadata filter at $: missing 'operator' property"
+    },
+    {
+      "name": "unknown operator",
+      "input": "{\"operator\":\"xor\",\"operands\":[]}",
+      "error": "Invalid metadata filter at $: unknown operator 'xor' — expected one of: and, or, not, eq, ne, gt, gte, lt, lte, in, nin, all, exists"
+    },
+    {
+      "name": "unknown operator fuzzy",
+      "input": "{\"operator\":\"equals\",\"key\":\"a\",\"value\":1}",
+      "error": "Invalid metadata filter at $: unknown operator 'equals' — expected one of: and, or, not, eq, ne, gt, gte, lt, lte, in, nin, all, exists"
+    },
+    {
+      "name": "group extra prop",
+      "input": "{\"operator\":\"and\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1}],\"extra\":1}",
+      "error": "Invalid metadata filter at $: unknown property 'extra' — allowed: operator, operands"
+    },
+    {
+      "name": "group missing operands",
+      "input": "{\"operator\":\"and\"}",
+      "error": "Invalid metadata filter at $: 'and' requires an 'operands' array"
+    },
+    {
+      "name": "group operands not array",
+      "input": "{\"operator\":\"or\",\"operands\":\"x\"}",
+      "error": "Invalid metadata filter at $: 'or' requires an 'operands' array"
+    },
+    {
+      "name": "group empty operands",
+      "input": "{\"operator\":\"and\",\"operands\":[]}",
+      "error": "Invalid metadata filter at $: 'and' requires a non-empty 'operands' array"
+    },
+    {
+      "name": "group too many operands",
+      "input": "{\"operator\":\"or\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7},{\"key\":\"k\",\"operator\":\"eq\",\"value\":8},{\"key\":\"k\",\"operator\":\"eq\",\"value\":9},{\"key\":\"k\",\"operator\":\"eq\",\"value\":10},{\"key\":\"k\",\"operator\":\"eq\",\"value\":11},{\"key\":\"k\",\"operator\":\"eq\",\"value\":12},{\"key\":\"k\",\"operator\":\"eq\",\"value\":13},{\"key\":\"k\",\"operator\":\"eq\",\"value\":14},{\"key\":\"k\",\"operator\":\"eq\",\"value\":15},{\"key\":\"k\",\"operator\":\"eq\",\"value\":16},{\"key\":\"k\",\"operator\":\"eq\",\"value\":17},{\"key\":\"k\",\"operator\":\"eq\",\"value\":18},{\"key\":\"k\",\"operator\":\"eq\",\"value\":19},{\"key\":\"k\",\"operator\":\"eq\",\"value\":20},{\"key\":\"k\",\"operator\":\"eq\",\"value\":21},{\"key\":\"k\",\"operator\":\"eq\",\"value\":22},{\"key\":\"k\",\"operator\":\"eq\",\"value\":23},{\"key\":\"k\",\"operator\":\"eq\",\"value\":24},{\"key\":\"k\",\"operator\":\"eq\",\"value\":25},{\"key\":\"k\",\"operator\":\"eq\",\"value\":26},{\"key\":\"k\",\"operator\":\"eq\",\"value\":27},{\"key\":\"k\",\"operator\":\"eq\",\"value\":28},{\"key\":\"k\",\"operator\":\"eq\",\"value\":29},{\"key\":\"k\",\"operator\":\"eq\",\"value\":30},{\"key\":\"k\",\"operator\":\"eq\",\"value\":31},{\"key\":\"k\",\"operator\":\"eq\",\"value\":32}]}",
+      "error": "Invalid metadata filter at $: 'or' exceeds maximum of 32 operands"
+    },
+    {
+      "name": "nested error path",
+      "input": "{\"operator\":\"and\",\"operands\":[{\"key\":\"a\",\"operator\":\"eq\",\"value\":1},{\"operator\":\"and\",\"operands\":[null]}]}",
+      "error": "Invalid metadata filter at $.operands[1].operands[0]: each filter node must be an object"
+    },
+    {
+      "name": "deep nesting",
+      "input": "{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"operator\":\"not\",\"operand\":{\"key\":\"leaf\",\"operator\":\"eq\",\"value\":1}}}}}}}}}}}}}}}}}}",
+      "error": "Invalid metadata filter at $.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand.operand: exceeds maximum nesting depth of 16"
+    },
+    {
+      "name": "too many nodes",
+      "input": "{\"operator\":\"or\",\"operands\":[{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]},{\"operator\":\"and\",\"operands\":[{\"key\":\"k\",\"operator\":\"eq\",\"value\":0},{\"key\":\"k\",\"operator\":\"eq\",\"value\":1},{\"key\":\"k\",\"operator\":\"eq\",\"value\":2},{\"key\":\"k\",\"operator\":\"eq\",\"value\":3},{\"key\":\"k\",\"operator\":\"eq\",\"value\":4},{\"key\":\"k\",\"operator\":\"eq\",\"value\":5},{\"key\":\"k\",\"operator\":\"eq\",\"value\":6},{\"key\":\"k\",\"operator\":\"eq\",\"value\":7}]}]}",
+      "error": "Invalid metadata filter at $.operands[28].operands[2]: exceeds maximum of 256 nodes"
+    },
+    {
+      "name": "not extra prop",
+      "input": "{\"operator\":\"not\",\"operand\":{\"key\":\"a\",\"operator\":\"eq\",\"value\":1},\"operand2\":{\"key\":\"b\",\"operator\":\"eq\",\"value\":2}}",
+      "error": "Invalid metadata filter at $: unknown property 'operand2' — allowed: operator, operand"
+    },
+    {
+      "name": "not missing operand",
+      "input": "{\"operator\":\"not\"}",
+      "error": "Invalid metadata filter at $: 'not' requires exactly one 'operand'"
+    },
+    {
+      "name": "not null operand",
+      "input": "{\"operator\":\"not\",\"operand\":null}",
+      "error": "Invalid metadata filter at $.operand: each filter node must be an object"
+    },
+    {
+      "name": "not operand error path",
+      "input": "{\"operator\":\"not\",\"operand\":{\"operator\":\"and\",\"operands\":[42]}}",
+      "error": "Invalid metadata filter at $.operand.operands[0]: each filter node must be an object"
+    },
+    {
+      "name": "cond extra prop",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\",\"value\":1,\"extra\":2}",
+      "error": "Invalid metadata filter at $: unknown property 'extra' — allowed: key, operator, value"
+    },
+    {
+      "name": "cond missing key",
+      "input": "{\"operator\":\"eq\",\"value\":1}",
+      "error": "Invalid metadata filter at $: 'eq' requires a non-empty string 'key'"
+    },
+    {
+      "name": "cond empty key",
+      "input": "{\"key\":\"\",\"operator\":\"eq\",\"value\":1}",
+      "error": "Invalid metadata filter at $: 'eq' requires a non-empty string 'key'"
+    },
+    {
+      "name": "cond nonstring key",
+      "input": "{\"key\":5,\"operator\":\"eq\",\"value\":1}",
+      "error": "Invalid metadata filter at $: 'eq' requires a non-empty string 'key'"
+    },
+    {
+      "name": "cond key too long",
+      "input": "{\"key\":\"kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk\",\"operator\":\"eq\",\"value\":1}",
+      "error": "Invalid metadata filter at $: 'key' exceeds 128 bytes"
+    },
+    {
+      "name": "cond missing value",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\"}",
+      "error": "Invalid metadata filter at $: 'eq' requires a 'value'"
+    },
+    {
+      "name": "cond null value",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\",\"value\":null}",
+      "error": "Invalid metadata filter at $.value: expected a string, number, or boolean"
+    },
+    {
+      "name": "cond object value",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\",\"value\":{\"x\":1}}",
+      "error": "Invalid metadata filter at $.value: expected a string, number, or boolean"
+    },
+    {
+      "name": "cond array value",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\",\"value\":[1]}",
+      "error": "Invalid metadata filter at $.value: expected a string, number, or boolean"
+    },
+    {
+      "name": "exists nonbool",
+      "input": "{\"key\":\"a\",\"operator\":\"exists\",\"value\":\"true\"}",
+      "error": "Invalid metadata filter at $.value: 'exists' requires a boolean value"
+    },
+    {
+      "name": "exists number",
+      "input": "{\"key\":\"a\",\"operator\":\"exists\",\"value\":1}",
+      "error": "Invalid metadata filter at $.value: 'exists' requires a boolean value"
+    },
+    {
+      "name": "gt bool",
+      "input": "{\"key\":\"a\",\"operator\":\"gt\",\"value\":true}",
+      "error": "Invalid metadata filter at $.value: 'gt' requires a string or number value"
+    },
+    {
+      "name": "lte bool",
+      "input": "{\"key\":\"a\",\"operator\":\"lte\",\"value\":false}",
+      "error": "Invalid metadata filter at $.value: 'lte' requires a string or number value"
+    },
+    {
+      "name": "eq bool ok is compile",
+      "input": "{\"key\":\"a\",\"operator\":\"gte\",\"value\":\"x\"}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'string' AND mv.text_value >= ?)",
+      "params": "[\"a\",\"x\"]"
+    },
+    {
+      "name": "string too long",
+      "input": "{\"key\":\"a\",\"operator\":\"eq\",\"value\":\"sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss\"}",
+      "error": "Invalid metadata filter at $.value: string exceeds 1024 characters"
+    },
+    {
+      "name": "number nan impossible in json",
+      "input": "{\"key\":\"a\",\"operator\":\"gt\",\"value\":9007199254740992}",
+      "sql": "EXISTS (SELECT 1 FROM document_metadata_values mv WHERE mv.document_id = d.id AND mv.key = ? AND mv.value_type = 'number' AND mv.number_value > ?)",
+      "params": "[\"a\",9007199254740992]"
+    },
+    {
+      "name": "in not array",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":\"x\"}",
+      "error": "Invalid metadata filter at $.value: 'in' requires an array value"
+    },
+    {
+      "name": "in empty array",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[]}",
+      "error": "Invalid metadata filter at $.value: 'in' requires a non-empty array value"
+    },
+    {
+      "name": "in too many",
+      "input": "{\"key\":\"a\",\"operator\":\"nin\",\"value\":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64]}",
+      "error": "Invalid metadata filter at $.value: 'nin' exceeds maximum of 64 values"
+    },
+    {
+      "name": "in mixed types",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[\"x\",1]}",
+      "error": "Invalid metadata filter at $.value: 'in' requires a homogeneous array of one scalar type"
+    },
+    {
+      "name": "in mixed num bool",
+      "input": "{\"key\":\"a\",\"operator\":\"all\",\"value\":[1,true]}",
+      "error": "Invalid metadata filter at $.value: 'all' requires a homogeneous array of one scalar type"
+    },
+    {
+      "name": "in nested array",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[[\"x\"]]}",
+      "error": "Invalid metadata filter at $.value[0]: expected a string, number, or boolean"
+    },
+    {
+      "name": "in null element",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[\"x\",null]}",
+      "error": "Invalid metadata filter at $.value[1]: expected a string, number, or boolean"
+    },
+    {
+      "name": "in error path",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[\"ok\",{\"bad\":1}]}",
+      "error": "Invalid metadata filter at $.value[1]: expected a string, number, or boolean"
+    },
+    {
+      "name": "in element too long",
+      "input": "{\"key\":\"a\",\"operator\":\"in\",\"value\":[\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"]}",
+      "error": "Invalid metadata filter at $.value[0]: string exceeds 1024 characters"
+    }
+  ]
+}
