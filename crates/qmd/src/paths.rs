@@ -157,6 +157,14 @@ pub(crate) fn resolve_lexical(dir: &Path, rel: &str) -> PathBuf {
     lexical_normalize(&dir.join(rel))
 }
 
+/// [`lexical_normalize`] on a string path — for call sites that work in
+/// upstream's stringly-typed path space (e.g. `trust.ts`).
+pub(crate) fn lexical_normalize_str(path: &str) -> String {
+    lexical_normalize(Path::new(path))
+        .to_string_lossy()
+        .into_owned()
+}
+
 /// Lexical path normalization, like `path.resolve`: drops `.`, resolves
 /// `..` by popping, and collapses duplicate separators — without touching
 /// the filesystem (so it works on non-existent paths, unlike

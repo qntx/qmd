@@ -60,6 +60,8 @@ mod store;
 #[cfg(feature = "testing")]
 #[cfg_attr(docsrs, doc(cfg(feature = "testing")))]
 pub mod testing;
+pub mod trust;
+pub mod update_hook;
 pub mod vpath;
 
 pub use chunk::{

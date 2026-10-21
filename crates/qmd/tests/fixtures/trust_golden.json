@@ -1,0 +1,648 @@
+{
+  "upstream": {
+    "repo": "tobi/qmd",
+    "commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
+    "version": "2.8.3"
+  },
+  "home": "/home/qmd-golden",
+  "generated": "2026-10-21T12:22:41.218Z",
+  "cases": [
+    {
+      "name": "localPath /home/me/project/.qmd/index.yml",
+      "kind": "localPath",
+      "input": [
+        "/home/me/project/.qmd/index.yml"
+      ],
+      "output": true
+    },
+    {
+      "name": "localPath /home/me/project/.qmd/index.yaml",
+      "kind": "localPath",
+      "input": [
+        "/home/me/project/.qmd/index.yaml"
+      ],
+      "output": true
+    },
+    {
+      "name": "localPath /home/me/.config/qmd/index.yml",
+      "kind": "localPath",
+      "input": [
+        "/home/me/.config/qmd/index.yml"
+      ],
+      "output": false
+    },
+    {
+      "name": "localPath /home/me/.config/qmd/work.yml",
+      "kind": "localPath",
+      "input": [
+        "/home/me/.config/qmd/work.yml"
+      ],
+      "output": false
+    },
+    {
+      "name": "localPath <inline>",
+      "kind": "localPath",
+      "input": [
+        "<inline>"
+      ],
+      "output": false
+    },
+    {
+      "name": "localPath <empty>",
+      "kind": "localPath",
+      "input": [
+        ""
+      ],
+      "output": false
+    },
+    {
+      "name": "localPath /x/y/../project/.qmd/index.yml",
+      "kind": "localPath",
+      "input": [
+        "/x/y/../project/.qmd/index.yml"
+      ],
+      "output": true
+    },
+    {
+      "name": "projectRoot /home/me/project/.qmd/index.yml",
+      "kind": "projectRoot",
+      "input": [
+        "/home/me/project/.qmd/index.yml"
+      ],
+      "output": "/home/me/project"
+    },
+    {
+      "name": "projectRoot /x/y/../project/.qmd/index.yml",
+      "kind": "projectRoot",
+      "input": [
+        "/x/y/../project/.qmd/index.yml"
+      ],
+      "output": "/x/project"
+    },
+    {
+      "name": "expand \"~\"",
+      "kind": "expand",
+      "input": [
+        "~"
+      ],
+      "output": "/home/qmd-golden"
+    },
+    {
+      "name": "expand \"~/\"",
+      "kind": "expand",
+      "input": [
+        "~/"
+      ],
+      "output": "/home/qmd-golden"
+    },
+    {
+      "name": "expand \"~/secrets\"",
+      "kind": "expand",
+      "input": [
+        "~/secrets"
+      ],
+      "output": "/home/qmd-golden/secrets"
+    },
+    {
+      "name": "expand \"~\\\\secrets\"",
+      "kind": "expand",
+      "input": [
+        "~\\secrets"
+      ],
+      "output": "/home/qmd-golden/secrets"
+    },
+    {
+      "name": "expand \"~user/x\"",
+      "kind": "expand",
+      "input": [
+        "~user/x"
+      ],
+      "output": "~user/x"
+    },
+    {
+      "name": "expand \"/abs/path\"",
+      "kind": "expand",
+      "input": [
+        "/abs/path"
+      ],
+      "output": "/abs/path"
+    },
+    {
+      "name": "expand \"\"",
+      "kind": "expand",
+      "input": [
+        ""
+      ],
+      "output": ""
+    },
+    {
+      "name": "resolve \"\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        ""
+      ],
+      "output": "/home/me/project"
+    },
+    {
+      "name": "resolve \"   \"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "   "
+      ],
+      "output": "/home/me/project"
+    },
+    {
+      "name": "resolve \".\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "."
+      ],
+      "output": "/home/me/project"
+    },
+    {
+      "name": "resolve \"./docs\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "./docs"
+      ],
+      "output": "/home/me/project/docs"
+    },
+    {
+      "name": "resolve \"docs/notes\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "docs/notes"
+      ],
+      "output": "/home/me/project/docs/notes"
+    },
+    {
+      "name": "resolve \"../other\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "../other"
+      ],
+      "output": "/home/me/other"
+    },
+    {
+      "name": "resolve \"/etc\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "/etc"
+      ],
+      "output": "/etc"
+    },
+    {
+      "name": "resolve \"~/secrets\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "~/secrets"
+      ],
+      "output": "/home/qmd-golden/secrets"
+    },
+    {
+      "name": "resolve \"a/../b\"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "a/../b"
+      ],
+      "output": "/home/me/project/b"
+    },
+    {
+      "name": "resolve \"  ./docs  \"",
+      "kind": "resolve",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "  ./docs  "
+      ],
+      "output": "/home/me/project/docs"
+    },
+    {
+      "name": "inside \"./docs\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "./docs"
+      ],
+      "output": true
+    },
+    {
+      "name": "inside \".\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "."
+      ],
+      "output": true
+    },
+    {
+      "name": "inside \"docs/notes\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "docs/notes"
+      ],
+      "output": true
+    },
+    {
+      "name": "inside \"a/../b\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "a/../b"
+      ],
+      "output": true
+    },
+    {
+      "name": "inside \"..\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        ".."
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"../other\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "../other"
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"/etc\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "/etc"
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"/home/me/secrets\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "/home/me/secrets"
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"~/secrets\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "~/secrets"
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"docs/../../etc\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "docs/../../etc"
+      ],
+      "output": false
+    },
+    {
+      "name": "inside \"../project-other/docs\"",
+      "kind": "inside",
+      "input": [
+        "/home/me/project/.qmd/index.yml",
+        "../project-other/docs"
+      ],
+      "output": false
+    },
+    {
+      "name": "gated empty",
+      "kind": "gated",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": {
+        "hooks": [],
+        "paths": [],
+        "models": []
+      }
+    },
+    {
+      "name": "gated all-in-project + builtins",
+      "kind": "gated",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [
+            {
+              "collection": "docs",
+              "path": "./docs"
+            }
+          ],
+          "models": {
+            "embed": "hf:default/embed/model.gguf"
+          }
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": {
+        "hooks": [],
+        "paths": [],
+        "models": []
+      }
+    },
+    {
+      "name": "gated hooks + outside + models",
+      "kind": "gated",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [
+            {
+              "collection": "docs",
+              "command": "git pull --ff-only"
+            }
+          ],
+          "paths": [
+            {
+              "collection": "docs",
+              "path": "./docs"
+            },
+            {
+              "collection": "secrets",
+              "path": "/etc"
+            }
+          ],
+          "models": {
+            "embed": "hf:evil/x.gguf",
+            "rerank": "hf:default/rerank/model.gguf"
+          }
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": {
+        "hooks": [
+          {
+            "collection": "docs",
+            "command": "git pull --ff-only"
+          }
+        ],
+        "paths": [
+          {
+            "collection": "secrets",
+            "path": "/etc"
+          }
+        ],
+        "models": [
+          {
+            "slot": "embed",
+            "uri": "hf:evil/x.gguf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "digest ordering-insensitive",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [
+            {
+              "collection": "b",
+              "command": "cmd-b"
+            },
+            {
+              "collection": "a",
+              "command": "cmd-a"
+            }
+          ],
+          "paths": [
+            {
+              "collection": "b",
+              "path": "/outside/b"
+            },
+            {
+              "collection": "a",
+              "path": "/outside/a"
+            }
+          ],
+          "models": {
+            "generate": "hf:m/g.gguf",
+            "embed": "hf:m/e.gguf"
+          }
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "e023d45ea666cc1331d0a936cbadc2c2e8a64998df8c5c12d40a5325857c3064"
+    },
+    {
+      "name": "digest outside path",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [
+            {
+              "collection": "docs",
+              "path": "/etc"
+            }
+          ],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "6468c3a6bbd722488d1a20c978905620b6daeabd6df060e5794861a019a4acb6"
+    },
+    {
+      "name": "digest custom model",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [],
+          "models": {
+            "embed": "hf:evil/embed/x.gguf"
+          }
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "f01f6d20d68b04cbb29969fff6f286e10f0266e32c5acf0f392a82937a03b28a"
+    },
+    {
+      "name": "digest ~ resolved",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [
+            {
+              "collection": "docs",
+              "path": "~/secrets"
+            }
+          ],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "cedd4d00e411367efbeff9f1fbe61d67408981c30b940c42aa846379ee929fd1"
+    },
+    {
+      "name": "digest utf16 sort edge",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [
+            {
+              "collection": "😀hook",
+              "command": "x"
+            },
+            {
+              "collection": "hook",
+              "command": "y"
+            }
+          ],
+          "paths": [],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "a4fd683e3b419b0894e21667bb14d0691bb04735ed3d4ac5e7f3c41bf0eb97dd"
+    },
+    {
+      "name": "digest escaping",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [
+            {
+              "collection": "a\"b\\c",
+              "command": "echo \"x\\y\""
+            }
+          ],
+          "paths": [],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "2ea762d31118403324e6625d4c5d695c92e938280d0891f43869c28c6c6ebe35"
+    },
+    {
+      "name": "digest hooks+paths+models",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/project/.qmd/index.yml",
+        "snapshot": {
+          "hooks": [
+            {
+              "collection": "docs",
+              "command": "git pull --ff-only"
+            }
+          ],
+          "paths": [
+            {
+              "collection": "secrets",
+              "path": "/etc"
+            }
+          ],
+          "models": {
+            "embed": "hf:evil/embed/x.gguf",
+            "rerank": "hf:evil/r/y.gguf"
+          }
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "c0a830c7daaba233ab5b244b6675a450da2a3170bac6d5a2ce22e38e3a61e693"
+    },
+    {
+      "name": "digest global config path",
+      "kind": "digest",
+      "input": {
+        "configPath": "/home/me/.config/qmd/index.yml",
+        "snapshot": {
+          "hooks": [],
+          "paths": [
+            {
+              "collection": "docs",
+              "path": "/etc"
+            }
+          ],
+          "models": {}
+        },
+        "builtins": {
+          "embed": "hf:default/embed/model.gguf",
+          "rerank": "hf:default/rerank/model.gguf",
+          "generate": "hf:default/generate/model.gguf"
+        }
+      },
+      "output": "6468c3a6bbd722488d1a20c978905620b6daeabd6df060e5794861a019a4acb6"
+    },
+    {
+      "name": "store write format",
+      "kind": "storeFormat",
+      "input": null,
+      "output": "{\n  \"/home/me/project/.qmd/index.yml\": {\n    \"hooks\": \"abcdef0123456789\",\n    \"trustedAt\": \"2026-01-02T03:04:05.006Z\"\n  },\n  \"/home/me/other/.qmd/index.yaml\": {\n    \"hooks\": \"0011223344556677\",\n    \"trustedAt\": \"2026-02-03T04:05:06.007Z\"\n  }\n}\n"
+    }
+  ]
+}
