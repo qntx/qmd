@@ -58,6 +58,14 @@ pub struct Environment {
     pub qmd_llama_gpu: Option<String>,
     /// `$QMD_FORCE_CPU` — force CPU inference when truthy (llm.ts:756).
     pub qmd_force_cpu: Option<String>,
+    /// `$QMD_TRUST_LOCAL_CONFIG` — trust project-local config unattended
+    /// when truthy; shared opt-in for the local-config gate
+    /// (`isLocalConfigTrustOptedIn`, trust.ts:272-274).
+    pub qmd_trust_local_config: Option<String>,
+    /// `$QMD_TRUST_UPDATE_HOOKS` — trust update hooks unattended when
+    /// truthy; also feeds the shared `isLocalConfigTrustOptedIn` check, so
+    /// it opts the path/model gate in too (trust.ts:272-274, 294).
+    pub qmd_trust_update_hooks: Option<String>,
 }
 
 impl Environment {
@@ -93,6 +101,10 @@ impl Environment {
                 .map(|v| v.to_string_lossy().into_owned()),
             qmd_llama_gpu: var_os("QMD_LLAMA_GPU").map(|v| v.to_string_lossy().into_owned()),
             qmd_force_cpu: var_os("QMD_FORCE_CPU").map(|v| v.to_string_lossy().into_owned()),
+            qmd_trust_local_config: var_os("QMD_TRUST_LOCAL_CONFIG")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_trust_update_hooks: var_os("QMD_TRUST_UPDATE_HOOKS")
+                .map(|v| v.to_string_lossy().into_owned()),
         }
     }
 }
