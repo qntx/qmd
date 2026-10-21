@@ -350,6 +350,7 @@ fn maintenance_run_leaves_consistent_index() {
             &LexOptions {
                 limit: Some(5),
                 collections: None,
+                filter: None,
             },
         )
         .unwrap();

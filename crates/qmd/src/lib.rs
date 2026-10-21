@@ -81,9 +81,13 @@ pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};
 pub use llm::{CancelToken, Capability, Embedder, Generator, InferenceError, Reranker};
 pub use maintenance::{CleanupCounts, Maintenance};
+pub use metadata::filter::{
+    CompiledMetadataFilter, METADATA_FILTER_LIMITS, MetadataFilter, MetadataFilterError,
+    MetadataFilterLimits, compile_metadata_filter, parse_metadata_filter,
+};
 pub use metadata::{
     DocumentMetadata, METADATA_EXTRACTION_VERSION, METADATA_LIMITS, MetadataExtraction,
-    MetadataLimits, MetadataValue, extract_document_metadata,
+    MetadataLimits, MetadataScalar, MetadataValue, extract_document_metadata,
 };
 pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,

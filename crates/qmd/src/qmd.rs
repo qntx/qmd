@@ -192,10 +192,8 @@ pub struct IndexHealth {
     pub days_stale: Option<i64>,
 }
 
-/// Options for [`Qmd::search_lex`], mirroring the `limit` and
-/// `collection` fields of upstream `searchLex` options
-/// (index.ts:474-477). The upstream `filter` field is metadata-based and
-/// arrives with P3.
+/// Options for [`Qmd::search_lex`], mirroring upstream `searchLex`
+/// options (index.ts:474-477).
 #[derive(Debug, Clone, Default)]
 pub struct LexOptions {
     /// Maximum results (upstream default: 20).
@@ -204,6 +202,10 @@ pub struct LexOptions {
     /// searches all collections. Several names are queried separately
     /// and merged by score (upstream #775).
     pub collections: Option<Vec<String>>,
+    /// Metadata filter — every returned result satisfies it (upstream
+    /// `LexSearchOptions.filter`, index.ts:211). Build one with
+    /// [`crate::metadata::filter::parse_metadata_filter`].
+    pub filter: Option<crate::metadata::filter::MetadataFilter>,
 }
 
 /// Options for [`Qmd::embed`], mirroring upstream `EmbedOptions`
@@ -307,8 +309,7 @@ pub struct EmbedReport {
 }
 
 /// Options for [`Qmd::search_vector`], mirroring upstream
-/// `VectorSearchOptions` (index.ts:216-224) minus the P3 metadata
-/// `filter`.
+/// `VectorSearchOptions` (index.ts:216-224).
 #[derive(Debug, Clone, Default)]
 pub struct VectorOptions {
     /// Maximum results (upstream default: 20).
@@ -317,6 +318,9 @@ pub struct VectorOptions {
     /// separately and merged by score (same shape as
     /// [`LexOptions::collections`]).
     pub collections: Option<Vec<String>>,
+    /// Metadata filter — every returned result satisfies it (upstream
+    /// `VectorSearchOptions.filter`, index.ts:221).
+    pub filter: Option<crate::metadata::filter::MetadataFilter>,
 }
 
 /// Input for [`Qmd::search`] — how the query text reaches the
@@ -334,13 +338,15 @@ pub enum SearchInput {
 }
 
 /// Options for [`Qmd::search`], mirroring upstream
-/// `HybridQueryOptions`/`StructuredSearchOptions` (minus the P3
-/// metadata `filter`).
+/// `HybridQueryOptions`/`StructuredSearchOptions`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct SearchOptions {
     /// The query input.
     pub input: SearchInput,
+    /// Metadata filter applied to every retrieval call (upstream
+    /// `options.filter`, store.ts:5466, 5929).
+    pub filter: Option<crate::metadata::filter::MetadataFilter>,
     /// Domain intent hint — prepended to the rerank query and used in
     /// chunk selection / snippets. Also disables the BM25
     /// strong-signal bypass in the hybrid pipeline (upstream
@@ -370,6 +376,7 @@ impl Default for SearchOptions {
     fn default() -> Self {
         Self {
             input: SearchInput::Query(String::new()),
+            filter: None,
             intent: None,
             rerank: true,
             collections: None,
@@ -392,6 +399,9 @@ impl Default for SearchOptions {
 pub struct VectorQueryOptions {
     /// Collection scope; `None` or empty = all.
     pub collections: Option<Vec<String>>,
+    /// Metadata filter applied to every `searchVec` call (upstream
+    /// `options.filter`, store.ts:5841).
+    pub filter: Option<crate::metadata::filter::MetadataFilter>,
     /// Maximum results (default 10).
     pub limit: usize,
     /// Minimum cosine score (default 0.3).
@@ -402,6 +412,7 @@ impl Default for VectorQueryOptions {
     fn default() -> Self {
         Self {
             collections: None,
+            filter: None,
             limit: 10,
             min_score: 0.3,
         }
@@ -1380,6 +1391,7 @@ impl Qmd {
             query,
             opts.limit.unwrap_or(20),
             opts.collections.clone(),
+            opts.filter.as_ref(),
         )
     }
 
@@ -1488,6 +1500,7 @@ impl Qmd {
             query,
             opts.limit.unwrap_or(20),
             opts.collections.clone(),
+            opts.filter.as_ref(),
         )
     }
 
@@ -1581,6 +1594,7 @@ impl Qmd {
                 query,
                 &store::hybrid::HybridQueryOpts {
                     collections,
+                    filter: opts.filter.as_ref(),
                     intent,
                     skip_rerank: !opts.rerank,
                     explain: opts.explain,
@@ -1595,6 +1609,7 @@ impl Qmd {
                 searches,
                 &store::hybrid::StructuredSearchOpts {
                     collections,
+                    filter: opts.filter.as_ref(),
                     intent,
                     skip_rerank: !opts.rerank,
                     explain: opts.explain,
@@ -1646,6 +1661,7 @@ impl Qmd {
             query,
             &store::hybrid::VectorQueryOpts {
                 collections: opts.collections.clone(),
+                filter: opts.filter.as_ref(),
                 limit: opts.limit,
                 min_score: opts.min_score,
             },

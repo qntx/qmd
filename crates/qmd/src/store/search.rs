@@ -1,10 +1,8 @@
 //! FTS5 read side, ported from upstream `src/store.ts`: `getDocid`
-//! (2364), `getContextForFile` (3547-3630), `searchFTS` (4081-4180) and
-//! `mergeSearchResultsByScore` (4076-4079).
+//! (2364), `getContextForFile` (3547-3630), `searchFTS` (4081-4180),
+//! `searchVec` (4236-4384) and `mergeSearchResultsByScore` (4076-4079).
 //!
-//! Deviations:
-//! - `searchFTS`'s `document_metadata` join and metadata `filter` arrive
-//!   with P3, so `metadata` is absent from [`SearchResult`].
+//! Deviation:
 //! - `body_length` counts bytes (`String::len`); upstream uses JS string
 //!   length (UTF-16 code units). Equal for ASCII and BMP text.
 
@@ -12,8 +10,11 @@ use rusqlite::{Connection, OptionalExtension, params_from_iter};
 
 use super::collections::{DbCollection, get_store_collections, get_store_global_context};
 use super::fts::build_fts5_query;
+use super::metadata::parse_metadata_json;
 use crate::docid::get_docid;
 use crate::error::{DbError, Result};
+use crate::metadata::filter::{MetadataFilter, compile_metadata_filter};
+use crate::metadata::{DocumentMetadata, METADATA_EXTRACTION_VERSION};
 use crate::vpath::parse_virtual_path;
 
 /// A ranked FTS search hit — upstream `SearchResult`/`DocumentResult`
@@ -50,6 +51,10 @@ pub struct SearchResult {
     /// Chunk position (UTF-16 code units) within the document — `Some`
     /// only for vector hits (upstream `chunkPos`, P2.3).
     pub chunk_pos: Option<usize>,
+    /// Canonical metadata from `document_metadata` (`{}` when the
+    /// document has no extraction row or holds no metadata) — upstream
+    /// `metadata` (store.ts:4166, 4378).
+    pub metadata: DocumentMetadata,
 }
 
 /// Where a search hit came from (upstream `source` field).
@@ -160,14 +165,19 @@ pub(crate) fn get_context_for_file(
 /// The CTE forces the FTS5 index scan before the collection filter is
 /// applied; upstream found the planner otherwise abandons the index on
 /// filtered queries (17s → 8ms). `LIMIT*10` over-fetch happens when a
-/// collection filter is set. Multiple collections are queried separately
-/// and merged by score so a large unrelated collection cannot starve the
-/// smaller ones (upstream #775).
+/// collection or metadata filter is set. Multiple collections are
+/// queried separately and merged by score so a large unrelated
+/// collection cannot starve the smaller ones (upstream #775).
+///
+/// With a metadata `filter`, only documents with a current-version,
+/// error-free extraction can match — an unprocessed document must not
+/// accidentally satisfy `exists: false` (store.ts:4135-4141).
 pub(crate) fn search_fts(
     conn: &Connection,
     query: &str,
     limit: usize,
     collection_scope: Option<Vec<String>>,
+    filter: Option<&MetadataFilter>,
 ) -> Result<Vec<SearchResult>> {
     // One collection, several (OR), or all (None) — upstream
     // `scopedCollectionNames` (store.ts:4071-4074).
@@ -181,7 +191,7 @@ pub(crate) fn search_fts(
     if let Some(names) = names.as_ref().filter(|n| n.len() > 1) {
         let lists = names
             .iter()
-            .map(|name| search_fts(conn, query, limit, Some(vec![name.clone()])))
+            .map(|name| search_fts(conn, query, limit, Some(vec![name.clone()]), filter))
             .collect::<Result<Vec<_>>>()?;
         return Ok(merge_search_results_by_score(lists, limit));
     }
@@ -191,8 +201,8 @@ pub(crate) fn search_fts(
         return Ok(Vec::new());
     };
 
-    let fts_limit = if collection_filter.is_some() {
-        limit * 10
+    let fts_limit = if collection_filter.is_some() || filter.is_some() {
+        limit.saturating_mul(10)
     } else {
         limit
     };
@@ -212,14 +222,30 @@ pub(crate) fn search_fts(
            d.title, \
            content.doc AS body, \
            d.hash, \
-           fm.bm25_score \
+           fm.bm25_score, \
+           dm.metadata_json \
          FROM fts_matches fm \
          JOIN documents d ON d.id = fm.rowid \
          JOIN content ON content.hash = d.hash \
+         LEFT JOIN document_metadata dm ON dm.document_id = d.id \
          WHERE d.active = 1",
     );
+    let mut filter_params = Vec::new();
     if collection_filter.is_some() {
         sql.push_str(" AND d.collection = ?");
+    }
+    if let Some(f) = filter {
+        // Only documents with current, error-free extraction can match —
+        // an unprocessed document must not accidentally satisfy
+        // `exists: false` (store.ts:4135-4141).
+        let compiled = compile_metadata_filter(f, "d");
+        let gate = format!(
+            " AND dm.extraction_version = {METADATA_EXTRACTION_VERSION} \
+             AND dm.extraction_error IS NULL AND {}",
+            compiled.sql
+        );
+        sql.push_str(&gate);
+        filter_params = compiled.params;
     }
     sql.push_str(" ORDER BY fm.bm25_score ASC LIMIT ?");
 
@@ -228,9 +254,19 @@ pub(crate) fn search_fts(
     if let Some(name) = collection_filter {
         params.push(name.into());
     }
+    params.extend(filter_params);
     params.push(as_i64(limit).into());
+    run_fts_query(conn, &sql, params)
+}
 
-    let mut stmt = conn.prepare(&sql).map_err(DbError::from)?;
+/// Shared tail of [`search_fts`] — run the prepared statement and map
+/// rows to results.
+fn run_fts_query(
+    conn: &Connection,
+    sql: &str,
+    params: Vec<rusqlite::types::Value>,
+) -> Result<Vec<SearchResult>> {
+    let mut stmt = conn.prepare(sql).map_err(DbError::from)?;
     let rows = stmt
         .query_map(params_from_iter(params), |r| {
             Ok(Row {
@@ -241,6 +277,7 @@ pub(crate) fn search_fts(
                 body: r.get(4)?,
                 hash: r.get(5)?,
                 bm25_score: r.get(6)?,
+                metadata_json: r.get(7)?,
             })
         })
         .map_err(DbError::from)?
@@ -275,6 +312,7 @@ pub(crate) fn search_fts(
             title: row.title,
             hash: row.hash,
             modified_at: String::new(),
+            metadata: parse_metadata_json(row.metadata_json.as_deref()),
         });
     }
     Ok(results)
@@ -289,6 +327,7 @@ struct Row {
     body: String,
     hash: String,
     bm25_score: f64,
+    metadata_json: Option<String>,
 }
 
 /// Upstream `mergeSearchResultsByScore` (store.ts:4076-4079): keep the
@@ -389,23 +428,25 @@ fn ann_vec_scan(conn: &Connection, embedding: &[f32], k: usize) -> Result<Vec<(S
     Ok(rows)
 }
 
-/// Upstream `searchVec` (store.ts:4236-4384) minus the P3 metadata
-/// `filter` join.
+/// Upstream `searchVec` (store.ts:4236-4384).
 ///
 /// Two-step shape is load-bearing: sqlite-vec virtual tables hang on a
 /// `JOIN` in the same query (upstream PR #23) — the vec step never
 /// joins, the document lookup never touches `vectors_vec`.
 ///
-/// With a collection filter the eligible `hash_seq` set is computed
-/// first: small sets exact-scan (global ANN would starve them, upstream
-/// #791/#803), large sets fall back to capped ANN and the filter is
-/// re-applied at the document join.
+/// With a collection or metadata `filter` the eligible `hash_seq` set is
+/// computed first: small sets exact-scan (global ANN would starve them,
+/// upstream #791/#803), large sets fall back to capped ANN. The filter
+/// is re-applied at the document join because vectors are content-scoped
+/// — one hash can back both matching and non-matching documents
+/// (store.ts:4339-4345).
 pub(crate) fn search_vec(
     conn: &Connection,
     embedder: &dyn crate::llm::Embedder,
     query: &str,
     limit: usize,
     collection_scope: Option<Vec<String>>,
+    filter: Option<&MetadataFilter>,
 ) -> Result<Vec<SearchResult>> {
     if !super::status::has_vectors_vec(conn)? {
         return Ok(Vec::new());
@@ -427,7 +468,7 @@ pub(crate) fn search_vec(
     let Some(embedding) = embedding else {
         return Ok(Vec::new());
     };
-    search_vec_with_embedding(conn, &embedding, limit, collection_scope)
+    search_vec_with_embedding(conn, &embedding, limit, collection_scope, filter)
 }
 
 /// `searchVec` with a precomputed query embedding — the hybrid and
@@ -439,6 +480,7 @@ pub(crate) fn search_vec_with_embedding(
     embedding: &[f32],
     limit: usize,
     collection_scope: Option<Vec<String>>,
+    filter: Option<&MetadataFilter>,
 ) -> Result<Vec<SearchResult>> {
     let names = collection_scope.map(|scope| {
         scope
@@ -450,7 +492,7 @@ pub(crate) fn search_vec_with_embedding(
     if let Some(names) = names.as_ref().filter(|n| n.len() > 1) {
         let lists = names
             .iter()
-            .map(|name| search_vec_multi(conn, embedding, limit, Some(name)))
+            .map(|name| search_vec_multi(conn, embedding, limit, Some(name), filter))
             .collect::<Result<Vec<_>>>()?;
         return Ok(merge_search_results_by_score(lists, limit));
     }
@@ -459,7 +501,51 @@ pub(crate) fn search_vec_with_embedding(
         embedding,
         limit,
         names.and_then(|n| n.into_iter().next()).as_deref(),
+        filter,
     )
+}
+
+/// Eligible `hash_seq` rows for a collection/metadata filter — the
+/// `SELECT DISTINCT` over `content_vectors ⨝ documents` upstream
+/// builds before deciding exact-scan vs ANN (store.ts:4272-4296).
+/// Metadata-filtered queries join `document_metadata` and require a
+/// current, error-free extraction row.
+fn eligible_hash_seqs(
+    conn: &Connection,
+    collection_filter: Option<&str>,
+    filter: Option<&MetadataFilter>,
+) -> Result<Vec<String>> {
+    let mut sql = String::from(
+        "SELECT DISTINCT cv.hash || '_' || cv.seq AS hash_seq \
+         FROM content_vectors cv \
+         JOIN documents d ON d.hash = cv.hash AND d.active = 1",
+    );
+    let mut conditions: Vec<String> = Vec::new();
+    let mut params: Vec<rusqlite::types::Value> = Vec::new();
+    if let Some(name) = collection_filter {
+        conditions.push("d.collection = ?".to_owned());
+        params.push(name.to_owned().into());
+    }
+    if let Some(f) = filter {
+        let compiled = compile_metadata_filter(f, "d");
+        sql.push_str(" JOIN document_metadata dm ON dm.document_id = d.id");
+        conditions.push(format!(
+            "dm.extraction_version = {METADATA_EXTRACTION_VERSION}"
+        ));
+        conditions.push("dm.extraction_error IS NULL".to_owned());
+        conditions.push(compiled.sql);
+        params.extend(compiled.params);
+    }
+    sql.push_str(" WHERE ");
+    sql.push_str(&conditions.join(" AND "));
+    let eligible = conn
+        .prepare(&sql)
+        .and_then(|mut s| {
+            s.query_map(params_from_iter(params), |r| r.get::<_, String>(0))
+                .and_then(|m| m.collect::<rusqlite::Result<Vec<_>>>())
+        })
+        .map_err(DbError::from)?;
+    Ok(eligible)
 }
 
 /// The query-embeddings-free inner half of `searchVec` — multi-
@@ -470,21 +556,10 @@ pub(crate) fn search_vec_multi(
     embedding: &[f32],
     limit: usize,
     collection_filter: Option<&str>,
+    filter: Option<&MetadataFilter>,
 ) -> Result<Vec<SearchResult>> {
-    let vec_results: Vec<(String, f64)> = if let Some(name) = &collection_filter {
-        // Eligible hash_seqs for the collection (store.ts:4272-4296).
-        let eligible: Vec<String> = conn
-            .prepare(
-                "SELECT DISTINCT cv.hash || '_' || cv.seq AS hash_seq \
-                 FROM content_vectors cv \
-                 JOIN documents d ON d.hash = cv.hash AND d.active = 1 \
-                 WHERE d.collection = ?",
-            )
-            .and_then(|mut s| {
-                s.query_map(rusqlite::params![name], |r| r.get::<_, String>(0))
-                    .and_then(|m| m.collect::<rusqlite::Result<Vec<_>>>())
-            })
-            .map_err(DbError::from)?;
+    let vec_results: Vec<(String, f64)> = if collection_filter.is_some() || filter.is_some() {
+        let eligible = eligible_hash_seqs(conn, collection_filter, filter)?;
         if eligible.is_empty() {
             return Ok(Vec::new());
         }
@@ -510,16 +585,30 @@ pub(crate) fn search_vec_multi(
         "SELECT cv.hash || '_' || cv.seq AS hash_seq, cv.hash, cv.pos, \
            'qmd://' || d.collection || '/' || d.path AS filepath, \
            d.collection || '/' || d.path AS display_path, \
-           d.title, content.doc AS body \
+           d.title, content.doc AS body, dm.metadata_json \
          FROM content_vectors cv \
          JOIN documents d ON d.hash = cv.hash AND d.active = 1 \
          JOIN content ON content.hash = d.hash \
+         LEFT JOIN document_metadata dm ON dm.document_id = d.id \
          WHERE cv.hash || '_' || cv.seq IN ({placeholders})"
     );
     let mut params: Vec<rusqlite::types::Value> = hash_seqs.into_iter().map(Into::into).collect();
     if let Some(name) = collection_filter {
         sql.push_str(" AND d.collection = ?");
         params.push(name.to_owned().into());
+    }
+    if let Some(f) = filter {
+        // Re-apply the filter on the document join: vectors are
+        // content-scoped, so one hash can belong to both matching and
+        // non-matching documents (store.ts:4339-4345).
+        let compiled = compile_metadata_filter(f, "d");
+        let gate = format!(
+            " AND dm.extraction_version = {METADATA_EXTRACTION_VERSION} \
+             AND dm.extraction_error IS NULL AND {}",
+            compiled.sql
+        );
+        sql.push_str(&gate);
+        params.extend(compiled.params);
     }
 
     let mut stmt = conn.prepare(&sql).map_err(DbError::from)?;
@@ -533,6 +622,7 @@ pub(crate) fn search_vec_multi(
                 display_path: r.get(4)?,
                 title: r.get(5)?,
                 body: r.get(6)?,
+                metadata_json: r.get(7)?,
             })
         })
         .map_err(DbError::from)?
@@ -592,6 +682,7 @@ pub(crate) fn search_vec_multi(
             score: 1.0 - dist,
             source: SearchSource::Vec,
             chunk_pos: Some(usize::try_from(row.pos).unwrap_or(0)),
+            metadata: parse_metadata_json(row.metadata_json.as_deref()),
         });
     }
     Ok(results)
@@ -606,4 +697,5 @@ struct VecRow {
     display_path: String,
     title: String,
     body: String,
+    metadata_json: Option<String>,
 }

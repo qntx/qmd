@@ -9,7 +9,9 @@
 //! extracted" and "extraction failed"; `document_metadata_values` holds
 //! one indexed row per scalar value for filtering.
 
-use rusqlite::{Connection, OptionalExtension, params};
+use std::collections::HashMap;
+
+use rusqlite::{Connection, OptionalExtension, params, params_from_iter};
 
 use crate::error::{DbError, Result};
 use crate::metadata::{
@@ -245,4 +247,105 @@ pub(crate) fn count_documents_pending_metadata(conn: &Connection) -> Result<usiz
         )
         .map(|n| usize::try_from(n).unwrap_or(0))
         .map_err(DbError::from)?)
+}
+
+/// Upstream `parseMetadataJson` (metadata-store.ts:205-211): parse a
+/// stored `metadata_json` column value, tolerating absent rows — absent,
+/// malformed, and non-metadata-shaped JSON all yield an empty
+/// [`DocumentMetadata`].
+///
+/// Deviation: upstream returns whatever `JSON.parse` produces, including
+/// non-objects (e.g. `5`) and metadata-shaped values it never writes
+/// (nested objects). `metadata_json` is only ever written by
+/// [`DocumentMetadata::to_json`], so a row failing to decode as
+/// `DocumentMetadata` means manual DB corruption — treated as absent.
+#[must_use]
+pub(crate) fn parse_metadata_json(metadata_json: Option<&str>) -> DocumentMetadata {
+    let Some(json) = metadata_json else {
+        return DocumentMetadata::default();
+    };
+    let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(json) else {
+        return DocumentMetadata::default();
+    };
+    let mut entries = Vec::with_capacity(map.len());
+    for (key, value) in &map {
+        let Some(v) = metadata_value_from_json(value) else {
+            return DocumentMetadata::default();
+        };
+        entries.push((key.clone(), v));
+    }
+    DocumentMetadata::from_ordered(entries)
+}
+
+/// `serde_json::Value` → [`MetadataValue`]. `None` for shapes
+/// [`DocumentMetadata::to_json`] never emits (null, objects, mixed
+/// arrays) — callers treat the row as corrupt.
+fn metadata_value_from_json(value: &serde_json::Value) -> Option<MetadataValue> {
+    match value {
+        serde_json::Value::String(s) => Some(MetadataValue::String(s.clone())),
+        serde_json::Value::Number(n) => n.as_f64().map(MetadataValue::Number),
+        serde_json::Value::Bool(b) => Some(MetadataValue::Bool(*b)),
+        serde_json::Value::Array(items) => {
+            if items.iter().all(serde_json::Value::is_string) {
+                Some(MetadataValue::Strings(
+                    items
+                        .iter()
+                        .map(|v| v.as_str().unwrap_or_default().to_owned())
+                        .collect(),
+                ))
+            } else if items.iter().all(serde_json::Value::is_number) {
+                Some(MetadataValue::Numbers(
+                    items.iter().filter_map(serde_json::Value::as_f64).collect(),
+                ))
+            } else if items.iter().all(serde_json::Value::is_boolean) {
+                Some(MetadataValue::Bools(
+                    items
+                        .iter()
+                        .map(|v| v.as_bool().unwrap_or_default())
+                        .collect(),
+                ))
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Upstream `getMetadataByFilepath` (metadata-store.ts:185-202):
+/// batch-load canonical metadata for `qmd://collection/path` filepaths
+/// in ONE query — never per-result lookups. Only active documents with
+/// an extraction row appear; missing entries mean `{}` downstream
+/// (upstream `?? {}`).
+///
+/// # Errors
+/// Database failures.
+pub(crate) fn get_metadata_by_filepath(
+    conn: &Connection,
+    filepaths: &[String],
+) -> Result<HashMap<String, DocumentMetadata>> {
+    let mut out = HashMap::with_capacity(filepaths.len());
+    if filepaths.is_empty() {
+        return Ok(out);
+    }
+    let placeholders = filepaths.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+    let sql = format!(
+        "SELECT 'qmd://' || d.collection || '/' || d.path AS filepath, dm.metadata_json \
+         FROM documents d \
+         JOIN document_metadata dm ON dm.document_id = d.id \
+         WHERE d.active = 1 \
+           AND 'qmd://' || d.collection || '/' || d.path IN ({placeholders})"
+    );
+    let mut stmt = conn.prepare(&sql).map_err(DbError::from)?;
+    let rows = stmt
+        .query_map(params_from_iter(filepaths.iter().cloned()), |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+        })
+        .map_err(DbError::from)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(DbError::from)?;
+    for (filepath, json) in rows {
+        out.insert(filepath, parse_metadata_json(json.as_deref()));
+    }
+    Ok(out)
 }
