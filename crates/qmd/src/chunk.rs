@@ -317,8 +317,10 @@ pub fn utf16_to_byte_offset(text: &str, utf16_offset: usize) -> usize {
 /// Q16).
 pub(crate) const JS_WS: &str = r"[\u{9}-\u{d}\u{20}\u{a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]";
 
-/// JS `\s` as a `char` predicate — the same set as [`JS_WS`].
-pub(crate) const fn is_js_ws(c: char) -> bool {
+/// JS `\s` as a `char` predicate — the same set as `JS_WS`.
+/// Re-exported publicly as [`crate::js::is_js_ws`].
+#[must_use]
+pub const fn is_js_ws(c: char) -> bool {
     matches!(c,
         '\u{9}'..='\u{d}' | '\u{20}' | '\u{a0}' | '\u{1680}'
         | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}'

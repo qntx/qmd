@@ -106,6 +106,38 @@ pub struct MultiGet {
     pub errors: Vec<String>,
 }
 
+/// One file selected by a `qmd multi-get` pattern — the CLI `multiGet`
+/// file list (cli/qmd.ts:1364-1407), before bodies are fetched.
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub struct MultiGetFile {
+    /// `qmd://collection/path` URI — the lookup key.
+    pub virtual_path: String,
+    /// Display path, keeping upstream's quirks: comma-list and docid
+    /// matches carry the *virtual* path, glob matches the
+    /// collection-relative path only.
+    pub display_path: String,
+    /// Parent collection name.
+    pub collection: String,
+    /// Collection-relative path.
+    pub path: String,
+    /// Body length in characters (SQLite `LENGTH()`), as upstream.
+    pub body_length: usize,
+}
+
+/// Result of [`Qmd::select_multi_get`](crate::Qmd::select_multi_get):
+/// resolved files plus per-name error strings (upstream's
+/// `console.error(resolved.error)` messages, in order).
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct MultiGetSelection {
+    /// Resolved files — comma lists in given order, globs in the
+    /// store's insertion order (upstream's query has no ORDER BY).
+    pub files: Vec<MultiGetFile>,
+    /// Per-name resolution failures, in the order encountered.
+    pub errors: Vec<String>,
+}
+
 /// One row of [`Qmd::list_documents`](crate::Qmd::list_documents) —
 /// the `qmd ls` listing fields.
 #[derive(Debug, Clone)]

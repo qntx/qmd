@@ -479,7 +479,7 @@ pub(crate) fn json_string(s: &str) -> String {
 fn write_json_value(out: &mut String, value: &MetadataValue) {
     match value {
         MetadataValue::String(s) => out.push_str(&json_string(s)),
-        MetadataValue::Number(n) => out.push_str(&js_num_to_string(*n)),
+        MetadataValue::Number(n) => out.push_str(&crate::js::number_to_string(*n)),
         MetadataValue::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
         MetadataValue::Strings(items) => {
             out.push('[');
@@ -497,7 +497,7 @@ fn write_json_value(out: &mut String, value: &MetadataValue) {
                 if i > 0 {
                     out.push(',');
                 }
-                out.push_str(&js_num_to_string(*n));
+                out.push_str(&crate::js::number_to_string(*n));
             }
             out.push(']');
         }
@@ -514,72 +514,6 @@ fn write_json_value(out: &mut String, value: &MetadataValue) {
     }
 }
 
-/// ECMAScript `Number::toString` (radix 10) — used for `JSON.stringify`
-/// numbers and `String(key)` on numeric keys. Shortest round-trip
-/// digits (Rust `{:e}` supplies them); decimal when `1e-6 <= |x| < 1e21`,
-/// otherwise `d.ddde±N`; integral values carry no `.0`; `-0` → `"0"`.
-pub(crate) fn js_num_to_string(v: f64) -> String {
-    if v.is_nan() {
-        return "NaN".to_owned();
-    }
-    if v.is_infinite() {
-        return if v < 0.0 {
-            "-Infinity".to_owned()
-        } else {
-            "Infinity".to_owned()
-        };
-    }
-    if v == 0.0 {
-        return "0".to_owned();
-    }
-    let neg = v.is_sign_negative();
-    // `{:e}` gives the shortest round-trip mantissa: `d[.dd]e<exp>`.
-    let sci = format!("{:e}", v.abs());
-    let (mantissa, exponent) = sci.split_once('e').unwrap_or((sci.as_str(), "0"));
-    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
-    // `n` is the position of the decimal point: value = digits × 10^(n-k).
-    let n = exponent.parse::<i64>().unwrap_or(0) + 1;
-    let k = i64::try_from(digits.len()).unwrap_or(0);
-    let mut out = String::new();
-    if neg {
-        out.push('-');
-    }
-    if k <= n && n <= 21 {
-        // Integer: digits then `n - k` zeros.
-        out.push_str(&digits);
-        for _ in k..n {
-            out.push('0');
-        }
-    } else if n > 0 && n <= 21 {
-        // Decimal point inside the digit string.
-        let cut = usize::try_from(n).unwrap_or(0);
-        out.push_str(digits.get(..cut).unwrap_or_default());
-        out.push('.');
-        out.push_str(digits.get(cut..).unwrap_or_default());
-    } else if n > -6 && n <= 0 {
-        // `0.` + `-n` zeros + digits.
-        out.push_str("0.");
-        for _ in n..0 {
-            out.push('0');
-        }
-        out.push_str(&digits);
-    } else {
-        // `d[.rest]e±(n-1)` — plus sign on non-negative exponents.
-        out.push_str(digits.get(..1).unwrap_or("0"));
-        if k > 1 {
-            out.push('.');
-            out.push_str(digits.get(1..).unwrap_or_default());
-        }
-        let e = n - 1;
-        out.push('e');
-        if e >= 0 {
-            out.push('+');
-        }
-        out.push_str(&e.to_string());
-    }
-    out
-}
-
 #[cfg(test)]
 #[allow(
     clippy::panic,
@@ -589,37 +523,6 @@ pub(crate) fn js_num_to_string(v: f64) -> String {
 )]
 mod tests {
     use super::*;
-
-    #[test]
-    fn js_num_edge_cases() {
-        let cases: &[(f64, &str)] = &[
-            (0.0, "0"),
-            (-0.0, "0"),
-            (1.0, "1"),
-            (-7.0, "-7"),
-            (0.5, "0.5"),
-            (-0.5, "-0.5"),
-            (0.1, "0.1"),
-            (2.5, "2.5"),
-            (1000.0, "1000"),
-            (0.0015, "0.0015"),
-            (1e-6, "0.000001"),
-            (1e-7, "1e-7"),
-            (1e20, "100000000000000000000"),
-            (1e21, "1e+21"),
-            (6.02e23, "6.02e+23"),
-            (12_345_678_901_234_567_890.0, "12345678901234567000"),
-            (9_007_199_254_740_992.0, "9007199254740992"),
-            (1.234_567_890_123_456_9e23, "1.2345678901234569e+23"),
-            (f64::INFINITY, "Infinity"),
-            (f64::NEG_INFINITY, "-Infinity"),
-            (f64::NAN, "NaN"),
-            (-1e-400, "0"),
-        ];
-        for (v, want) in cases {
-            assert_eq!(js_num_to_string(*v), *want, "value {v}");
-        }
-    }
 
     #[test]
     fn truncate_collapses_and_bounds() {

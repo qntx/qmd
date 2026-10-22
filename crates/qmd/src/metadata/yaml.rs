@@ -20,7 +20,7 @@ use std::sync::LazyLock;
 use granit_parser::{Event, Parser, ScalarStyle, Tag};
 use regex::Regex;
 
-use crate::metadata::js_num_to_string;
+use crate::js::number_to_string;
 
 /// Upstream `METADATA_LIMITS.maxYamlAliasCount` — npm `yaml`
 /// `maxAliasCount` default.
@@ -588,7 +588,7 @@ impl Composer<'_> {
         match jskey {
             Js::Null => Ok(String::new()),
             Js::Str(s) => Ok(s),
-            Js::Num(n) => Ok(js_num_to_string(n)),
+            Js::Num(n) => Ok(number_to_string(n)),
             Js::Bool(b) => Ok(if b { "true" } else { "false" }.to_owned()),
             Js::Seq(_) | Js::Map(_) => self.flow_key(idx),
             Js::Unsupported => Err("Cannot convert a Symbol value to a string".to_owned()),
@@ -630,7 +630,7 @@ impl Composer<'_> {
                     })?;
                 Ok(match res {
                     Js::Str(s) => s,
-                    Js::Num(n) => js_num_to_string(n),
+                    Js::Num(n) => number_to_string(n),
                     Js::Bool(b) => if b { "true" } else { "false" }.to_owned(),
                     Js::Null => "null".to_owned(),
                     Js::Seq(_) | Js::Map(_) | Js::Unsupported => String::new(),
@@ -812,7 +812,7 @@ fn parse_radix(digits: &str, radix: f64) -> f64 {
 fn flow_scalar(src: &str, style: ScalarStyle, tag: YamlTag) -> Result<String, String> {
     let display = match resolve_scalar(src, style, tag)? {
         Js::Str(s) => s,
-        Js::Num(n) => js_num_to_string(n),
+        Js::Num(n) => number_to_string(n),
         Js::Bool(b) => if b { "true" } else { "false" }.to_owned(),
         Js::Null => "null".to_owned(),
         Js::Seq(_) | Js::Map(_) | Js::Unsupported => return Err("bad key".to_owned()),

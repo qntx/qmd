@@ -425,3 +425,79 @@ fn local_config_discovery_flow() {
     let qmd = open_with_config(&qmd::paths::local_db_path(&found), &found);
     qmd.add_collection("docs", &spec("/d")).expect("add");
 }
+
+#[test]
+fn ensure_models_configured_writes_resolved_back() {
+    // Upstream `ensureModelsConfiguredForCli` (qmd.ts:2143-2163): when
+    // the config's models block differs from the resolved values, the
+    // resolved embed/generate/rerank are written back while other keys
+    // (`embed_pooling` here) survive.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("i.sqlite");
+    let cfg_path = tmp.path().join("qmd.yml");
+    std::fs::write(&cfg_path, "models:\n  embed_pooling: full_sequence\n").expect("seed config");
+
+    let qmd = open_with_config(&db, &cfg_path);
+    let resolved = qmd.ensure_models_configured();
+    assert_eq!(resolved.embed, qmd::llm::DEFAULT_EMBED_MODEL);
+    assert_eq!(resolved.generate, qmd::llm::DEFAULT_GENERATE_MODEL);
+    assert_eq!(resolved.rerank, qmd::llm::DEFAULT_RERANK_MODEL);
+    qmd.close().expect("close");
+
+    let file_cfg = qmd::config::load(&cfg_path).expect("load yaml");
+    let models = file_cfg.models.expect("models written");
+    assert_eq!(models.embed.as_deref(), Some(qmd::llm::DEFAULT_EMBED_MODEL));
+    assert_eq!(
+        models.generate.as_deref(),
+        Some(qmd::llm::DEFAULT_GENERATE_MODEL)
+    );
+    assert_eq!(
+        models.rerank.as_deref(),
+        Some(qmd::llm::DEFAULT_RERANK_MODEL)
+    );
+    assert_eq!(
+        models.embed_pooling,
+        Some(qmd::config::EmbedPooling::FullSequence),
+        "sibling models keys must be preserved"
+    );
+
+    // Second call is a no-op write-wise and still resolves.
+    let qmd = open_with_config(&db, &cfg_path);
+    let again = qmd.ensure_models_configured();
+    assert_eq!(again, resolved);
+}
+
+#[test]
+fn ensure_models_configured_db_only_does_not_write() {
+    // No config source to pin: resolved values are returned and nothing
+    // fails (upstream has no YAML to persist in this mode either).
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let qmd = open(&tmp.path().join("i.sqlite"));
+    let resolved = qmd.ensure_models_configured();
+    assert_eq!(resolved.embed, qmd::llm::DEFAULT_EMBED_MODEL);
+}
+
+#[test]
+fn ensure_models_configured_env_override_wins() {
+    // Resolution order env > default when the config field is unset,
+    // matching `resolve_models`; the env value is what gets pinned.
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("i.sqlite");
+    let cfg_path = tmp.path().join("qmd.yml");
+    let mut env = Environment::default();
+    env.qmd_embed_model = Some("hf:custom/embed.gguf".to_owned());
+    let qmd = Qmd::builder(&db)
+        .environment(env)
+        .config_file(&cfg_path)
+        .build()
+        .expect("build");
+    let resolved = qmd.ensure_models_configured();
+    assert_eq!(resolved.embed, "hf:custom/embed.gguf");
+    qmd.close().expect("close");
+
+    let file_cfg = qmd::config::load(&cfg_path).expect("load yaml");
+    assert_eq!(
+        file_cfg.models.and_then(|m| m.embed).as_deref(),
+        Some("hf:custom/embed.gguf")
+    );
+}

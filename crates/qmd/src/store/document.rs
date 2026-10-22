@@ -428,6 +428,7 @@ struct CommaMatch {
     collection: String,
     path: String,
     virtual_path: String,
+    body_length: usize,
 }
 
 fn comma_list_select(
@@ -435,9 +436,11 @@ fn comma_list_select(
     where_sql: &str,
     params: Vec<rusqlite::types::Value>,
 ) -> Result<Vec<CommaMatch>> {
+    // Same column list as upstream `commaListSelect` (store.ts:5035-5047).
     let sql = format!(
         "SELECT d.collection, d.path, \
-         'qmd://' || d.collection || '/' || d.path AS virtual_path \
+         'qmd://' || d.collection || '/' || d.path AS virtual_path, \
+         LENGTH(content.doc) AS body_length \
          FROM documents d JOIN content ON content.hash = d.hash \
          WHERE d.active = 1 AND ({where_sql}) \
          ORDER BY d.collection, d.path"
@@ -449,6 +452,7 @@ fn comma_list_select(
                 collection: r.get(0)?,
                 path: r.get(1)?,
                 virtual_path: r.get(2)?,
+                body_length: r.get::<_, i64>(3)?.try_into().unwrap_or(0),
             })
         })
         .map_err(DbError::from)?
@@ -572,10 +576,13 @@ fn match_files_by_glob(conn: &Connection, pattern: &str) -> Result<Vec<CommaMatc
     let matcher = glob.compile_matcher();
     let is_match = |candidate: &str| matcher.is_match(candidate) != negated;
 
+    // Same column list as upstream `matchFilesByGlob` (store.ts:3468-3480);
+    // no ORDER BY — results keep insertion order, as upstream.
     let mut stmt = conn
         .prepare(
             "SELECT d.collection, d.path, \
-             'qmd://' || d.collection || '/' || d.path AS virtual_path \
+             'qmd://' || d.collection || '/' || d.path AS virtual_path, \
+             LENGTH(content.doc) AS body_length \
              FROM documents d JOIN content ON content.hash = d.hash \
              WHERE d.active = 1",
         )
@@ -586,6 +593,7 @@ fn match_files_by_glob(conn: &Connection, pattern: &str) -> Result<Vec<CommaMatc
                 r.get::<_, String>(0)?,
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
+                r.get::<_, i64>(3)?,
             ))
         })
         .map_err(DbError::from)?
@@ -593,15 +601,74 @@ fn match_files_by_glob(conn: &Connection, pattern: &str) -> Result<Vec<CommaMatc
         .map_err(DbError::from)?;
     Ok(rows
         .into_iter()
-        .filter(|(collection, path, virtual_path)| {
+        .filter(|(collection, path, virtual_path, _)| {
             is_match(virtual_path) || is_match(path) || is_match(&format!("{collection}/{path}"))
         })
-        .map(|(collection, path, virtual_path)| CommaMatch {
+        .map(|(collection, path, virtual_path, body_length)| CommaMatch {
             collection,
             path,
             virtual_path,
+            body_length: body_length.try_into().unwrap_or(0),
         })
         .collect())
+}
+
+/// The CLI `multiGet` file-selection step (cli/qmd.ts:1364-1407):
+/// comma-separated names or a lone docid go through
+/// [`resolve_comma_list_name`] (per-name failures become
+/// [`MultiGetSelection::errors`]), anything else is a glob via
+/// [`match_files_by_glob`].
+///
+/// `display_path` keeps two upstream quirks: comma/docid matches carry
+/// the virtual path (`qmd://coll/path`), glob matches the
+/// collection-relative `path` only.
+pub(crate) fn select_multi_get(
+    conn: &Connection,
+    pattern: &str,
+) -> Result<crate::document::MultiGetSelection> {
+    let is_comma_separated = pattern.contains(',')
+        && !pattern.contains('*')
+        && !pattern.contains('?')
+        && !pattern.contains('{');
+    let mut selection = crate::document::MultiGetSelection::default();
+
+    if is_comma_separated || is_docid(pattern) {
+        let names: Vec<&str> = if is_comma_separated {
+            pattern
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .collect()
+        } else {
+            vec![pattern.trim()]
+        };
+        for name in names {
+            match resolve_comma_list_name(conn, name) {
+                Ok(m) => selection.files.push(crate::document::MultiGetFile {
+                    display_path: m.virtual_path.clone(),
+                    virtual_path: m.virtual_path,
+                    collection: m.collection,
+                    path: m.path,
+                    body_length: m.body_length,
+                }),
+                Err(Error::InvalidInput { reason }) => selection.errors.push(reason),
+                Err(e) => return Err(e),
+            }
+        }
+    } else {
+        selection
+            .files
+            .extend(match_files_by_glob(conn, pattern)?.into_iter().map(|m| {
+                crate::document::MultiGetFile {
+                    virtual_path: m.virtual_path,
+                    display_path: m.path.clone(),
+                    collection: m.collection,
+                    path: m.path,
+                    body_length: m.body_length,
+                }
+            }));
+    }
+    Ok(selection)
 }
 
 /// Upstream `findDocuments` (store.ts:5135-5233): comma-separated names

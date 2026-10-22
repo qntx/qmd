@@ -49,6 +49,7 @@ pub mod docid;
 pub mod document;
 mod env;
 mod error;
+pub mod js;
 pub mod llm;
 pub mod maintenance;
 pub mod metadata;
@@ -77,7 +78,7 @@ pub use config::{Collection, Config, EmbedPooling, ModelsConfig};
 pub use docid::get_docid;
 pub use document::{
     DEFAULT_MULTI_GET_MAX_BYTES, Document, DocumentEntry, GetOptions, LineRange, MultiGet,
-    MultiGetEntry, MultiGetOptions,
+    MultiGetEntry, MultiGetFile, MultiGetOptions, MultiGetSelection,
 };
 pub use env::Environment;
 pub use error::{ConfigError, DbError, Error, Result};

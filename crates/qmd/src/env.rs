@@ -66,6 +66,11 @@ pub struct Environment {
     /// truthy; also feeds the shared `isLocalConfigTrustOptedIn` check, so
     /// it opts the path/model gate in too (trust.ts:272-274, 294).
     pub qmd_trust_update_hooks: Option<String>,
+    /// `$NO_COLOR` — presence disables colored output (qmd.ts:248).
+    pub no_color: Option<String>,
+    /// `$QMD_EDITOR_URI` — editor link template for clickable TTY
+    /// output (qmd.ts:2436).
+    pub qmd_editor_uri: Option<String>,
 }
 
 impl Environment {
@@ -105,6 +110,8 @@ impl Environment {
                 .map(|v| v.to_string_lossy().into_owned()),
             qmd_trust_update_hooks: var_os("QMD_TRUST_UPDATE_HOOKS")
                 .map(|v| v.to_string_lossy().into_owned()),
+            no_color: var_os("NO_COLOR").map(|v| v.to_string_lossy().into_owned()),
+            qmd_editor_uri: var_os("QMD_EDITOR_URI").map(|v| v.to_string_lossy().into_owned()),
         }
     }
 }
