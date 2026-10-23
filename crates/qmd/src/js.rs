@@ -251,6 +251,79 @@ pub fn parse_float(s: &str) -> Option<f64> {
     Some(if negative { -v } else { v })
 }
 
+/// JS `Number(s)` — strict string→number conversion (not [`parse_float`]).
+///
+/// Used by upstream `parseEmbedBatchOption`/`parseEmbedTimeoutOption`
+/// (cli/qmd.ts:2116-2141): trims `\s`, treats empty/whitespace as `0`,
+/// accepts `Infinity` and decimal/exponent literals plus `0x`/`0o`/`0b`
+/// radix prefixes; `None` (NaN upstream) for anything else, including
+/// `parseFloat`-style truncated parses such as `"3abc"`.
+#[must_use]
+pub fn number(s: &str) -> Option<f64> {
+    let trimmed = s.trim_matches(is_js_ws);
+    if trimmed.is_empty() {
+        return Some(0.0);
+    }
+    for (prefix, radix) in [
+        ("0x", 16),
+        ("0X", 16),
+        ("0b", 2),
+        ("0B", 2),
+        ("0o", 8),
+        ("0O", 8),
+    ] {
+        if let Some(rest) = trimmed.strip_prefix(prefix) {
+            return u64::from_str_radix(rest, radix).ok().map(|v| v as f64);
+        }
+    }
+    match trimmed {
+        "Infinity" | "+Infinity" => return Some(f64::INFINITY),
+        "-Infinity" => return Some(f64::NEG_INFINITY),
+        _ => {}
+    }
+    // Decimal grammar `[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?` — Rust's
+    // `f64::from_str` also accepts `inf`/`nan` spellings JS rejects,
+    // so the grammar is validated before delegating.
+    let bytes = trimmed.as_bytes();
+    let mut idx = 0usize;
+    if matches!(bytes.get(idx), Some(b'+' | b'-')) {
+        idx += 1;
+    }
+    let mut mantissa = false;
+    while bytes.get(idx).is_some_and(u8::is_ascii_digit) {
+        idx += 1;
+        mantissa = true;
+    }
+    if bytes.get(idx) == Some(&b'.') {
+        idx += 1;
+        while bytes.get(idx).is_some_and(u8::is_ascii_digit) {
+            idx += 1;
+            mantissa = true;
+        }
+    }
+    if !mantissa {
+        return None;
+    }
+    if matches!(bytes.get(idx), Some(b'e' | b'E')) {
+        let mut exp_end = idx + 1;
+        if matches!(bytes.get(exp_end), Some(b'+' | b'-')) {
+            exp_end += 1;
+        }
+        let exp_start = exp_end;
+        while bytes.get(exp_end).is_some_and(u8::is_ascii_digit) {
+            exp_end += 1;
+        }
+        if exp_end == exp_start {
+            return None;
+        }
+        idx = exp_end;
+    }
+    if idx != bytes.len() {
+        return None;
+    }
+    trimmed.parse().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -354,5 +427,30 @@ mod tests {
         assert_eq!(parse_float("Infinity"), Some(f64::INFINITY));
         assert_eq!(parse_float("-Infinity"), Some(f64::NEG_INFINITY));
         assert_eq!(parse_float("infinity"), None);
+    }
+
+    #[test]
+    fn number_strict_grammar() {
+        // `Number()` cases where it differs from `parseFloat`.
+        assert_eq!(number(""), Some(0.0));
+        assert_eq!(number("   "), Some(0.0));
+        assert_eq!(number("3abc"), None);
+        assert_eq!(number("0x10"), Some(16.0));
+        assert_eq!(number("0b11"), Some(3.0));
+        assert_eq!(number("0o17"), Some(15.0));
+        assert_eq!(number("inf"), None);
+        assert_eq!(number("NaN"), None);
+        // Shared ground.
+        assert_eq!(number("1e3"), Some(1000.0));
+        assert_eq!(number("  -2.5 "), Some(-2.5));
+        assert_eq!(number(".5"), Some(0.5));
+        assert_eq!(number("1."), Some(1.0));
+        assert_eq!(number("Infinity"), Some(f64::INFINITY));
+        assert_eq!(number("+Infinity"), Some(f64::INFINITY));
+        assert_eq!(number("-Infinity"), Some(f64::NEG_INFINITY));
+        assert_eq!(number("1e"), None);
+        assert_eq!(number("-0x10"), None);
+        assert_eq!(number("1_000"), None);
+        assert_eq!(number("."), None);
     }
 }

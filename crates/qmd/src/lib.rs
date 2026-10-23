@@ -46,6 +46,7 @@ pub mod chunk;
 pub mod collection;
 pub mod config;
 pub mod docid;
+pub mod doctor;
 pub mod document;
 mod env;
 mod error;
@@ -76,6 +77,12 @@ pub use chunk::{
 pub use collection::{CollectionUpdateReport, SkippedFile, split_glob_mask};
 pub use config::{Collection, Config, EmbedPooling, ModelsConfig};
 pub use docid::get_docid;
+pub use doctor::{
+    FingerprintGroup, LegacyFingerprintAdoption, VectorSampleReport, active_doc_count,
+    check_embedding_vector_samples, current_embed_fingerprint, fingerprint_groups,
+    maybe_adopt_legacy_embedding_fingerprint, pending_embeddings_for, resolved_embed_model,
+    short_hash_seq, sqlite_version, vec_version, vectors_table_exists,
+};
 pub use document::{
     DEFAULT_MULTI_GET_MAX_BYTES, Document, DocumentEntry, GetOptions, LineRange, MultiGet,
     MultiGetEntry, MultiGetFile, MultiGetOptions, MultiGetSelection,

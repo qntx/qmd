@@ -800,7 +800,7 @@ impl Qmd {
     /// The model identity a vector row would be tagged with: an injected
     /// [`Embedder`] is authoritative (P2-D4); otherwise `models.embed` →
     /// `QMD_EMBED_MODEL` → upstream default (llm.ts:303-305).
-    fn embed_model(&self, config: &Config) -> String {
+    pub(crate) fn embed_model(&self, config: &Config) -> String {
         lock(&self.embedder).as_ref().map_or_else(
             || crate::llm::resolve_embed_model(self.config_models(config), &self.env),
             |e| e.model_id().to_owned(),
@@ -811,7 +811,7 @@ impl Qmd {
     /// embedder's non-empty [`Embedder::fingerprint_extra`] wins;
     /// otherwise the configured `models.embed_pooling` (D14,
     /// architecture §8.3).
-    fn embed_fingerprint_extra(&self, config: &Config) -> Option<String> {
+    pub(crate) fn embed_fingerprint_extra(&self, config: &Config) -> Option<String> {
         lock(&self.embedder)
             .as_ref()
             .and_then(|e| e.fingerprint_extra())
@@ -1681,6 +1681,48 @@ impl Qmd {
             total_docs: row.total_docs,
             days_stale: row.days_stale,
         })
+    }
+
+    /// [`Qmd::index_health`] with an explicit embedding model —
+    /// upstream `checkIndexHealth` resolves `resolveEmbedModelForCli()`
+    /// (the *declared* model, cli/qmd.ts:361), so CLI warnings count
+    /// pending vectors against the declared fingerprint even when a
+    /// project-local config's custom model is not trusted for loading.
+    ///
+    /// # Errors
+    /// Propagates config load and database errors.
+    pub fn index_health_for_model(&self, model: &str) -> Result<IndexHealth> {
+        let config = self.config()?;
+        let fingerprint_extra = self.embed_fingerprint_extra(&config);
+        let conn = lock(&self.conn);
+        let row = store::status::get_index_health(&conn, model, fingerprint_extra.as_deref())?;
+        drop(conn);
+        Ok(IndexHealth {
+            needs_embedding: row.needs_embedding,
+            total_docs: row.total_docs,
+            days_stale: row.days_stale,
+        })
+    }
+
+    /// Pending-hash pre-check for `qmd embed` — upstream
+    /// `getHashesNeedingEmbedding` (store.ts:2546-2566, called from
+    /// `vectorIndex` at cli/qmd.ts:2211) against the model the embed
+    /// run would use (the trust-gated runtime model, plus the
+    /// `embed_pooling` fingerprint extra).
+    ///
+    /// # Errors
+    /// Propagates config load and database errors.
+    pub fn hashes_needing_embedding(&self, collection: Option<&str>) -> Result<usize> {
+        let config = self.config()?;
+        let model = self.embed_model(&config);
+        let fingerprint_extra = self.embed_fingerprint_extra(&config);
+        let conn = lock(&self.conn);
+        store::status::hashes_needing_embedding(
+            &conn,
+            collection,
+            &model,
+            fingerprint_extra.as_deref(),
+        )
     }
 
     /// `qmd cleanup` operations — upstream `Maintenance`

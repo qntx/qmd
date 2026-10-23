@@ -323,6 +323,81 @@ const mainScenarios: Scenario[] = [
   { name: "no args", argv: [], check: "record" },
   { name: "--help", argv: ["--help"], check: "record" },
   { name: "--version", argv: ["--version"], check: "record" },
+
+  // -----------------------------------------------------------------
+  // P4.3 — vsearch / vector-search. Setup ran `update` only, so there
+  // is no vectors_vec table: vectorSearchQuery returns [] before any
+  // expansion or embedding (store.ts:5879-5881) — every format of the
+  // empty path is deterministic. stderr carries the checkIndexHealth
+  // "need embeddings" warning that `search` never prints.
+  // -----------------------------------------------------------------
+  { name: "vsearch no query", argv: ["vsearch"] },
+  { name: "vector-search no query", argv: ["vector-search"] },
+  { name: "vsearch --format bogus", argv: ["vsearch", "--format", "bogus", "index"] },
+  { name: "vsearch -c missing", argv: ["vsearch", "index", "-c", "missing"] },
+  { name: "vsearch filter invalid json", argv: ["vsearch", "index", "--filter", "{not json"], check: "stdout-exit" },
+  ...each("vsearch empty", ["vsearch", "index"]),
+  { name: "vsearch empty --min-score", argv: ["vsearch", "index", "--min-score", "0.9"] },
+  { name: "vsearch empty -c", argv: ["vsearch", "index", "-c", "notes"] },
+  { name: "vsearch empty --filter", argv: ["vsearch", "index", "--filter", published] },
+  { name: "vsearch empty --all", argv: ["vsearch", "index", "--all"] },
+  { name: "vsearch empty --intent", argv: ["vsearch", "index", "--intent", "find docs"] },
+  { name: "vsearch empty --full-path", argv: ["vsearch", "index", "--full-path"] },
+
+  // -----------------------------------------------------------------
+  // P4.3 — query / deep-search. Structured `lex:` documents reach real
+  // results without any LLM (hybrid fts → RRF → --no-rerank); `vec:`
+  // searches skip silently without vectors_vec. Plain queries and the
+  // structured-parser/CI error paths die inside Bun's uncaught
+  // rejection dump — engine-specific, so `record` only.
+  // -----------------------------------------------------------------
+  { name: "query no query", argv: ["query"] },
+  { name: "deep-search no query", argv: ["deep-search"] },
+  { name: "query --format bogus", argv: ["query", "--format", "bogus", "index"] },
+  { name: "query -c missing", argv: ["query", "index", "-c", "missing"] },
+  { name: "query filter invalid json", argv: ["query", "index", "--filter", "{not json"], check: "stdout-exit" },
+  // Upstream validates --chunk-strategy inside parseCLI's cli.opts (qmd.ts:3213)
+  // — an uncaught parse-time throw → Bun source dump, so record only.
+  { name: "query --chunk-strategy bogus", argv: ["query", "index", "--chunk-strategy", "bogus"], check: "record" },
+  ...each("query lex no-rerank", ["query", "lex: index", "--no-rerank"]),
+  { name: "query lex+lex no-rerank", argv: ["query", "lex: index\nlex: search", "--no-rerank", "-n", "3"] },
+  { name: "query lex -c no-rerank", argv: ["query", "lex: search", "-c", "notes", "--no-rerank"] },
+  { name: "query lex --intent no-rerank", argv: ["query", "lex: index", "--intent", "find docs", "--no-rerank"] },
+  { name: "query lex --explain no-rerank", argv: ["query", "lex: index", "--no-rerank", "--explain"] },
+  { name: "query lex --full-path no-rerank", argv: ["query", "lex: index", "--no-rerank", "--full-path"] },
+  { name: "query lex --full no-rerank", argv: ["query", "lex: index", "--no-rerank", "--full", "-n", "2"] },
+  { name: "query vec no vectors", argv: ["query", "vec: index", "--no-rerank"] },
+  { name: "query --candidate-limit", argv: ["query", "lex: index", "--no-rerank", "--candidate-limit", "1"] },
+  { name: "query multi plain lines", argv: ["query", "index\nsearch"], check: "record" },
+  { name: "query empty typed", argv: ["query", "lex:"], check: "record" },
+  { name: "query intent alone", argv: ["query", "intent: just intent"], check: "record" },
+  { name: "query expand mixed", argv: ["query", "expand: index\nlex: search"], check: "record" },
+  { name: "query expand ci", argv: ["query", "index"], env: { CI: "1" }, check: "record" },
+  { name: "query lex ci rerank", argv: ["query", "lex: index"], env: { CI: "1" }, check: "record" },
+
+  // -----------------------------------------------------------------
+  // P4.3 — embed option validation. All five parsers run inside the
+  // command's try before the store opens, so each failure is a verbatim
+  // `exitWithError` line + the doctor hint.
+  // -----------------------------------------------------------------
+  { name: "embed -c missing", argv: ["embed", "-c", "missing"] },
+  { name: "embed --max-docs-per-batch abc", argv: ["embed", "--max-docs-per-batch", "abc"] },
+  { name: "embed --max-docs-per-batch 0", argv: ["embed", "--max-docs-per-batch", "0"] },
+  { name: "embed --max-batch-mb 0", argv: ["embed", "--max-batch-mb", "0"] },
+  { name: "embed --max-batch-mb 1.5", argv: ["embed", "--max-batch-mb", "1.5"] },
+  { name: "embed --timeout -1", argv: ["embed", "--timeout", "-1"] },
+  { name: "embed --timeout abc", argv: ["embed", "--timeout", "abc"] },
+  // Same parse-time throw as query's (qmd.ts:3213) → Bun dump → record.
+  { name: "embed --chunk-strategy bogus", argv: ["embed", "--chunk-strategy", "bogus"], check: "record" },
+
+  // -----------------------------------------------------------------
+  // P4.3 — doctor. `normalized`: `Runtime:`/`SQLite runtime:`/
+  // `sqlite-vec:`/`better-sqlite3 package:` report versions that differ
+  // between Bun's bundled libs and rusqlite; everything else — config,
+  // overrides, model cache misses, fingerprints, next steps — is
+  // byte-stable against this empty index.
+  // -----------------------------------------------------------------
+  { name: "doctor", argv: ["doctor"], check: "normalized" },
 ];
 
 const workScenarios: Scenario[] = [
@@ -424,6 +499,14 @@ const initScenarios: Scenario[] = [
   { name: "init again", argv: ["init"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
   // homedir() resolves $HOME — pointing it at the cwd exercises the refusal.
   { name: "init refuses HOME", argv: ["init"], cwd: "proj", env: { HOME: "<PROJ>" } },
+  // P4.3 — embed on the empty local index: 0 pending hashes → the
+  // early-exit line; `--force` skips the check, prints the banner +
+  // Model line, and generateEmbeddings returns 0/0 without touching
+  // the model (store.ts:2004-2007).
+  { name: "embed empty index", argv: ["embed"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
+  { name: "embed --force empty", argv: ["embed", "--force"], cwd: "proj" },
+  // P4.3 — doctor against a project-local index with no collections.
+  { name: "doctor local", argv: ["doctor"], cwd: "proj", check: "normalized" },
 ];
 
 type Group = {
@@ -552,6 +635,11 @@ try {
     // not byte-stable across implementations or run dates. The AST block is
     // flattened to `<AST>` — the port pins upstream's `not available` branch
     // until P6 while this upstream reports `active` plus a language list.
+    // The doctor tokens fold deliberate driver/version differences:
+    // `Runtime:` is `bun:sqlite` upstream vs `rusqlite` here; the SQLite
+    // and sqlite-vec versions are whatever each build bundles; and the
+    // `better-sqlite3 package` line reads upstream's own package.json
+    // (a `^13.x` dep) while the port has none to declare.
     const softNormalize = (s: string) => s
       .replace(/\d+[smhd] ago/g, "<AGO>")
       .replace(/(\n|^)(\s*)Size:.*(\n|$)/g, "$1$2Size: <SIZE>$3")
@@ -559,7 +647,11 @@ try {
       .replace(/"trustedAt": "[^"]*"/g, '"trustedAt": "<TS>"')
       .replace(/^  Status:.*$/gm, "  Status: <AST>")
       .replace(/^  Languages:.*\n/gm, "")
-      .replace(/^  Unavailable:.*\n/gm, "");
+      .replace(/^  Unavailable:.*\n/gm, "")
+      .replace(/^Runtime:.*$/gm, "Runtime: <DRIVER>")
+      .replace(/SQLite runtime:.*$/gm, "SQLite runtime: <VER>")
+      .replace(/better-sqlite3 package:.*$/gm, "better-sqlite3 package: <PKG>")
+      .replace(/sqlite-vec:.*$/gm, "sqlite-vec: <VER>");
     const run = (argv: string[], cwd: string, extra?: Record<string, string>) => {
       const e = { ...env, PWD: cwd };
       for (const [k, v] of Object.entries(extra ?? {})) e[k] = v === "<PROJ>" ? proj : v;

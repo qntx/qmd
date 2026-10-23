@@ -1,6 +1,35 @@
 ---
 title: qmd
-description: Documentation stub.
+description: Rust port of tobi/qmd — local markdown search engine with BM25, vector similarity and LLM-assisted hybrid search.
 ---
 
-Documentation stub.
+`qmd` is a local search engine for markdown documents: SQLite FTS5 for
+keyword search, sqlite-vec for vector similarity, and llama.cpp models
+for embeddings, query expansion and reranking.
+
+This repository is a Rust port of
+[tobi/qmd](https://github.com/tobi/qmd) targeting CLI behavioral
+parity. Deviations from upstream are deliberate and documented in the
+source — the two most visible:
+
+- **Strict argument parsing.** Upstream uses a permissive option
+  parser (unknown/extra flags are tolerated); this port uses `clap`
+  and rejects them.
+- **Local index filename.** A project-local index lives at
+  `.qmd/index-rs.sqlite` (upstream: `index.sqlite`) so the two
+  implementations can share a directory without clobbering each other.
+
+## Getting started
+
+```bash
+qmd collection add . --name notes   # index a folder of markdown
+qmd embed                           # generate vector embeddings
+qmd query "rate limiting"           # expansion + hybrid search (recommended)
+qmd search "rate limiting"          # BM25 keyword search (no LLM)
+qmd doctor                          # diagnose config, index and models
+```
+
+The index, config and model cache follow XDG conventions
+(`QMD_CONFIG_DIR`, `INDEX_PATH`, `XDG_CACHE_HOME` and friends are all
+honored). Run `qmd --help` for the command list or see
+[Commands](/docs/commands).

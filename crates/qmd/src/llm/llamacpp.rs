@@ -264,6 +264,20 @@ fn threads_per_context(gpu: bool, parallelism: usize) -> Option<i32> {
 // Backend + devices
 // ============================================================================
 
+/// Upstream `_ciMode` (`llm.ts:832`): `!!process.env.CI` — any non-empty
+/// `CI` value disables real LLM operations (so `CI=false` still
+/// disables; only a set-but-empty or unset value is exempt). The gate
+/// lives on the lazy wrappers, matching where upstream puts it on the
+/// `LlamaCpp` class (llm.ts:1503, 1631, 1738).
+fn ci_disabled(env: &Environment) -> Result<(), InferenceError> {
+    match env.ci.as_deref() {
+        Some(v) if !v.is_empty() => Err(InferenceError::Backend(
+            "LLM operations are disabled in CI (set CI=true)".to_owned(),
+        )),
+        _ => Ok(()),
+    }
+}
+
 fn backend() -> Result<&'static LlamaBackend, InferenceError> {
     static BACKEND: OnceLock<Result<LlamaBackend, String>> = OnceLock::new();
     let res = BACKEND.get_or_init(|| {
@@ -323,6 +337,91 @@ fn gpu_free_mb(mode: LlamaGpuMode) -> Option<u64> {
         .map(|d| u64::try_from(d.memory_free).unwrap_or(0) / (1024 * 1024))
         .max()
         .filter(|mb| *mb > 0)
+}
+
+/// Result of `qmd doctor`'s native backend probe — the Rust equivalent
+/// of upstream `getDeviceInfo` (`cli/qmd.ts:4127-4203` + llm.ts
+/// `llama.getDeviceInfo`).
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct DeviceProbe {
+    /// GPU backend key the resolved mode would use — `"metal"`,
+    /// `"cuda"`, `"vulkan"`, or the lowercased ggml backend name.
+    /// `None` when no GPU device is usable under the resolved mode
+    /// (including forced-CPU mode); upstream's `cpu` / `gpu: false`
+    /// path.
+    pub gpu: Option<String>,
+    /// GPU devices usable under the resolved mode, in ggml order —
+    /// descriptions as surfaced by upstream `summarizeDeviceNames`.
+    pub gpu_devices: Vec<String>,
+    /// `(free, total)` bytes on the GPU device with the most free
+    /// memory; upstream `llama.getVramState()` (which reports the
+    /// aggregate, effectively the single-device pair on these builds).
+    pub vram: Option<(u64, u64)>,
+    /// `available_parallelism` — upstream `llama.cpuMathCores`.
+    pub cpu_cores: usize,
+}
+
+/// Upstream `getDeviceInfo`: initialize the ggml backend, then report
+/// GPU devices and VRAM under the env-resolved GPU mode.
+///
+/// The initialization is the "probe" — like upstream's
+/// `ensureLlama(allowBuild: false)` it can crash on broken drivers,
+/// which `doctor` reports as the crash hint.
+///
+/// # Errors
+///
+/// Returns [`InferenceError::Backend`] when ggml fails to initialize.
+pub fn probe_device(env: &Environment) -> Result<DeviceProbe, InferenceError> {
+    backend()?;
+    let mode = resolve_llama_gpu_mode(env.qmd_llama_gpu.as_deref(), env.qmd_force_cpu.as_deref());
+    let devices = llama_cpp_2::list_llama_ggml_backend_devices();
+    let gpus: Vec<&LlamaBackendDevice> = devices
+        .iter()
+        .filter(|d| backend_matches(d, mode) && device_is_gpu(d))
+        .collect();
+    let gpu = gpus.first().map(|d| gpu_backend_key(&d.backend));
+    let gpu_devices = gpus
+        .iter()
+        .map(|d| {
+            let desc = d.description.trim();
+            if desc.is_empty() {
+                "GPU".to_owned()
+            } else {
+                desc.to_owned()
+            }
+        })
+        .collect();
+    let vram = gpus
+        .iter()
+        .map(|d| {
+            (
+                u64::try_from(d.memory_free).unwrap_or(0),
+                u64::try_from(d.memory_total).unwrap_or(0),
+            )
+        })
+        .max_by_key(|(free, _)| *free)
+        .filter(|(free, _)| *free > 0);
+    Ok(DeviceProbe {
+        gpu,
+        gpu_devices,
+        vram,
+        cpu_cores: cpu_math_cores(),
+    })
+}
+
+/// Map a ggml backend name to upstream `llama.gpu`'s key — `"metal"`,
+/// `"cuda"`, `"vulkan"`, else the lowercased backend name.
+fn gpu_backend_key(backend: &str) -> String {
+    if backend == "MTL" || backend.eq_ignore_ascii_case("metal") {
+        "metal".to_owned()
+    } else if backend.starts_with("CUDA") {
+        "cuda".to_owned()
+    } else if backend.starts_with("Vulkan") {
+        "vulkan".to_owned()
+    } else {
+        backend.to_lowercase()
+    }
 }
 
 fn model_params(mode: LlamaGpuMode) -> Result<LlamaModelParams, InferenceError> {
@@ -1117,6 +1216,7 @@ impl Embedder for LazyLlamaEmbedder {
     }
 
     fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>, InferenceError> {
+        ci_disabled(&self.env)?;
         self.delegate(|e| e.embed(texts))
     }
 }
@@ -1632,6 +1732,10 @@ impl Reranker for LazyLlamaReranker {
     }
 
     fn rerank(&self, query: &str, docs: &[&str]) -> Result<Vec<f32>, InferenceError> {
+        // Upstream throws inside `rerank` (llm.ts:1738), propagating —
+        // gating here (before `build`) keeps the error out of the
+        // ranking-context 0.5-fallback below.
+        ci_disabled(&self.env)?;
         let out = match self.slot.get_or_try_init(|| self.build()) {
             Ok(r) => r.rerank(query, docs),
             // Only ranking-context creation failure degrades — upstream
@@ -1708,6 +1812,7 @@ impl Generator for LazyLlamaGenerator {
     }
 
     fn expand(&self, query: &str) -> Result<String, InferenceError> {
+        ci_disabled(&self.env)?;
         let out = self
             .slot
             .get_or_try_init(|| self.build())
@@ -1804,6 +1909,24 @@ mod tests {
                 resolve_llama_gpu_mode(env, force),
                 want,
                 "env={env:?} force={force:?}"
+            );
+        }
+    }
+
+    // Upstream llm.ts:832 — `!!process.env.CI`: any non-empty value
+    // disables LLM operations; set-but-empty and unset do not.
+    #[test]
+    fn ci_gate() {
+        let mut env = Environment::default();
+        assert!(ci_disabled(&env).is_ok());
+        env.ci = Some(String::new());
+        assert!(ci_disabled(&env).is_ok(), "empty CI does not disable");
+        for v in ["1", "true", "false", "0"] {
+            env.ci = Some(v.to_owned());
+            let err = ci_disabled(&env).expect_err(&format!("CI={v:?} disables"));
+            assert_eq!(
+                err.to_string(),
+                "LLM operations are disabled in CI (set CI=true)"
             );
         }
     }

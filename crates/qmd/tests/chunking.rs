@@ -35,10 +35,10 @@ use std::fs;
 use std::path::Path;
 
 use qmd::{
-    BREAK_PATTERNS, BreakPoint, CharChunkOptions, ChunkStrategy, CodeFenceRegion,
-    TokenChunkOptions, chunk_document, chunk_document_by_tokens, chunk_document_with_break_points,
-    chunk_document_with_strategy, find_best_cutoff, find_code_fences, is_inside_code_fence,
-    merge_break_points, scan_break_points, utf16_len, utf16_to_byte_offset,
+    BREAK_PATTERNS, BreakPoint, CharChunkOptions, ChunkStrategy, CodeFenceRegion, chunk_document,
+    chunk_document_with_break_points, chunk_document_with_strategy, find_best_cutoff,
+    find_code_fences, is_inside_code_fence, merge_break_points, scan_break_points, utf16_len,
+    utf16_to_byte_offset,
 };
 
 fn bp(pos: usize, score: u32, kind: &str) -> BreakPoint {

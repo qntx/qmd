@@ -68,6 +68,10 @@ pub(crate) enum Format {
 /// Upstream `OutputOptions` fields used by `outputResults`
 /// (qmd.ts:2332-2349).
 #[derive(Debug)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "the flag set mirrors upstream's OutputOptions 1:1"
+)]
 pub(crate) struct OutputOptions {
     /// Resolved `--format`/legacy-flag output format.
     pub(crate) format: Format,
@@ -81,6 +85,12 @@ pub(crate) struct OutputOptions {
     pub(crate) line_numbers: bool,
     /// `--full-path`.
     pub(crate) full_path: bool,
+    /// `--explain` — retrieval score traces (rows still need
+    /// [`OutputRow::explain`]; only `query` results carry one).
+    pub(crate) explain: bool,
+    /// `--intent` — forwarded to `extractSnippet` for window picking
+    /// (upstream `opts.intent`, qmd.ts:2344).
+    pub(crate) intent: Option<String>,
 }
 
 /// One scored row for `outputResults` — a [`qmd::SearchResult`]
@@ -101,6 +111,13 @@ pub(crate) struct OutputRow {
     pub(crate) docid: String,
     /// Extracted frontmatter metadata (empty → field omitted).
     pub(crate) metadata: DocumentMetadata,
+    /// Upstream `row.explain` — RRF/rerank trace; only hybrid `query`
+    /// rows carry one (boxed: the row stays small for the common case).
+    pub(crate) explain: Option<Box<qmd::Explain>>,
+    /// Upstream `row.chunkPos`/`row.chunkLen` — the best-chunk window
+    /// `query` results carry (UTF-16 offsets); `None` for
+    /// `search`/`vsearch` rows.
+    pub(crate) chunk: Option<qmd::ChunkSpan>,
 }
 
 /// Upstream's `c` palette (qmd.ts:249-257): ANSI codes when color is
@@ -558,7 +575,7 @@ fn output_md(
         let mut content = if opts.full {
             row.body.clone()
         } else {
-            extract_snippet(&row.body, query, 500, None, None).snippet
+            extract_snippet(&row.body, query, 500, row.chunk, opts.intent.as_deref()).snippet
         };
         if opts.line_numbers {
             content = qmd::add_line_numbers(&content, 1);
@@ -600,7 +617,7 @@ fn output_xml(
         let mut content = if opts.full {
             row.body.clone()
         } else {
-            extract_snippet(&row.body, query, 500, None, None).snippet
+            extract_snippet(&row.body, query, 500, row.chunk, opts.intent.as_deref()).snippet
         };
         if opts.line_numbers {
             content = qmd::add_line_numbers(&content, 1);
@@ -629,7 +646,7 @@ fn output_csv(
 ) {
     let _ = writeln!(io.out, "docid,score,file,title,context,line,snippet");
     for (row, res) in rows.iter().zip(resolutions) {
-        let snippet = extract_snippet(&row.body, query, 500, None, None);
+        let snippet = extract_snippet(&row.body, query, 500, row.chunk, opts.intent.as_deref());
         let line_start = if opts.full { 1 } else { snippet.line };
         let mut content = if opts.full {
             row.body.clone()
@@ -669,7 +686,7 @@ fn output_json(
 ) {
     let mut items = Vec::with_capacity(rows.len());
     for (row, res) in rows.iter().zip(resolutions) {
-        let snippet = extract_snippet(&row.body, query, 300, None, None);
+        let snippet = extract_snippet(&row.body, query, 300, row.chunk, opts.intent.as_deref());
         let mut obj = serde_json::Map::new();
         if !row.docid.is_empty() && show_docid(opts, res) {
             obj.insert("docid".to_owned(), format!("#{}", row.docid).into());
@@ -705,6 +722,13 @@ fn output_json(
             };
             obj.insert("snippet".to_owned(), snippet_text.into());
         }
+        // Upstream's `...(opts.explain && row.explain && {explain})` —
+        // the explain object is the row's last key (qmd.ts:2551).
+        if opts.explain
+            && let Some(explain) = &row.explain
+        {
+            obj.insert("explain".to_owned(), explain_json(explain));
+        }
         items.push(serde_json::Value::Object(obj));
     }
     let _ = writeln!(
@@ -712,6 +736,73 @@ fn output_json(
         "{}",
         crate::json::stringify_pretty(&serde_json::Value::Array(items))
     );
+}
+
+/// `row.explain` as a JSON value — upstream `HybridQueryExplain`
+/// field names/order (store.ts:5486-5499, `RRFContributionTrace` at
+/// 2459-2468: `rrfContribution`, camelCase throughout). Non-finite
+/// numbers become `null` like `JSON.stringify`.
+fn explain_json(explain: &qmd::Explain) -> serde_json::Value {
+    use serde_json::{Map, Value};
+    let contributions = explain
+        .rrf
+        .contributions
+        .iter()
+        .map(|c| {
+            Value::Object(Map::from_iter([
+                ("listIndex".to_owned(), Value::from(c.list_index)),
+                ("source".to_owned(), c.source.as_str().into()),
+                ("queryType".to_owned(), c.query_type.as_str().into()),
+                ("query".to_owned(), c.query.clone().into()),
+                ("rank".to_owned(), Value::from(c.rank)),
+                ("weight".to_owned(), Value::from(c.weight)),
+                ("backendScore".to_owned(), Value::from(c.backend_score)),
+                ("rrfContribution".to_owned(), Value::from(c.contribution)),
+            ]))
+        })
+        .collect::<Vec<_>>();
+    Value::Object(Map::from_iter([
+        (
+            "ftsScores".to_owned(),
+            Value::Array(explain.fts_scores.iter().map(|v| Value::from(*v)).collect()),
+        ),
+        (
+            "vectorScores".to_owned(),
+            Value::Array(
+                explain
+                    .vector_scores
+                    .iter()
+                    .map(|v| Value::from(*v))
+                    .collect(),
+            ),
+        ),
+        (
+            "rrf".to_owned(),
+            Value::Object(Map::from_iter([
+                ("rank".to_owned(), Value::from(explain.rrf.rank)),
+                (
+                    "positionScore".to_owned(),
+                    Value::from(explain.rrf.position_score),
+                ),
+                ("weight".to_owned(), Value::from(explain.rrf.weight)),
+                ("baseScore".to_owned(), Value::from(explain.rrf.base_score)),
+                (
+                    "topRankBonus".to_owned(),
+                    Value::from(explain.rrf.top_rank_bonus),
+                ),
+                (
+                    "totalScore".to_owned(),
+                    Value::from(explain.rrf.total_score),
+                ),
+                ("contributions".to_owned(), Value::Array(contributions)),
+            ])),
+        ),
+        ("rerankScore".to_owned(), Value::from(explain.rerank_score)),
+        (
+            "blendedScore".to_owned(),
+            Value::from(explain.blended_score),
+        ),
+    ]))
 }
 
 /// CLI block format (qmd.ts:2566-2650).
@@ -725,7 +816,7 @@ fn output_cli(
 ) {
     let c = render.c;
     for (i, (row, res)) in rows.iter().zip(resolutions).enumerate() {
-        let snippet = extract_snippet(&row.body, query, 500, None, None);
+        let snippet = extract_snippet(&row.body, query, 500, row.chunk, opts.intent.as_deref());
         let line = snippet.line;
         let visible = &res.ident;
 
@@ -793,6 +884,11 @@ fn output_cli(
             format_score(row.score, c),
             c.reset
         );
+        if opts.explain
+            && let Some(explain) = &row.explain
+        {
+            output_explain(explain, c, io);
+        }
         let _ = writeln!(io.out);
 
         let content = if opts.full {
@@ -810,6 +906,216 @@ fn output_cli(
             let _ = io.out.write_all(b"\n\n");
         }
     }
+}
+
+/// The `--explain` block — upstream `outputResults` (qmd.ts:2619-2640):
+/// `Explain:`/`RRF:`/`Blend:` plus the top-3 contributions by
+/// `rrfContribution`, all numbers via `formatExplainNumber`
+/// (`toFixed(4)`); `Math.round` percentages via [`js::math_round`].
+fn output_explain(explain: &qmd::Explain, c: Palette, io: &mut Io<'_>) {
+    // `formatExplainNumber` — toFixed(4).
+    let f4 = |v: f64| js::to_fixed(v, 4);
+    let fts = if explain.fts_scores.is_empty() {
+        "none".to_owned()
+    } else {
+        explain
+            .fts_scores
+            .iter()
+            .map(|s| f4(*s))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let vec = if explain.vector_scores.is_empty() {
+        "none".to_owned()
+    } else {
+        explain
+            .vector_scores
+            .iter()
+            .map(|s| f4(*s))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let mut contribs: Vec<&qmd::RrfContribution> = explain.rrf.contributions.iter().collect();
+    // `.slice().sort(desc rrfContribution).slice(0, 3)` — stable sort.
+    contribs.sort_by(|a, b| b.contribution.total_cmp(&a.contribution));
+    let contrib_summary = contribs
+        .iter()
+        .take(3)
+        .map(|contrib| {
+            format!(
+                "{}/{}#{}:{}",
+                contrib.source.as_str(),
+                contrib.query_type.as_str(),
+                contrib.rank,
+                f4(contrib.contribution)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" | ");
+    let _ = writeln!(
+        io.out,
+        "{}Explain: fts=[{fts}] vec=[{vec}]{}",
+        c.dim, c.reset
+    );
+    let _ = writeln!(
+        io.out,
+        "{}  RRF: total={} base={} bonus={} rank={}{}",
+        c.dim,
+        f4(explain.rrf.total_score),
+        f4(explain.rrf.base_score),
+        f4(explain.rrf.top_rank_bonus),
+        explain.rrf.rank,
+        c.reset
+    );
+    let _ = writeln!(
+        io.out,
+        "{}  Blend: {}%*{} + {}%*{} = {}{}",
+        c.dim,
+        js::number_to_string(js::math_round(explain.rrf.weight * 100.0)),
+        f4(explain.rrf.position_score),
+        js::number_to_string(js::math_round((1.0 - explain.rrf.weight) * 100.0)),
+        f4(explain.rerank_score),
+        f4(explain.blended_score),
+        c.reset
+    );
+    if !contrib_summary.is_empty() {
+        let _ = writeln!(
+            io.out,
+            "{}  Top RRF contributions: {contrib_summary}{}",
+            c.dim, c.reset
+        );
+    }
+}
+
+// =============================================================================
+// Shared CLI formatters (P4.3) — upstream helpers used by the stage-B
+// commands (`query`/`vsearch`/`embed`/`pull`/`doctor`).
+// =============================================================================
+
+/// Upstream `formatMs` (qmd.ts:428-431): `{ms}ms` under a second, else
+/// `toFixed(1)` seconds.
+#[allow(dead_code, reason = "used by stage-B command timings")]
+pub(crate) fn format_ms(ms: u64) -> String {
+    if ms < 1000 {
+        return format!("{ms}ms");
+    }
+    #[allow(clippy::cast_precision_loss, reason = "ms fits f64")]
+    let seconds = ms as f64 / 1000.0;
+    format!("{}s", js::to_fixed(seconds, 1))
+}
+
+/// Upstream `formatCount` (qmd.ts:3752-3754):
+/// `n.toLocaleString("en-US")` — thousands-grouped digits.
+#[allow(dead_code, reason = "used by stage-B doctor/embed output")]
+pub(crate) fn format_count(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::with_capacity(digits.len() + digits.len() / 3);
+    for (i, d) in digits.bytes().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(char::from(d));
+    }
+    out
+}
+
+/// Upstream `formatBytes` (qmd.ts:433-438): `B` under 1 KiB, then
+/// `KB`/`MB`/`GB` with one decimal — `toFixed(1)` rounds half-up, so
+/// [`js::to_fixed`] rather than ties-to-even `{:.1}`.
+pub(crate) fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * 1024;
+    const GB: u64 = 1024 * 1024 * 1024;
+    #[allow(clippy::cast_precision_loss, reason = "sizes fit f64")]
+    let b = bytes as f64;
+    if bytes < KB {
+        format!("{bytes} B")
+    } else if bytes < MB {
+        format!("{} KB", js::to_fixed(b / 1024.0, 1))
+    } else if bytes < GB {
+        format!("{} MB", js::to_fixed(b / (1024.0 * 1024.0), 1))
+    } else {
+        format!("{} GB", js::to_fixed(b / (1024.0 * 1024.0 * 1024.0), 1))
+    }
+}
+
+/// Upstream `renderProgressBar` (qmd.ts:2109-2114): `width` cells,
+/// `Math.round(percent / 100 * width)` filled `█`, the rest `░`.
+#[allow(dead_code, reason = "used by stage-B embed/pull progress")]
+pub(crate) fn render_progress_bar(percent: f64, width: usize) -> String {
+    // Upstream callers keep percent in [0, 100]; `repeat` on a
+    // negative count throws upstream, so clamp rather than replicate
+    // the RangeError.
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "clamped to [0, width] on the next line"
+    )]
+    let filled = (js::math_round(percent / 100.0 * width as f64) as i64)
+        .clamp(0, i64::try_from(width).unwrap_or(i64::MAX)) as usize;
+    let mut bar = "█".repeat(filled);
+    bar.push_str(&"░".repeat(width - filled));
+    bar
+}
+
+/// Upstream `shortModelName` (qmd.ts:3756-3760): `hf:` URIs shorten to
+/// the last path segment (empty tail falls back to the whole URI);
+/// other strings truncate at 56 units to 53 + `"..."`.
+#[allow(dead_code, reason = "used by stage-B doctor output")]
+pub(crate) fn short_model_name(model: &str) -> String {
+    if model.starts_with("hf:") {
+        if let Some(last) = model.rsplit('/').next().filter(|s| !s.is_empty()) {
+            return last.to_owned();
+        }
+        return model.to_owned();
+    }
+    if qmd::utf16_len(model) > 56 {
+        return format!("{}...", utf16_prefix(model, 53));
+    }
+    model.to_owned()
+}
+
+/// Upstream `summarizeDeviceNames` (qmd.ts:492-499): duplicates render
+/// `<count>× <name>`, first-seen order (JS `Map` semantics).
+#[allow(dead_code, reason = "used by stage-B doctor device output")]
+pub(crate) fn summarize_device_names(names: &[String]) -> String {
+    let mut counts: Vec<(&str, usize)> = Vec::new();
+    for name in names {
+        if let Some((_, n)) = counts.iter_mut().find(|(n, _)| *n == name.as_str()) {
+            *n += 1;
+        } else {
+            counts.push((name.as_str(), 1));
+        }
+    }
+    counts
+        .iter()
+        .map(|(name, n)| {
+            if *n > 1 {
+                format!("{n}× {name}")
+            } else {
+                (*name).to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// First `units` UTF-16 code units of `text` — JS `slice(0, units)`.
+/// A split surrogate pair ends before its char (Rust cannot represent
+/// a lone surrogate).
+#[allow(dead_code, reason = "shared UTF-16 slicing for stage-B helpers")]
+pub(crate) fn utf16_prefix(text: &str, units: usize) -> String {
+    let mut out = String::new();
+    let mut used = 0usize;
+    for ch in text.chars() {
+        let w = ch.len_utf16();
+        if used + w > units {
+            break;
+        }
+        used += w;
+        out.push(ch);
+    }
+    out
 }
 
 #[cfg(test)]

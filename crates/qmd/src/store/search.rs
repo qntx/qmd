@@ -67,6 +67,18 @@ pub enum SearchSource {
     Vec,
 }
 
+impl SearchSource {
+    /// Upstream's literal tag (`"fts"`/`"vec"`, store.ts:2460) — used by
+    /// `--explain` rendering and its JSON payload.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Fts => "fts",
+            Self::Vec => "vec",
+        }
+    }
+}
+
 /// Upstream `getContextForFile` (store.ts:3547-3630): global context
 /// first, then every matching path context from most general to most
 /// specific, joined by `"\n\n"`.

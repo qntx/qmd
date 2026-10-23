@@ -39,6 +39,18 @@ pub(crate) fn clear(io: &mut Io<'_>) {
     }
 }
 
+/// `cursor.hide()` — `\x1b[?25l` on stderr. Upstream writes it
+/// *unconditionally* (qmd.ts:261-264), so this is not TTY-gated.
+pub(crate) fn cursor_hide(io: &mut Io<'_>) {
+    let _ = io.err.write_all(b"\x1b[?25l");
+}
+
+/// `cursor.show()` — `\x1b[?25h` on stderr, also unconditional
+/// upstream (qmd.ts:263).
+pub(crate) fn cursor_show(io: &mut Io<'_>) {
+    let _ = io.err.write_all(b"\x1b[?25h");
+}
+
 /// The shared `onProgress` body — `updateCollections` (qmd.ts:987-994)
 /// and `indexFiles` (qmd.ts:2042-2047) render identically: OSC 9;4
 /// percent, then the `\rIndexing:` status line. The ETA appears only
@@ -65,7 +77,7 @@ pub(crate) fn indexing_tick(io: &mut Io<'_>, current: usize, total: usize, start
 /// `<1h` → `floor(m)m round(s)s`, else `floor(h)h floor(m)m`. The
 /// JS `Math.round`/`Math.floor` ports keep NaN/∞ formatting as `NaN`/
 /// `Infinity` via [`qmd::js::number_to_string`].
-fn format_eta(seconds: f64) -> String {
+pub(crate) fn format_eta(seconds: f64) -> String {
     if seconds < 60.0 {
         return format!(
             "{}s",

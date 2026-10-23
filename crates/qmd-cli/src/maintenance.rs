@@ -17,7 +17,7 @@ use qmd::{Environment, Qmd, SkippedFile, trust};
 use crate::args::TrustArgs;
 use crate::collections::format_time_ago;
 use crate::context::CliContext;
-use crate::output::{Io, Palette};
+use crate::output::{Io, Palette, format_bytes};
 use crate::{Failure, gate, progress};
 
 /// `qmd init` — upstream `initLocalIndex` (qmd.ts:447-477) dispatched
@@ -709,29 +709,6 @@ fn print_hook_output(output: &str, io: &mut Io<'_>) {
     }
     for line in trimmed.split('\n') {
         let _ = writeln!(io.out, "    {line}");
-    }
-}
-
-/// Upstream `formatBytes` (qmd.ts:433-438): `B` under 1 KiB, then
-/// `KB`/`MB`/`GB` with one decimal — `toFixed(1)` rounds half-up, so
-/// [`qmd::js::to_fixed`] rather than Rust's ties-to-even `{:.1}`
-/// (1.25 KB prints `1.3 KB` upstream).
-fn format_bytes(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = 1024 * 1024;
-    const GB: u64 = 1024 * 1024 * 1024;
-    let b = bytes as f64;
-    if bytes < KB {
-        format!("{bytes} B")
-    } else if bytes < MB {
-        format!("{} KB", qmd::js::to_fixed(b / 1024.0, 1))
-    } else if bytes < GB {
-        format!("{} MB", qmd::js::to_fixed(b / (1024.0 * 1024.0), 1))
-    } else {
-        format!(
-            "{} GB",
-            qmd::js::to_fixed(b / (1024.0 * 1024.0 * 1024.0), 1)
-        )
     }
 }
 

@@ -30,4 +30,5 @@ time = { version = "0.3.55", features = ["local-offset", "formatting", "parsing"
 
 [dev-dependencies]
 regex    = "1.13.1"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 tempfile = "3.27.0"

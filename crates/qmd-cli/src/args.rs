@@ -50,6 +50,17 @@ pub(crate) enum Command {
     Cleanup(CleanupArgs),
     /// `trust` — approve/inspect/revoke local-config gating.
     Trust(TrustArgs),
+    /// `embed` — generate/refresh vector embeddings.
+    Embed(EmbedArgs),
+    /// `pull` — download the active embed/generate/rerank models.
+    Pull(PullArgs),
+    /// `vsearch` (alias `vector-search`) — vector similarity search.
+    Vsearch(QueryArgs),
+    /// `query` (alias `deep-search`) — hybrid search with expansion +
+    /// reranking; also parses structured query documents.
+    Query(QueryArgs),
+    /// `doctor` — config/index/model/device diagnostics.
+    Doctor,
     /// Any unregistered first positional (`help`, `version`, …) —
     /// upstream's `default:` branch.
     Unknown(UnknownArgs),
@@ -135,6 +146,83 @@ pub(crate) struct FormatArgs {
     /// Legacy `--files` alias.
     #[arg(long)]
     pub(crate) files: bool,
+}
+
+/// Options for `qmd vsearch`/`qmd query` (upstream `case "vsearch"`/
+/// `case "query"`, qmd.ts:4762-4786). Upstream resolves every flag in
+/// the shared `parseArgs` bucket, so both commands accept the full
+/// option surface even where a flag is unused — `vsearch` ignores
+/// `--candidate-limit`/`--no-rerank`/`--explain`/`--chunk-strategy`
+/// like upstream's `vectorSearch` does, while `--intent` still reaches
+/// the snippet extractor (qmd.ts:2915).
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "the flag set mirrors upstream's shared query options 1:1"
+)]
+pub(crate) struct QueryArgs {
+    /// Query terms plus the shared search-option bundle
+    /// (`-n`/`--min-score`/`--all`/`--full`/`--full-path`/
+    /// `--line-numbers`/`--format`/`-c`/`--filter`).
+    #[command(flatten)]
+    pub(crate) search: SearchArgs,
+    /// `-C`/`--candidate-limit <n>` — `parseInt` semantics; `0`/NaN
+    /// select zero rerank candidates upstream (qmd.ts:3209).
+    #[arg(short = 'C', long = "candidate-limit")]
+    pub(crate) candidate_limit: Option<String>,
+    /// `--no-rerank` — RRF scores only, no reranker load.
+    #[arg(long = "no-rerank")]
+    pub(crate) no_rerank: bool,
+    /// `--intent <text>` — disambiguation hint for reranking/snippets.
+    #[arg(long)]
+    pub(crate) intent: Option<String>,
+    /// `--explain` — per-row retrieval score traces.
+    #[arg(long)]
+    pub(crate) explain: bool,
+    /// `--chunk-strategy <auto|regex>` — best-chunk selection mode.
+    #[arg(long = "chunk-strategy")]
+    pub(crate) chunk_strategy: Option<String>,
+}
+
+/// Options for `qmd embed` (upstream `case "embed"`, qmd.ts:4705-4728).
+/// Numeric options stay raw strings: validation mirrors upstream's
+/// `Number()`-based `parseEmbedBatchOption`/`parseEmbedTimeoutOption`
+/// errors (qmd.ts:2116-2141), including its `exitWithError` text.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct EmbedArgs {
+    /// `-f`/`--force` — clear all vectors and re-embed.
+    #[arg(short = 'f', long)]
+    pub(crate) force: bool,
+    /// `--max-docs-per-batch <n>` — `Number()` → integer ≥ 1.
+    #[arg(long = "max-docs-per-batch")]
+    pub(crate) max_docs_per_batch: Option<String>,
+    /// `--max-batch-mb <n>` — `Number()` → integer ≥ 1 (mebibytes).
+    #[arg(long = "max-batch-mb")]
+    pub(crate) max_batch_mb: Option<String>,
+    /// `--timeout <minutes>` — `Number()` → ≥ 0 (`0` = no limit).
+    #[arg(long)]
+    pub(crate) timeout: Option<String>,
+    /// `--chunk-strategy <auto|regex>` (qmd.ts:2125-2130).
+    #[arg(long = "chunk-strategy")]
+    pub(crate) chunk_strategy: Option<String>,
+    /// `-c`/`--collection <name>` — every value is validated against
+    /// the config but only the first scopes the embed (qmd.ts:4716-4717).
+    #[arg(short = 'c', long = "collection")]
+    pub(crate) collection: Vec<String>,
+}
+
+/// Options for `qmd pull` (upstream `case "pull"`, qmd.ts:4730-4751).
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct PullArgs {
+    /// `--refresh` — revalidate/re-download cached models.
+    #[arg(long)]
+    pub(crate) refresh: bool,
+    /// `--progress` — show a download progress indicator on stderr.
+    #[arg(long)]
+    pub(crate) progress: bool,
 }
 
 /// Options for `qmd get` (upstream `case "get"`, qmd.ts:4481-4492).
@@ -288,6 +376,14 @@ enum RawCommand {
     Update,
     Cleanup(CleanupArgs),
     Trust(TrustArgs),
+    Embed(EmbedArgs),
+    Pull(PullArgs),
+    // Upstream keeps both aliases undocumented (qmd.ts:4763, 4778).
+    #[command(name = "vsearch", alias = "vector-search")]
+    Vsearch(QueryArgs),
+    #[command(name = "query", alias = "deep-search")]
+    Query(QueryArgs),
+    Doctor,
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -309,6 +405,11 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         RawCommand::Update => Command::Update,
         RawCommand::Cleanup(cleanup) => Command::Cleanup(cleanup),
         RawCommand::Trust(trust) => Command::Trust(trust),
+        RawCommand::Embed(embed) => Command::Embed(embed),
+        RawCommand::Pull(pull) => Command::Pull(pull),
+        RawCommand::Vsearch(vsearch) => Command::Vsearch(vsearch),
+        RawCommand::Query(query) => Command::Query(query),
+        RawCommand::Doctor => Command::Doctor,
         RawCommand::Other(words) => Command::Unknown(UnknownArgs(words)),
     });
     Ok(ParsedCli {
