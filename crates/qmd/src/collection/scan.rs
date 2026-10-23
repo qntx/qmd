@@ -5,6 +5,10 @@
 //! Deviations: `walkdir` replaces `fast-glob`. Directory symlinks are not
 //! followed in either implementation; file symlinks are listed and the
 //! out-of-root check in `index` rejects escapes, matching upstream.
+//! Traversal is sorted while upstream `fast-glob` yields filesystem
+//! (readdir) order — a deliberate deterministic deviation whose only
+//! user-visible consequence is `multi-get <glob>` result ordering on
+//! filesystems where readdir order differs from sorted order.
 
 use std::path::Path;
 

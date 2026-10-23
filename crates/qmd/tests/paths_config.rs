@@ -56,6 +56,21 @@ fn config_dir_uses_xdg_then_home() {
 }
 
 #[test]
+fn config_file_is_index_name_dot_yml() {
+    // Upstream `getConfigFilePath` (collections.ts:131-133):
+    // `<config-dir>/<index-name>.yml`, not `index-<name>.yml`.
+    let e = env(|e| e.qmd_config_dir = Some(PathBuf::from("/cfg")));
+    assert_eq!(
+        paths::config_file(&e, "index"),
+        PathBuf::from("/cfg/index.yml")
+    );
+    assert_eq!(
+        paths::config_file(&e, "work"),
+        PathBuf::from("/cfg/work.yml")
+    );
+}
+
+#[test]
 fn default_db_path_prefers_index_path() {
     let e = env(|e| {
         e.index_path = Some(PathBuf::from("/idx/my.sqlite"));

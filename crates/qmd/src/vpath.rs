@@ -174,8 +174,8 @@ pub fn parse_line_suffix(input: &str) -> LineSuffix {
     {
         return LineSuffix {
             path: head2.to_owned(),
-            from_line: mid.parse().ok(),
-            max_lines: last.parse().ok(),
+            from_line: Some(js_digits(mid)),
+            max_lines: Some(js_digits(last)),
         };
     }
     // `/:(\d+)$/`: one trailing digit run.
@@ -185,7 +185,7 @@ pub fn parse_line_suffix(input: &str) -> LineSuffix {
     {
         return LineSuffix {
             path: head.to_owned(),
-            from_line: last.parse().ok(),
+            from_line: Some(js_digits(last)),
             max_lines: None,
         };
     }
@@ -194,4 +194,11 @@ pub fn parse_line_suffix(input: &str) -> LineSuffix {
         from_line: None,
         max_lines: None,
     }
+}
+
+/// `parseInt` on a pure-digit run: values past `u64::MAX` saturate —
+/// JS yields a huge finite double, and both land past the end of any
+/// line window (`slice` clamping makes them equivalent).
+fn js_digits(digits: &str) -> u64 {
+    digits.parse().unwrap_or(u64::MAX)
 }

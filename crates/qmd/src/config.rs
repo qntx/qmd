@@ -73,12 +73,12 @@ pub struct ModelsConfig {
     /// Embedding model override.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub embed: Option<String>,
-    /// Reranker model override.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rerank: Option<String>,
     /// Generation model override.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generate: Option<String>,
+    /// Reranker model override.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rerank: Option<String>,
     /// Rust-only extension, see [`EmbedPooling`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub embed_pooling: Option<EmbedPooling>,
@@ -140,7 +140,7 @@ impl Collection {
     }
 }
 
-/// Root configuration (`.qmd/index.yaml` / `index-<name>.yml`).
+/// Root configuration (`.qmd/index.yaml` / `<config-dir>/<name>.yml`).
 ///
 /// Upstream accepts all four `editor_uri` spellings; each is stored in its
 /// own field and written back under its original spelling.

@@ -51,10 +51,11 @@ pub fn config_dir(env: &Environment) -> PathBuf {
     home_dir(env).join(".config").join("qmd")
 }
 
-/// Upstream `getConfigFile(indexName)`: `<config-dir>/index-<name>.yml`.
+/// Upstream `getConfigFilePath` (collections.ts:131-133):
+/// `<config-dir>/<index-name>.yml` — `index.yml` for the default index.
 #[must_use]
 pub fn config_file(env: &Environment, index_name: &str) -> PathBuf {
-    config_dir(env).join(format!("index-{index_name}.yml"))
+    config_dir(env).join(format!("{index_name}.yml"))
 }
 
 /// Upstream `getCacheDir()`: `XDG_CACHE_HOME/qmd` -> `~/.cache/qmd`.
@@ -70,13 +71,18 @@ pub fn cache_dir(env: &Environment) -> PathBuf {
 /// `<cache-dir>/<index>-rs.sqlite`.
 ///
 /// The `-rs` suffix keeps Rust indexes separate from upstream `.sqlite`
-/// files so the two never clobber each other.
+/// files so the two never clobber each other. Like upstream
+/// `getDefaultDbPath` (store.ts:660-661), the cache directory is created
+/// best-effort so opening a named index never fails on a missing parent.
 #[must_use]
 pub fn default_db_path(env: &Environment, index_name: &str) -> PathBuf {
     if let Some(path) = &env.index_path {
         return path.clone();
     }
-    cache_dir(env).join(format!("{index_name}-rs.sqlite"))
+    let dir = cache_dir(env);
+    // Upstream swallows mkdir errors; a failure surfaces at DB open.
+    drop(std::fs::create_dir_all(&dir));
+    dir.join(format!("{index_name}-rs.sqlite"))
 }
 
 /// Database path for a project-local config: `.qmd/index-rs.sqlite` next
@@ -98,7 +104,10 @@ pub fn find_local_config(start: &Path) -> Option<PathBuf> {
         let qmd_dir = dir.join(LOCAL_CONFIG_DIR);
         for name in LOCAL_CONFIG_FILES {
             let candidate = qmd_dir.join(name);
-            if candidate.is_file() {
+            // Upstream `existsSync` (collections.ts:141-156): any existing
+            // path counts — a `.qmd/index.yaml` directory still wins and
+            // fails later at read time instead of yielding a parent config.
+            if candidate.try_exists().unwrap_or(false) {
                 return Some(candidate);
             }
         }

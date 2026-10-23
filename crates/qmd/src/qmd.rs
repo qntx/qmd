@@ -14,12 +14,14 @@ use rusqlite::Connection;
 
 use crate::chunk::ChunkStrategy;
 use crate::config::{Collection, Config};
-use crate::document::{Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions};
+use crate::document::{
+    Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions, MultiGetSelection,
+};
 use crate::env::Environment;
 use crate::error::{Error, Result};
 #[cfg(not(feature = "llama"))]
 use crate::llm::Capability;
-use crate::llm::{Embedder, Generator, Reranker};
+use crate::llm::{Embedder, Generator, Reranker, ResolvedModels};
 use crate::maintenance::Maintenance;
 use crate::store;
 use crate::store::hybrid::SearchHooks;
@@ -28,7 +30,7 @@ use crate::store::search::SearchResult;
 /// How the [`Qmd`] handle resolves its configuration.
 #[derive(Debug)]
 enum ConfigSource {
-    /// Load and persist `index-<name>.yml` / `.qmd/index.yaml`.
+    /// Load and persist `<name>.yml` / `.qmd/index.yaml`.
     File(PathBuf),
     /// Caller-supplied config, mutated in memory only.
     Inline(Box<Config>),
@@ -833,6 +835,53 @@ impl Qmd {
         self.load_config(&guard)
     }
 
+    /// Upstream `ensureModelsConfiguredForCli` (qmd.ts:2143-2163):
+    /// resolve the model triple (config → env → defaults via
+    /// [`crate::llm::resolve_models`]) and pin it into the config source
+    /// when it differs, so read-only commands still record which models
+    /// the index was built with. Other `models:` keys survive the write;
+    /// unlike upstream's `{...current, embed, generate, rerank}` spread,
+    /// a pre-existing `models:` block whose keys are in another order is
+    /// normalized to the struct field order (embed, generate, rerank).
+    ///
+    /// Like upstream's `catch`, a failure anywhere falls back to
+    /// env/defaults instead of failing. In `DbOnly` mode there is no
+    /// config source to pin, so the resolved values are returned
+    /// without a write.
+    #[must_use]
+    pub fn ensure_models_configured(&self) -> ResolvedModels {
+        self.try_ensure_models_configured()
+            .unwrap_or_else(|_| crate::llm::resolve_models(None, &self.env))
+    }
+
+    /// Fallible body of [`Qmd::ensure_models_configured`].
+    fn try_ensure_models_configured(&self) -> Result<ResolvedModels> {
+        let config = self.config()?;
+        let models = crate::llm::resolve_models(config.models.as_ref(), &self.env);
+        let differs = config.models.as_ref().is_none_or(|m| {
+            m.embed.as_deref() != Some(models.embed.as_str())
+                || m.generate.as_deref() != Some(models.generate.as_str())
+                || m.rerank.as_deref() != Some(models.rerank.as_str())
+        });
+        if !differs || matches!(*lock(&self.config), ConfigSource::DbOnly) {
+            return Ok(models);
+        }
+        let resolved = models.clone();
+        self.mutate_config(move |cfg| {
+            let ResolvedModels {
+                embed,
+                generate,
+                rerank,
+            } = resolved;
+            let models_cfg = cfg.models.get_or_insert_default();
+            models_cfg.embed = Some(embed);
+            models_cfg.generate = Some(generate);
+            models_cfg.rerank = Some(rerank);
+            Ok(Some(()))
+        })?;
+        Ok(models)
+    }
+
     /// Add a collection. Applies upstream CLI semantics: the name must be
     /// free and no other collection may cover the same path + pattern.
     ///
@@ -1000,17 +1049,21 @@ impl Qmd {
         Ok(out)
     }
 
-    /// Names of collections included in unscoped search
-    /// (`getDefaultCollectionNames`).
+    /// Names of collections included in unscoped search — upstream
+    /// `getDefaultCollectionNames` (collections.ts:276) reads the YAML
+    /// config via `listCollections` (collections.ts:258), not the
+    /// `store_collections` mirror.
     ///
     /// # Errors
-    /// [`Error::Db`] on query failure.
+    /// Propagates config load errors.
     pub fn default_collection_names(&self) -> Result<Vec<String>> {
+        let guard = lock(&self.config);
         Ok(self
-            .collections()?
+            .load_config(&guard)?
+            .collections
             .into_iter()
-            .filter(|c| c.include_by_default)
-            .map(|c| c.name)
+            .filter(|(_, c)| c.include_by_default())
+            .map(|(name, _)| name)
             .collect())
     }
 
@@ -1288,6 +1341,25 @@ impl Qmd {
     pub fn multi_get(&self, pattern: &str, opts: &MultiGetOptions) -> Result<MultiGet> {
         let conn = lock(&self.conn);
         store::document::find_documents(&conn, pattern, opts.include_body, opts.max_bytes)
+    }
+
+    /// File selection for `qmd multi-get` — the CLI's resolution step
+    /// (cli/qmd.ts:1364-1407), kept separate from the SDK
+    /// [`Qmd::multi_get`]: comma-separated names (or a lone docid) go
+    /// through the comma-list resolver, anything else is a glob.
+    /// Bodies are *not* fetched; callers fetch each `virtual_path`
+    /// through [`Qmd::get`].
+    ///
+    /// `display_path` preserves upstream's two quirks: comma/docid
+    /// matches display as `qmd://coll/path`, glob matches as the bare
+    /// relative `path`.
+    ///
+    /// # Errors
+    /// [`Error::Db`] on query failure, [`Error::InvalidInput`] on a
+    /// malformed glob pattern.
+    pub fn select_multi_get(&self, pattern: &str) -> Result<MultiGetSelection> {
+        let conn = lock(&self.conn);
+        store::document::select_multi_get(&conn, pattern)
     }
 
     /// Documents of one collection under an optional path prefix — the
