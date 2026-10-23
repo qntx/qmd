@@ -695,3 +695,144 @@ pub fn decide_local_config_gate(
         digest,
     }
 }
+
+// =============================================================================
+// The `cli/qmd.ts` composition layer — the trust helpers above combined
+// the way upstream's `update`/`trust`/`getStore` paths combine them.
+// =============================================================================
+
+/// Upstream `builtinModels` (qmd.ts:715-719): the default model URIs a
+/// declared `models:` entry is compared against.
+#[must_use]
+pub fn builtin_models() -> BuiltinModels {
+    BuiltinModels {
+        embed: crate::llm::DEFAULT_EMBED_MODEL.to_owned(),
+        rerank: crate::llm::DEFAULT_RERANK_MODEL.to_owned(),
+        generate: crate::llm::DEFAULT_GENERATE_MODEL.to_owned(),
+    }
+}
+
+/// Upstream `collectSensitiveSnapshot` (qmd.ts:726-745): the gated
+/// surface of the parsed config.
+///
+/// Every non-empty `update:` hook, every declared collection path, and
+/// the `models:` URIs, in config order (`IndexMap` iteration matches
+/// `Object.entries` on the YAML map). An empty-string `update:` does
+/// not gate: upstream's `!!col.update` filter treats `""` as absent.
+#[must_use]
+pub fn collect_sensitive_snapshot(config: &crate::config::Config) -> SensitiveSnapshot {
+    SensitiveSnapshot {
+        hooks: config
+            .collections
+            .iter()
+            .filter_map(|(name, col)| {
+                let command = col.update.as_deref().filter(|c| !c.is_empty())?;
+                Some(UpdateHook {
+                    collection: name.clone(),
+                    command: command.to_owned(),
+                })
+            })
+            .collect(),
+        paths: config
+            .collections
+            .iter()
+            .map(|(name, col)| CollectionPath {
+                collection: name.clone(),
+                path: col.path.clone(),
+            })
+            .collect(),
+        models: config
+            .models
+            .as_ref()
+            .map_or_else(ModelsSnapshot::default, |m| ModelsSnapshot {
+                embed: m.embed.clone(),
+                rerank: m.rerank.clone(),
+                generate: m.generate.clone(),
+            }),
+    }
+}
+
+/// Upstream `localConfigDigest` (qmd.ts:747-749): the sensitive digest
+/// of `snapshot` under the built-in defaults.
+///
+/// `config_path` is stringified lossily — upstream keys trust records on
+/// the resolved path string; non-UTF-8 paths degrade to U+FFFD there.
+#[must_use]
+pub fn local_config_digest(
+    config_path: &Path,
+    snapshot: &SensitiveSnapshot,
+    env: &Environment,
+) -> String {
+    sensitive_digest(
+        snapshot,
+        &config_path.to_string_lossy(),
+        &builtin_models(),
+        env,
+    )
+}
+
+/// Upstream `localConfigGated` (qmd.ts:751-753): the gated subset of
+/// `snapshot` under the built-in defaults.
+#[must_use]
+pub fn local_config_gated(
+    config_path: &Path,
+    snapshot: &SensitiveSnapshot,
+    env: &Environment,
+) -> GatedItems {
+    gated_items(
+        &config_path.to_string_lossy(),
+        snapshot,
+        &builtin_models(),
+        env,
+    )
+}
+
+/// Whether this process may use the gated fields of the config —
+/// upstream `localConfigIsFullyTrusted` (qmd.ts:759-767).
+///
+/// Non-local config paths and the `QMD_TRUST_LOCAL_CONFIG` /
+/// `QMD_TRUST_UPDATE_HOOKS` opt-ins are always trusted; otherwise the
+/// gated set must be empty or recorded in `trusted.json` under the
+/// current digest.
+#[must_use]
+pub fn local_config_fully_trusted(
+    config_path: &Path,
+    config: &crate::config::Config,
+    env: &Environment,
+) -> bool {
+    if !is_local_config_path(&config_path.to_string_lossy(), env) {
+        return true;
+    }
+    if is_local_config_trust_opted_in(env) {
+        return true;
+    }
+    let snapshot = collect_sensitive_snapshot(config);
+    let gated = local_config_gated(config_path, &snapshot, env);
+    if !has_gated_items(&gated) {
+        return true;
+    }
+    is_trusted(
+        env,
+        &config_path.to_string_lossy(),
+        &local_config_digest(config_path, &snapshot, env),
+    )
+}
+
+/// Record the config's current gated set as approved in `trusted.json`
+/// — upstream `trustCurrentConfig` (qmd.ts:770-776). A no-op for
+/// non-local config paths.
+///
+/// # Errors
+/// [`Error::Io`] when the trust store cannot be written.
+pub fn trust_current_config(
+    config_path: &Path,
+    config: &crate::config::Config,
+    env: &Environment,
+) -> Result<()> {
+    if !is_local_config_path(&config_path.to_string_lossy(), env) {
+        return Ok(());
+    }
+    let snapshot = collect_sensitive_snapshot(config);
+    let digest = local_config_digest(config_path, &snapshot, env);
+    record_trust(env, &config_path.to_string_lossy(), &digest)
+}

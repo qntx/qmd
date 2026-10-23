@@ -238,7 +238,9 @@ fn delete_inactive_documents() {
         })
         .unwrap();
     assert_eq!(inactive, 1);
-    assert_eq!(qmd.maintenance().delete_inactive_documents().unwrap(), 1);
+    // Bun `.changes` = `sqlite3_total_changes`: the tombstone delete
+    // plus its cascaded `document_metadata` row counts 2, as upstream.
+    assert_eq!(qmd.maintenance().delete_inactive_documents().unwrap(), 2);
     let inactive: i64 = raw_conn(&db)
         .query_row("SELECT COUNT(*) FROM documents WHERE active = 0", [], |r| {
             r.get(0)
@@ -331,7 +333,8 @@ fn maintenance_run_leaves_consistent_index() {
 
     let counts = qmd.maintenance().run().unwrap();
     assert_eq!(counts.cache_count, 1);
-    assert_eq!(counts.inactive_docs, 1);
+    // `sqlite3_total_changes` parity: tombstone + `document_metadata`.
+    assert_eq!(counts.inactive_docs, 2);
     // vectors_vec is absent, so vector cleanup reports 0 as upstream.
     assert_eq!(counts.orphaned_vectors, 0);
     // Tombstone deleted first, so b.md's content became collectible.

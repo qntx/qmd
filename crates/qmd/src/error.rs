@@ -124,6 +124,16 @@ pub enum Error {
         reason: String,
     },
 
+    /// `qmd init` inside the user's home directory was refused —
+    /// `reason` carries the upstream error text verbatim
+    /// (cli/qmd.ts:449-453) so the CLI can print it byte-identically,
+    /// like [`Error::InvalidQuery`].
+    #[error("{reason}")]
+    LocalInitRefused {
+        /// Upstream error message.
+        reason: String,
+    },
+
     /// A collection with this name does not exist.
     #[error("collection not found: {name}")]
     CollectionNotFound {

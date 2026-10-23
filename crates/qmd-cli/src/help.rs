@@ -21,7 +21,18 @@ pub(crate) fn show(io: &mut Io<'_>, ctx: &CliContext) {
         "  qmd multi-get <pattern>       - Batch fetch via glob or comma-separated list",
         "",
         "Collections & context:",
+        "  qmd collection add/list/remove/rename/show   - Manage indexed folders",
+        "  qmd context add/list/rm                      - Attach human-written summaries",
         "  qmd ls [collection[/path]]                   - Inspect indexed files",
+        "",
+        "Maintenance:",
+        "  qmd init                      - Create a project-local .qmd index",
+        "  qmd status                    - View index + collection health",
+        // Upstream keeps `[--pull]` in the help text even though the
+        // flag was dropped from the update dispatch (qmd.ts:3661).
+        "  qmd update [--pull]           - Re-index collections (optionally git pull first)",
+        "  qmd trust [list|revoke]       - Approve a checked-in .qmd config's hooks/paths/models",
+        "  qmd cleanup [--dry-run]       - Drop inactive docs/orphans, compact FTS, vacuum",
         "",
         "Global options:",
         "  --index <name>             - Use a named index (default: index)",

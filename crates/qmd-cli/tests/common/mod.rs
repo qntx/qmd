@@ -175,6 +175,36 @@ impl CliEnv {
     }
 }
 
+/// Write the upstream `cli.test.ts` `beforeAll` corpus under
+/// `fixtures/` — README, notes/{meeting,ideas}, docs/api and
+/// test{1,2}.md — with no config or index.
+pub(crate) fn fixtures_corpus(env: &CliEnv) {
+    env.write_file(
+        "README.md",
+        "# Test Project\n\nThis is a test project for QMD CLI testing.\n\n## Features\n\n- Full-text search with BM25\n- Vector similarity search\n- Hybrid search with reranking\n",
+    );
+    env.write_file(
+        "notes/meeting.md",
+        "# Team Meeting Notes\n\nDate: 2024-01-15\n\n## Attendees\n- Alice\n- Bob\n- Charlie\n\n## Discussion Topics\n- Project timeline review\n- Resource allocation\n- Technical debt prioritization\n\n## Action Items\n1. Alice to update documentation\n2. Bob to fix authentication bug\n3. Charlie to review pull requests\n",
+    );
+    env.write_file(
+        "notes/ideas.md",
+        "# Product Ideas\n\n## Feature Requests\n- Dark mode support\n- Keyboard shortcuts\n- Export to PDF\n\n## Technical Improvements\n- Improve search performance\n- Add caching layer\n- Optimize database queries\n",
+    );
+    env.write_file(
+        "docs/api.md",
+        "# API Documentation\n\n## Endpoints\n\n### GET /search\nSearch for documents.\n\nParameters:\n- q: Search query (required)\n- limit: Max results (default: 10)\n\n### GET /document/:id\nRetrieve a specific document.\n\n### POST /index\nIndex new documents.\n",
+    );
+    env.write_file(
+        "test1.md",
+        "# Test Document 1\n\nThis is the first test document.\n\nIt has multiple lines for testing line numbers.\nLine 6 is here.\nLine 7 is here.\n",
+    );
+    env.write_file(
+        "test2.md",
+        "# Test Document 2\n\nThis is the second test document.\n",
+    );
+}
+
 /// `collections:` yaml for one `<fixtures>` collection (upstream
 /// `collection add . --name <name>` writes the equivalent).
 pub(crate) fn collection_yaml(name: &str, path: &Path, pattern: &str) -> String {

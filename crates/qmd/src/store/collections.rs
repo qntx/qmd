@@ -221,6 +221,49 @@ pub(crate) fn deactivate_documents(conn: &Connection, collection: &str) -> Resul
     Ok(n)
 }
 
+/// `sqlite3_total_changes()` — what Bun's `run().changes` actually
+/// reports: rows changed by the statement *plus* trigger and
+/// foreign-key cascade effects (verified: one document row delete with
+/// an FTS-trigger cleanup reports 8, not 1). Upstream's `deletedDocs`/
+/// `cleanedHashes` counts are this delta, so `collection rm` can print
+/// `Deleted 9 documents` for a one-file collection.
+fn total_changes(conn: &Connection) -> Result<i64> {
+    conn.query_row("SELECT total_changes()", [], |r| r.get(0))
+        .map_err(|e| DbError::from(e).into())
+}
+
+/// Upstream `removeCollection` (store.ts:3680-3695): hard-delete the
+/// collection's `documents` rows, then drop `content` hashes no *active*
+/// document references. The `store_collections` row is dropped by the
+/// following config sync. Upstream clears FTS via its `documents_ad`
+/// trigger; we delete the rows explicitly — the FTS shadow deletions
+/// still land inside the same `total_changes` delta upstream counts.
+pub(crate) fn remove_collection_rows(
+    conn: &Connection,
+    name: &str,
+) -> Result<crate::qmd::CollectionRemoval> {
+    let before = total_changes(conn)?;
+    delete_fts_for_collection(conn, name)?;
+    conn.execute("DELETE FROM documents WHERE collection = ?", [name])
+        .map_err(DbError::from)?;
+    let deleted_docs = usize::try_from(total_changes(conn)? - before).unwrap_or(0);
+    // Upstream's inline cleanup is active-only — deliberately not
+    // `cleanup_orphaned_content`, which keeps hashes referenced by
+    // inactive documents.
+    let before_content = total_changes(conn)?;
+    conn.execute(
+        "DELETE FROM content WHERE hash NOT IN \
+         (SELECT DISTINCT hash FROM documents WHERE active = 1)",
+        [],
+    )
+    .map_err(DbError::from)?;
+    let cleaned_hashes = usize::try_from(total_changes(conn)? - before_content).unwrap_or(0);
+    Ok(crate::qmd::CollectionRemoval {
+        deleted_docs,
+        cleaned_hashes,
+    })
+}
+
 /// Rename all documents of a collection (P1-D1 CLI semantics; the
 /// `documents_fts.filepath` column intentionally keeps the old name, as
 /// upstream's `renameCollection` does).

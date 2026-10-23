@@ -19,13 +19,23 @@
  *
  * Fixture shape: `{upstream, generated, groups: [{name, files, config_name,
  * config_yaml, env, setup, delete_after_setup, scenarios: [{name, argv, cwd,
- * check, stdout, stderr, exit_code}]}]}`. Each group has its own root; in
- * recorded output that root is `<ROOT>` and the shared HOME is `<HOME>`.
- * `files` carries every corpus file with its content and mtime so the Rust
- * replay rebuilds the identical state; `config_yaml` is the config as
- * upstream left it after setup (upstream fills in `models:`).
+ * check, env, write, delete, post_state, stdout, stderr, exit_code, state}]}]}`.
+ * Each group has its own root; in recorded output that root is `<ROOT>` and
+ * the shared HOME is `<HOME>`. `files` carries every corpus file with its
+ * content and mtime so the Rust replay rebuilds the identical state;
+ * `config_yaml` is the config as upstream left it after setup (upstream fills
+ * in `models:`).
+ *
+ * P4.2 additions: `env` overrides per scenario; `write`/`delete` mutate the
+ * corpus before the invocation (content writes get the current mtime, which
+ * `update` detects); `post_state` lists root-relative files captured after
+ * the run as `{path, exists, content}` (`config/*.yml`, `.qmd/*`,
+ * `trusted.json`) — `"trustedAt"` timestamps normalize to `<TS>`.
  *
  * `check`: `exact` — stdout, stderr and exit code byte-identical;
+ * `normalized` — like exact after replacing `\d+[smhd] ago` with `<AGO>`,
+ * `Size:` values with `<SIZE>` and `trusted <ISO>` with `<TS>` (db bytes and
+ * wall-clock-relative times cannot be byte-stable);
  * `stdout-exit` — stderr embeds JS-engine text (`JSON.parse` messages) and
  * is compared by the Rust test with a prefix rule instead; `record` — kept
  * for reference only (help/version text differs by design, P4-D2/D8).
@@ -184,9 +194,23 @@ function singleCollectionConfig(corpus: string): string {
 // Scenarios
 // ---------------------------------------------------------------------------
 
-type Check = "exact" | "stdout-exit" | "record";
-type Cwd = "corpus" | "docs" | "root" | "outside";
-type Scenario = { name: string; argv: string[]; cwd?: Cwd; check?: Check };
+type Check = "exact" | "normalized" | "stdout-exit" | "record";
+type Cwd = "corpus" | "docs" | "root" | "outside" | "proj";
+type Scenario = {
+  name: string;
+  argv: string[];
+  cwd?: Cwd;
+  check?: Check;
+  // Per-scenario env overrides (e.g. QMD_TRUST_LOCAL_CONFIG).
+  env?: Record<string, string>;
+  // Corpus mutations applied before the invocation (P4.2 `update` tests).
+  write?: Record<string, string>;
+  delete?: string[];
+  // Command run silently before the scenario (e.g. set an update hook).
+  pre?: string[];
+  // Root-relative files captured after the run (config, trusted.json, .qmd/*).
+  post_state?: string[];
+};
 
 const FORMATS = ["--json", "--csv", "--md", "--xml", "--files"];
 const each = (prefix: string, argv: string[], extra: Partial<Scenario> = {}): Scenario[] => [
@@ -316,6 +340,92 @@ const staleScenarios: Scenario[] = [
   { name: "stale search without full-path", argv: ["search", "install", "--json"] },
 ];
 
+// ---------------------------------------------------------------------------
+// P4.2 — mutating commands. Scenarios run in order over shared group state;
+// `post_state` records the config/trusted.json bytes after each mutation.
+// ---------------------------------------------------------------------------
+
+const CFG = "config/index.yml";
+const TRUSTED = "config/trusted.json";
+
+const mutateScenarios: Scenario[] = [
+  { name: "collection list baseline", argv: ["collection", "list"], check: "normalized" },
+  { name: "collection add", argv: ["collection", "add", "notes"], post_state: [CFG] },
+  // basename(name="notes") now exists → next hits the name-dup check first.
+  { name: "collection add dup name", argv: ["collection", "add", "archive", "--name", "notes"] },
+  // Same path+pattern under a fresh name hits the second check.
+  { name: "collection add dup path+pattern", argv: ["collection", "add", "notes", "--name", "other"] },
+  { name: "collection add missing", argv: ["collection", "add", "nosuchdir"] },
+  { name: "collection add file", argv: ["collection", "add", "docs/big.md"] },
+  { name: "collection add no arg", argv: ["collection", "add"] },
+  { name: "collection add --name --mask", argv: ["collection", "add", "docs/guide", "--name", "guides", "--mask", "search-*.md"], post_state: [CFG] },
+  { name: "collection add --glob alias", argv: ["collection", "add", "archive", "--glob", "*.md"], post_state: [CFG] },
+  { name: "collection list", argv: ["collection", "list"], check: "normalized" },
+  { name: "collection show", argv: ["collection", "show", "docs"] },
+  { name: "collection show missing", argv: ["collection", "show", "nope"] },
+  { name: "collection exclude", argv: ["collection", "exclude", "docs"], post_state: [CFG] },
+  { name: "collection include", argv: ["collection", "include", "docs"], post_state: [CFG] },
+  { name: "collection exclude missing", argv: ["collection", "exclude", "nope"] },
+  { name: "collection update-cmd set", argv: ["collection", "update-cmd", "docs", "echo upd-hook"], post_state: [CFG] },
+  { name: "collection update-cmd clear", argv: ["collection", "update-cmd", "docs"], post_state: [CFG] },
+  { name: "collection update-cmd missing", argv: ["collection", "update-cmd", "nope", "x"] },
+  { name: "collection rename", argv: ["collection", "rename", "guides", "tutorials"], post_state: [CFG] },
+  { name: "collection rename to existing", argv: ["collection", "rename", "tutorials", "docs"] },
+  { name: "collection rm alias", argv: ["collection", "rm", "tutorials"], post_state: [CFG] },
+  { name: "collection remove missing", argv: ["collection", "remove", "nope"] },
+  { name: "collection bogus sub", argv: ["collection", "bogus"] },
+
+  { name: "context add qmd uri", argv: ["context", "add", "qmd://docs/guide", "Guide files"], post_state: [CFG] },
+  { name: "context add global", argv: ["context", "add", "/", "Root context"], post_state: [CFG] },
+  { name: "context add fs path", argv: ["context", "add", "docs/faq.md", "FAQ file"], post_state: [CFG] },
+  { name: "context add not indexed", argv: ["context", "add", "nosuchdir/x.md", "x"] },
+  { name: "context add missing coll", argv: ["context", "add", "qmd://nope/x", "x"] },
+  { name: "context list", argv: ["context", "list"], check: "normalized" },
+  { name: "context rm", argv: ["context", "rm", "qmd://docs/guide"], post_state: [CFG] },
+  { name: "context rm missing", argv: ["context", "rm", "qmd://docs/nowhere"] },
+
+  { name: "status", argv: ["status"], check: "normalized" },
+  { name: "cleanup dry-run", argv: ["cleanup", "--dry-run"] },
+  { name: "cleanup", argv: ["cleanup"] },
+
+  // `add .` resolves to the corpus dir itself — basename-named "corpus".
+  { name: "collection add dot", argv: ["collection", "add", "."], post_state: [CFG] },
+
+  { name: "update no-op", argv: ["update"] },
+  { name: "update changed", argv: ["update"], write: { "docs/faq.md": faq + "\nA brand new line about search.\n" } },
+  { name: "update new file", argv: ["update"], write: { "docs/newfile.md": "# New File\n\nFresh content about search.\n" } },
+  { name: "update removed", argv: ["update"], delete: ["docs/newfile.md"] },
+  { name: "update with hook", argv: ["update"], pre: ["collection", "update-cmd", "docs", "echo upd-hook"] },
+  { name: "update hook fails", argv: ["update"], pre: ["collection", "update-cmd", "docs", "exit 3"] },
+  { name: "update after hook cleared", argv: ["update"], pre: ["collection", "update-cmd", "docs"], post_state: [CFG] },
+];
+
+// Project-local `.qmd/index.yaml` gating: the config travels with a checkout,
+// so `update` hooks / out-of-project paths / custom models are untrusted until
+// approved. `docs` is in-project (hook gated), `outside` points at
+// `<root>/external` (path gated). The generator never reaches the interactive
+// prompt — piped stdin is not a TTY, so upstream takes the `skip` branch.
+const localScenarios: Scenario[] = [
+  { name: "update untrusted skips gated", argv: ["update"], post_state: ["corpus/.qmd/index.yaml"] },
+  { name: "trust list empty", argv: ["trust", "list"] },
+  { name: "trust", argv: ["trust"], post_state: [TRUSTED] },
+  { name: "update trusted runs hook", argv: ["update"], check: "normalized" },
+  { name: "trust list", argv: ["trust", "list"], check: "normalized" },
+  { name: "trust revoke", argv: ["trust", "revoke"], post_state: [TRUSTED] },
+  { name: "update env opted-in", argv: ["update"], env: { QMD_TRUST_LOCAL_CONFIG: "1" }, check: "normalized" },
+  { name: "trust bogus sub", argv: ["trust", "bogus"] },
+  { name: "init existing local config", argv: ["init"], post_state: ["corpus/.qmd/index.yaml"] },
+  { name: "status local", argv: ["status"], check: "normalized" },
+];
+
+// `init` on a fresh directory — cwd `proj` starts empty.
+const initScenarios: Scenario[] = [
+  { name: "init", argv: ["init"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
+  { name: "init again", argv: ["init"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
+  // homedir() resolves $HOME — pointing it at the cwd exercises the refusal.
+  { name: "init refuses HOME", argv: ["init"], cwd: "proj", env: { HOME: "<PROJ>" } },
+];
+
 type Group = {
   name: string;
   configName: string;
@@ -325,12 +435,45 @@ type Group = {
   indexPath: boolean;
   deleteAfterSetup: string[];
   scenarios: Scenario[];
+  // Files under <root> outside the corpus (e.g. an out-of-project collection).
+  extraFiles?: Record<string, string>;
+  // Project-local `.qmd/index.yaml` written inside the corpus instead of the
+  // global config dir (P4.2 trust scenarios); setup runs `update`.
+  localConfig?: (root: string) => string;
+  // Extra cwd root created empty (e.g. `proj` for `qmd init`).
+  projDir?: boolean;
+  // Skip the automatic `update` setup entirely.
+  noSetup?: boolean;
 };
 
 const GROUPS: Group[] = [
   { name: "main", configName: "index.yml", config: mainConfig, indexPath: true, deleteAfterSetup: [], scenarios: mainScenarios },
   { name: "work", configName: "work.yml", config: singleCollectionConfig, indexName: "work", indexPath: false, deleteAfterSetup: [], scenarios: workScenarios },
   { name: "stale", configName: "index.yml", config: singleCollectionConfig, indexPath: true, deleteAfterSetup: ["docs/guide/install.md"], scenarios: staleScenarios },
+  {
+    name: "mutate", configName: "index.yml", config: singleCollectionConfig,
+    indexPath: true, deleteAfterSetup: [], scenarios: mutateScenarios,
+  },
+  {
+    name: "local", configName: "unused.yml",
+    config: () => "",
+    indexPath: false, deleteAfterSetup: [], scenarios: localScenarios,
+    extraFiles: { "external/ext.md": "# External\n\nContent outside the project root.\n" },
+    localConfig: (root) => `collections:
+  docs:
+    path: ${root}/corpus/docs
+    pattern: "**/*.md"
+    update: "echo hook-ran"
+  outside:
+    path: ${root}/external
+    pattern: "**/*.md"
+`,
+  },
+  {
+    name: "init", configName: "unused.yml", config: () => "",
+    indexPath: true, deleteAfterSetup: [], scenarios: initScenarios,
+    projDir: true, noSetup: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -373,7 +516,21 @@ try {
       writeFileSync(p, body);
       utimesSync(p, FIXED_MTIME, FIXED_MTIME);
     }
-    writeFileSync(join(configDir, group.configName), group.config(corpus));
+    for (const [rel, body] of Object.entries(group.extraFiles ?? {})) {
+      const p = join(root, rel);
+      mkdirSync(dirname(p), { recursive: true });
+      writeFileSync(p, body);
+      utimesSync(p, FIXED_MTIME, FIXED_MTIME);
+    }
+    if (group.projDir) mkdirSync(join(root, "proj"), { recursive: true });
+    if (group.localConfig) {
+      // Project-local config inside the corpus — global config stays absent.
+      const qmdDir = join(corpus, ".qmd");
+      mkdirSync(qmdDir, { recursive: true });
+      writeFileSync(join(qmdDir, "index.yaml"), group.localConfig(root));
+    } else {
+      writeFileSync(join(configDir, group.configName), group.config(corpus));
+    }
 
     const env: Record<string, string> = {
       PATH: `${dirname(BUN)}:/usr/bin:/bin`,
@@ -389,33 +546,89 @@ try {
     };
     if (group.indexPath) env.INDEX_PATH = join(root, "index.sqlite");
 
-    const cwdOf = (c: Cwd = "corpus") => ({ corpus, docs: join(corpus, "docs"), root, outside }[c]);
-    const run = (argv: string[], cwd: string) => {
+    const proj = join(root, "proj");
+    const cwdOf = (c: Cwd = "corpus") => ({ corpus, docs: join(corpus, "docs"), root, outside, proj }[c]);
+    // `<AGO>`/`<SIZE>`/`<TS>`: db file size and clock-relative strings are
+    // not byte-stable across implementations or run dates. The AST block is
+    // flattened to `<AST>` — the port pins upstream's `not available` branch
+    // until P6 while this upstream reports `active` plus a language list.
+    const softNormalize = (s: string) => s
+      .replace(/\d+[smhd] ago/g, "<AGO>")
+      .replace(/(\n|^)(\s*)Size:.*(\n|$)/g, "$1$2Size: <SIZE>$3")
+      .replace(/trusted \d{4}-\d{2}-\d{2}T[^\s)]*/g, "trusted <TS>")
+      .replace(/"trustedAt": "[^"]*"/g, '"trustedAt": "<TS>"')
+      .replace(/^  Status:.*$/gm, "  Status: <AST>")
+      .replace(/^  Languages:.*\n/gm, "")
+      .replace(/^  Unavailable:.*\n/gm, "");
+    const run = (argv: string[], cwd: string, extra?: Record<string, string>) => {
+      const e = { ...env, PWD: cwd };
+      for (const [k, v] of Object.entries(extra ?? {})) e[k] = v === "<PROJ>" ? proj : v;
       const r = spawnSync(BUN, [QMD_TS, ...argv], {
-        cwd, env: { ...env, PWD: cwd }, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000,
+        cwd, env: e, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000,
       });
       if (r.error) throw r.error;
       return { stdout: normalize(r.stdout, root), stderr: normalize(r.stderr, root), exit_code: r.status ?? 1 };
     };
+    const postState = (paths: string[] | undefined) =>
+      (paths ?? []).map(rel => {
+        const p = join(root, rel);
+        const exists = existsSync(p);
+        return {
+          path: rel,
+          exists,
+          content: exists ? softNormalize(normalize(readFileSync(p, "utf8"), root)) : null,
+        };
+      });
 
     const setupArgv = group.indexName ? ["--index", group.indexName, "update"] : ["update"];
-    const setup = { argv: setupArgv, ...run(setupArgv, corpus) };
-    if (setup.exit_code !== 0) throw new Error(`setup failed for ${group.name}: ${setup.stderr}`);
+    const setup = group.noSetup
+      ? null
+      : { argv: setupArgv, ...run(setupArgv, corpus) };
+    if (setup && setup.exit_code !== 0) throw new Error(`setup failed for ${group.name}: ${setup.stderr}`);
     for (const rel of group.deleteAfterSetup) unlinkSync(join(corpus, rel));
 
-    const scenarios = group.scenarios.map(s => ({
-      name: s.name,
-      argv: s.argv,
-      cwd: s.cwd ?? "corpus",
-      check: s.check ?? "exact",
-      ...run(s.argv, cwdOf(s.cwd)),
-    }));
+    // `config_yaml` is the config at scenario-start — read right after
+    // setup (upstream's `update` has already appended `models:`), not at
+    // group end: `mutate` scenarios mutate the file further, so the
+    // end-of-run bytes are not the setup input the replay needs.
+    const configFile = group.localConfig
+      ? join(corpus, ".qmd", "index.yaml")
+      : join(configDir, group.configName);
+    const postSetupConfig = readFileSync(configFile, "utf8");
+
+    const scenarios = group.scenarios.map(s => {
+      if (s.pre) run(s.pre, cwdOf(s.cwd));
+      for (const [rel, body] of Object.entries(s.write ?? {})) writeFileSync(join(corpus, rel), body);
+      for (const rel of s.delete ?? []) unlinkSync(join(corpus, rel));
+      const result = run(s.argv, cwdOf(s.cwd), s.env);
+      const norm = s.check === "normalized";
+      return {
+        name: s.name,
+        argv: s.argv,
+        cwd: s.cwd ?? "corpus",
+        check: s.check ?? "exact",
+        env: s.env,
+        write: s.write,
+        delete: s.delete,
+        pre: s.pre,
+        stdout: norm ? softNormalize(result.stdout) : result.stdout,
+        stderr: norm ? softNormalize(result.stderr) : result.stderr,
+        exit_code: result.exit_code,
+        state: postState(s.post_state),
+      };
+    });
 
     out.groups.push({
       name: group.name,
       files: Object.entries(CORPUS).map(([path, content]) => ({ path, content, mtime: FIXED_MTIME })),
-      config_name: group.configName,
-      config_yaml: normalize(readFileSync(join(configDir, group.configName), "utf8"), root),
+      extra_files: Object.entries(group.extraFiles ?? {}).map(([path, content]) => ({
+        path, content, mtime: FIXED_MTIME,
+      })),
+      config_name: group.localConfig ? null : group.configName,
+      config_yaml: normalize(postSetupConfig, root),
+      local_config: group.localConfig ? "corpus/.qmd/index.yaml" : null,
+      proj_dir: group.projDir ?? false,
+      no_setup: group.noSetup ?? false,
       index_name: group.indexName ?? null,
       index_path: group.indexPath,
       delete_after_setup: group.deleteAfterSetup,

@@ -28,16 +28,29 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;
 
+// `regex` is a dev-dependency used by the `cli_golden` test binary; the
+// lib itself never touches it.
+#[cfg(test)]
+use regex as _;
+// `signal-hook` is used by the `qmd` binary's cursor-restore handler
+// (main.rs); the lib installs no process-level state.
+use signal_hook as _;
+
 mod args;
+mod collections;
 #[cfg(test)]
 mod commit_stamp;
 mod context;
+mod contexts;
+mod gate;
 mod get;
 mod help;
 mod json;
 mod ls;
+mod maintenance;
 mod multi_get;
 mod output;
+mod progress;
 mod search;
 mod slice;
 
@@ -115,6 +128,13 @@ pub fn run(
         args::Command::Get(get) => get::run(&env, &mut ctx, &get, io),
         args::Command::MultiGet(multi) => multi_get::run(&env, &ctx, &multi, io),
         args::Command::Ls(ls) => ls::run(&env, &ctx, &ls, io),
+        args::Command::Collection(collection) => collections::run(&env, &ctx, &collection, io),
+        args::Command::Context(context_args) => contexts::run(&env, &ctx, &context_args, io),
+        args::Command::Init => maintenance::init(&env, io),
+        args::Command::Status => maintenance::status(&env, &ctx, io),
+        args::Command::Update => maintenance::update(&env, &ctx, io),
+        args::Command::Cleanup(cleanup) => maintenance::cleanup(&env, &ctx, cleanup.dry_run, io),
+        args::Command::Trust(trust_args) => maintenance::trust(&env, &ctx, &trust_args, io),
         args::Command::Unknown(unknown) => {
             let _ = writeln!(io.err, "Unknown command: {}", unknown.command());
             let _ = writeln!(io.err, "Run 'qmd --help' for usage.");

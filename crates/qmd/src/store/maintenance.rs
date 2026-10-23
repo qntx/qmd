@@ -26,18 +26,32 @@ pub struct CleanupCounts {
     pub orphaned_content: usize,
 }
 
+/// `sqlite3_total_changes()` delta around one statement — Bun's
+/// `run().changes` is this counter (direct rows plus trigger and
+/// foreign-key cascade effects), and upstream prints it verbatim as
+/// `cleanup`'s removed-counts (store.ts:2715, 2724, 2738).
+fn counted(conn: &Connection, sql: &str) -> Result<usize> {
+    let before: i64 = conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .map_err(DbError::from)?;
+    conn.execute(sql, []).map_err(DbError::from)?;
+    let after: i64 = conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .map_err(DbError::from)?;
+    Ok(usize::try_from(after - before).unwrap_or(0))
+}
+
 /// Upstream `deleteLLMCache` (store.ts:2713-2716): rows removed.
 pub(crate) fn delete_llm_cache(conn: &Connection) -> Result<usize> {
-    conn.execute("DELETE FROM llm_cache", [])
-        .map_err(|e| DbError::from(e).into())
+    counted(conn, "DELETE FROM llm_cache")
 }
 
 /// Upstream `deleteInactiveDocuments` (store.ts:2722-2725): tombstone
 /// rows (`active = 0`) hard-deleted. Their `documents_fts` rows are
-/// already gone (deactivation removes them explicitly).
+/// already gone (deactivation removes them explicitly); cascaded
+/// `document_metadata` rows still count, as upstream.
 pub(crate) fn delete_inactive_documents(conn: &Connection) -> Result<usize> {
-    conn.execute("DELETE FROM documents WHERE active = 0", [])
-        .map_err(|e| DbError::from(e).into())
+    counted(conn, "DELETE FROM documents WHERE active = 0")
 }
 
 /// Upstream `countOrphanedContent` (store.ts:2745-2751): `content`

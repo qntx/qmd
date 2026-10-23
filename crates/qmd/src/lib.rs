@@ -73,7 +73,7 @@ pub use chunk::{
     find_best_cutoff, find_code_fences, is_inside_code_fence, merge_break_points,
     scan_break_points, utf16_len, utf16_to_byte_offset,
 };
-pub use collection::split_glob_mask;
+pub use collection::{CollectionUpdateReport, SkippedFile, split_glob_mask};
 pub use config::{Collection, Config, EmbedPooling, ModelsConfig};
 pub use docid::get_docid;
 pub use document::{
@@ -96,7 +96,7 @@ pub use qmd::{
     CollectionInfo, CollectionPath, CollectionRemoval, CollectionSettings, CollectionSpec,
     ContextEntry, EmbedFailure, EmbedOptions, EmbedProgress, EmbedReport, IndexHealth, LexOptions,
     Qmd, QmdBuilder, SearchInput, SearchOptions, Status, StatusCollection, UpdateOptions,
-    UpdateProgress, UpdateReport, VectorOptions, VectorQueryOptions,
+    UpdateProgress, UpdateReport, UpdateTailCounts, VectorOptions, VectorQueryOptions,
 };
 pub use query::{
     ExpandedQuery, ParsedQueryDocument, QueryKind, extract_intent_terms, parse_query_document,

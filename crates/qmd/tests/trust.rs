@@ -808,3 +808,203 @@ fn hook_output_is_utf8_lossy() {
     let out = run_update_hook("printf '\\xff\\xfe'", dir.path()).unwrap();
     assert!(out.stdout.contains('\u{fffd}'));
 }
+
+// =============================================================================
+// The `cli/qmd.ts` composition layer (P4.2): `builtinModels`,
+// `collectSensitiveSnapshot`, `localConfig*` and `trustCurrentConfig`.
+// =============================================================================
+
+/// A config whose collections pin hooks/paths/models for the snapshot
+/// tests, in insertion order (`IndexMap` preserves it like
+/// `Object.entries` on the YAML map).
+fn snapshot_config() -> qmd::Config {
+    let mut config = qmd::Config::default();
+    let col = |path: &str, update: Option<&str>| qmd::config::Collection {
+        path: path.to_owned(),
+        pattern: Some("**/*.md".to_owned()),
+        update: update.map(str::to_owned),
+        ..qmd::config::Collection::default()
+    };
+    // Out of alphabetical order on purpose — iteration order is YAML
+    // order, not sorted.
+    config
+        .collections
+        .insert("zeta".to_owned(), col("./docs", Some("echo z")));
+    config.collections.insert(
+        "alpha".to_owned(),
+        col("../sibling", Some("")), // `update: ""` — JS falsy, must not gate
+    );
+    config
+        .collections
+        .insert("mid".to_owned(), col("/abs/notes", None));
+    config.models = Some(qmd::config::ModelsConfig {
+        embed: Some("hf:e/x.gguf".to_owned()),
+        ..qmd::config::ModelsConfig::default()
+    });
+    config
+}
+
+#[test]
+fn builtin_models_are_the_llm_defaults() {
+    let models = qmd::trust::builtin_models();
+    assert_eq!(models.embed, qmd::llm::DEFAULT_EMBED_MODEL);
+    assert_eq!(models.rerank, qmd::llm::DEFAULT_RERANK_MODEL);
+    assert_eq!(models.generate, qmd::llm::DEFAULT_GENERATE_MODEL);
+}
+
+#[test]
+fn snapshot_collects_hooks_paths_models_in_order() {
+    let snap = qmd::trust::collect_sensitive_snapshot(&snapshot_config());
+    // `alpha`'s empty `update: ""` is absent — upstream `!!""` is false.
+    assert_eq!(
+        snap.hooks,
+        [UpdateHook {
+            collection: "zeta".to_owned(),
+            command: "echo z".to_owned()
+        }]
+    );
+    assert_eq!(
+        snap.paths,
+        [
+            CollectionPath {
+                collection: "zeta".to_owned(),
+                path: "./docs".to_owned()
+            },
+            CollectionPath {
+                collection: "alpha".to_owned(),
+                path: "../sibling".to_owned()
+            },
+            CollectionPath {
+                collection: "mid".to_owned(),
+                path: "/abs/notes".to_owned()
+            },
+        ]
+    );
+    assert_eq!(snap.models.embed.as_deref(), Some("hf:e/x.gguf"));
+    assert!(snap.models.rerank.is_none() && snap.models.generate.is_none());
+}
+
+#[test]
+fn local_config_helpers_compose_digest_and_gate() {
+    let cfg_dir = tempfile::tempdir().unwrap();
+    let env = env_with(cfg_dir.path());
+    let (project, config_path) = local_config_path();
+    // `realpath` parity: the in-project path must exist on disk so both
+    // sides canonicalize identically (trust.ts `realOrResolve`).
+    std::fs::create_dir_all(project.path().join("docs")).unwrap();
+    let config_path = PathBuf::from(config_path);
+    let config = snapshot_config();
+    let snapshot = qmd::trust::collect_sensitive_snapshot(&config);
+
+    // Digest/gate equal hand-rolled composition with the same snapshot —
+    // the composition helpers are thin wrappers over the trust.ts core.
+    assert_eq!(
+        qmd::trust::local_config_digest(&config_path, &snapshot, &env),
+        sensitive_digest(
+            &snapshot,
+            &config_path.to_string_lossy(),
+            &qmd::trust::builtin_models(),
+            &env,
+        )
+    );
+    let gated = qmd::trust::local_config_gated(&config_path, &snapshot, &env);
+    assert_eq!(gated.hooks.len(), 1);
+    // `../sibling` and `/abs/notes` escape the project root → gated
+    // paths; `./docs` exists inside the project and is not gated.
+    assert_eq!(gated.paths.len(), 2);
+    assert_eq!(gated.paths[0].collection, "alpha");
+    assert_eq!(gated.paths[1].collection, "mid");
+    // `hf:e/x.gguf` differs from the built-in default → gated model.
+    assert_eq!(gated.models.len(), 1);
+    drop(project);
+}
+
+#[test]
+fn local_config_fully_trusted_chain() {
+    let cfg_dir = tempfile::tempdir().unwrap();
+    let env = env_with(cfg_dir.path());
+    let (project, config_path) = local_config_path();
+    std::fs::create_dir_all(project.path().join("docs")).unwrap();
+    let config_path = PathBuf::from(config_path);
+    let mut config = qmd::Config::default();
+    config.collections.insert(
+        "docs".to_owned(),
+        qmd::config::Collection {
+            path: "./docs".to_owned(),
+            update: Some("echo hook".to_owned()),
+            ..qmd::config::Collection::default()
+        },
+    );
+    config.collections.insert(
+        "secrets".to_owned(),
+        qmd::config::Collection {
+            path: "/etc".to_owned(),
+            ..qmd::config::Collection::default()
+        },
+    );
+
+    // Untrusted gated set → false; a non-local path short-circuits true.
+    assert!(!qmd::trust::local_config_fully_trusted(
+        &config_path,
+        &config,
+        &env
+    ));
+    assert!(qmd::trust::local_config_fully_trusted(
+        Path::new(GLOBAL),
+        &config,
+        &env
+    ));
+
+    // Opt-in env vars bypass the digest check (trust.ts:514-517).
+    let mut opted = env.clone();
+    opted.qmd_trust_update_hooks = Some("1".to_owned());
+    assert!(qmd::trust::local_config_fully_trusted(
+        &config_path,
+        &config,
+        &opted
+    ));
+
+    // Approve → trusted; editing a gated field re-gates it.
+    qmd::trust::trust_current_config(&config_path, &config, &env).unwrap();
+    assert!(qmd::trust::local_config_fully_trusted(
+        &config_path,
+        &config,
+        &env
+    ));
+    config.collections["docs"].update = Some("echo other".to_owned());
+    assert!(!qmd::trust::local_config_fully_trusted(
+        &config_path,
+        &config,
+        &env
+    ));
+
+    // `trustCurrentConfig` is a no-op for non-local paths.
+    qmd::trust::trust_current_config(Path::new(GLOBAL), &config, &env).unwrap();
+    let store = std::fs::read_to_string(trust_file_path(&env)).unwrap();
+    assert_eq!(store.matches(GLOBAL).count(), 0);
+    drop(project);
+}
+
+#[test]
+fn clean_local_config_is_fully_trusted() {
+    let cfg_dir = tempfile::tempdir().unwrap();
+    let env = env_with(cfg_dir.path());
+    let (project, config_path) = local_config_path();
+    std::fs::create_dir_all(project.path().join("docs")).unwrap();
+    let config_path = PathBuf::from(config_path);
+    // In-project paths only, no hooks, no models → nothing to gate.
+    let mut config = qmd::Config::default();
+    config.collections.insert(
+        "docs".to_owned(),
+        qmd::config::Collection {
+            path: "./docs".to_owned(),
+            ..qmd::config::Collection::default()
+        },
+    );
+    assert!(qmd::trust::local_config_fully_trusted(
+        &config_path,
+        &config,
+        &env
+    ));
+    drop(project);
+}

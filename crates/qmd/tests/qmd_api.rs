@@ -34,6 +34,15 @@ fn spec(path: &str) -> CollectionSpec {
     }
 }
 
+/// `spec` with the CLI's resolved default pattern, like `collection
+/// add` without `--mask`.
+fn md_spec(path: &str) -> CollectionSpec {
+    CollectionSpec {
+        pattern: Some("**/*.md".to_owned()),
+        ..spec(path)
+    }
+}
+
 fn open(path: &Path) -> Qmd {
     Qmd::builder(path)
         .environment(Environment::default())
@@ -74,7 +83,7 @@ fn add_list_show_remove_collection() {
         .remove_collection("docs")
         .expect("remove")
         .expect("found");
-    assert_eq!(removal.documents_deactivated, 0);
+    assert_eq!(removal.deleted_docs, 0);
     assert!(qmd.collection("docs").expect("show").is_none());
     assert!(qmd.remove_collection("docs").expect("remove").is_none());
 }
@@ -83,16 +92,20 @@ fn add_list_show_remove_collection() {
 fn add_collection_rejects_duplicates() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let qmd = open(&tmp.path().join("i.sqlite"));
-    qmd.add_collection("a", &spec("/data")).expect("add");
+    // The CLI always writes a concrete `pattern:` (its `--mask` default
+    // resolves before the add), so the dup check compares stored
+    // `Some("**/*.md")` rows against a `Some("**/*.md")` spec —
+    // upstream `c.pattern === globPattern` (cli/qmd.ts:1845-1846).
+    qmd.add_collection("a", &md_spec("/data")).expect("add");
 
     let err = qmd
-        .add_collection("a", &spec("/other"))
+        .add_collection("a", &md_spec("/other"))
         .expect_err("name dup");
     assert!(matches!(err, Error::CollectionExists { .. }), "{err}");
 
     // Same path + same effective pattern under a different name.
     let err = qmd
-        .add_collection("b", &spec("/data"))
+        .add_collection("b", &md_spec("/data"))
         .expect_err("source dup");
     assert!(
         matches!(err, Error::DuplicateCollectionSource { .. }),
@@ -147,7 +160,10 @@ fn rename_updates_documents() {
 }
 
 #[test]
-fn remove_collection_deactivates_documents() {
+fn remove_collection_deletes_documents() {
+    // Upstream `removeCollection` (store.ts:3680-3695): `documents` rows
+    // are hard-deleted (with their FTS rows) and content hashes left
+    // unreferenced by active documents are dropped.
     let tmp = tempfile::tempdir().expect("tempdir");
     let db = tmp.path().join("i.sqlite");
     let qmd = open(&db);
@@ -168,12 +184,16 @@ fn remove_collection_deactivates_documents() {
         .remove_collection("docs")
         .expect("remove")
         .expect("found");
-    assert_eq!(removal.documents_deactivated, 1);
+    // Bun `run().changes` is `sqlite3_total_changes` — the one document
+    // row delete plus the FTS shadow deletions it triggers count 8,
+    // matching upstream's `Deleted 8 documents` for one file.
+    assert_eq!(removal.deleted_docs, 8);
+    assert_eq!(removal.cleaned_hashes, 0, "no content rows were seeded");
     let conn = rusqlite::Connection::open(&db).expect("conn");
-    let active: i64 = conn
-        .query_row("SELECT active FROM documents", [], |r| r.get(0))
-        .expect("active");
-    assert_eq!(active, 0);
+    let docs: i64 = conn
+        .query_row("SELECT COUNT(*) FROM documents", [], |r| r.get(0))
+        .expect("doc count");
+    assert_eq!(docs, 0);
     let fts: i64 = conn
         .query_row("SELECT COUNT(*) FROM documents_fts", [], |r| r.get(0))
         .expect("fts count");
@@ -499,5 +519,223 @@ fn ensure_models_configured_env_override_wins() {
     assert_eq!(
         file_cfg.models.and_then(|m| m.embed).as_deref(),
         Some("hf:custom/embed.gguf")
+    );
+}
+
+// --- project-local init + gated model resolution (P4.2) -------------------
+
+/// Fresh `init`: `.qmd/index.yml` gets the byte-exact upstream
+/// `saveConfig` output and the database opens at `index-rs.sqlite`.
+#[test]
+fn init_local_fresh_writes_defaults() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("proj");
+    std::fs::create_dir_all(&project).expect("mkdir");
+    let env = Environment::default();
+
+    let config_path = Qmd::init_local(&env, &project).expect("init");
+    assert_eq!(config_path, project.join(".qmd/index.yml"));
+    let want = format!(
+        "collections: {{}}\nmodels:\n  embed: {}\n  generate: {}\n  rerank: {}\n",
+        qmd::llm::DEFAULT_EMBED_MODEL,
+        qmd::llm::DEFAULT_GENERATE_MODEL,
+        qmd::llm::DEFAULT_RERANK_MODEL,
+    );
+    assert_eq!(std::fs::read_to_string(&config_path).expect("read"), want);
+    // Deliberate deviation: `.qmd/index-rs.sqlite`, not upstream's
+    // `index.sqlite` (paths.rs `local_db_path`).
+    assert!(project.join(".qmd/index-rs.sqlite").exists());
+}
+
+/// `index.yaml` wins over `index.yml` when it already exists; an
+/// existing config goes through `ensure_models_configured` instead of
+/// being rewritten from scratch.
+#[test]
+fn init_local_existing_yaml_wins_and_gets_models() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("proj");
+    let qmd_dir = project.join(".qmd");
+    std::fs::create_dir_all(&qmd_dir).expect("mkdir");
+    std::fs::write(
+        qmd_dir.join("index.yaml"),
+        "collections:\n  docs:\n    path: ./docs\n    pattern: \"**/*.md\"\n",
+    )
+    .expect("seed yaml");
+    let env = Environment::default();
+
+    let config_path = Qmd::init_local(&env, &project).expect("init");
+    assert_eq!(config_path, qmd_dir.join("index.yaml"));
+    // Collections survive; `models:` was pinned by ensure.
+    let yaml = std::fs::read_to_string(&config_path).expect("read");
+    assert!(yaml.contains("docs:"), "{yaml}");
+    assert!(yaml.contains("embed: "), "{yaml}");
+    // No competing `.yml` was created.
+    assert!(!qmd_dir.join("index.yml").exists());
+}
+
+/// An existing `index.yml` is adopted (not overwritten) and gets the
+/// models block — upstream `ensureModelsConfiguredForCli` semantics.
+#[test]
+fn init_local_existing_yml_is_adopted() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("proj");
+    let qmd_dir = project.join(".qmd");
+    std::fs::create_dir_all(&qmd_dir).expect("mkdir");
+    std::fs::write(qmd_dir.join("index.yml"), "collections: {}\n").expect("seed yml");
+    let env = Environment::default();
+
+    let config_path = Qmd::init_local(&env, &project).expect("init");
+    assert_eq!(config_path, qmd_dir.join("index.yml"));
+    let yaml = std::fs::read_to_string(&config_path).expect("read");
+    assert!(yaml.contains("rerank: "), "{yaml}");
+}
+
+/// `init` in `$HOME` is refused before anything is created — upstream
+/// `sameDirectory(cwd, homedir())` (cli/qmd.ts:440-453).
+#[test]
+fn init_local_refuses_home() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("proj");
+    std::fs::create_dir_all(&project).expect("mkdir");
+    let mut env = Environment::default();
+    env.home = Some(project.clone());
+
+    let err = Qmd::init_local(&env, &project).expect_err("must refuse");
+    let Error::LocalInitRefused { reason } = err else {
+        panic!("expected LocalInitRefused, got {err}");
+    };
+    assert!(
+        reason.starts_with("Refusing to initialize a local index in $HOME"),
+        "{reason}"
+    );
+    assert!(!project.join(".qmd").exists());
+}
+
+/// Running `init` twice is a no-op beyond `ensure_models_configured`:
+/// same path, same bytes, no second `index.yaml`.
+#[test]
+fn init_local_is_idempotent() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("proj");
+    std::fs::create_dir_all(&project).expect("mkdir");
+    let env = Environment::default();
+
+    let first = Qmd::init_local(&env, &project).expect("init");
+    let bytes = std::fs::read_to_string(&first).expect("read");
+    let second = Qmd::init_local(&env, &project).expect("init again");
+    assert_eq!(first, second);
+    assert_eq!(std::fs::read_to_string(&second).expect("read"), bytes);
+    assert!(!project.join(".qmd/index.yaml").exists());
+}
+
+/// `use_config_models(false)` drops a declared `models:` block out of
+/// *runtime* resolution — env/defaults win — while
+/// `ensure_models_configured` still resolves the declared triple and
+/// must not overwrite the custom URI (upstream
+/// `resolveModelsForRuntime` vs `ensureModelsConfiguredForCli`,
+/// qmd.ts:2183-2188 / 2143-2163).
+#[test]
+fn use_config_models_false_ignores_declared_models() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let db = tmp.path().join("i.sqlite");
+    let cfg = tmp.path().join("index.yml");
+    std::fs::write(
+        &cfg,
+        "collections: {}\nmodels:\n  embed: hf:custom/e.gguf\n",
+    )
+    .expect("write cfg");
+
+    // Seed an active document plus a complete vector row recorded under
+    // the *declared* model's fingerprint — `needs_embedding` then
+    // exposes which model the runtime resolved.
+    {
+        let schema = open(&db);
+        schema.close().expect("close");
+        let fingerprint = qmd::llm::embedding_fingerprint("hf:custom/e.gguf", None);
+        let conn = rusqlite::Connection::open(&db).expect("conn");
+        conn.execute_batch(&format!(
+            "INSERT INTO documents \
+             (collection, path, title, hash, created_at, modified_at) \
+             VALUES ('docs', 'a.md', 'A', 'h1', 't', 't'); \
+             INSERT INTO content_vectors \
+             (hash, seq, model, embed_fingerprint, total_chunks, embedded_at) \
+             VALUES ('h1', 0, 'hf:custom/e.gguf', '{fingerprint}', 1, 't');"
+        ))
+        .expect("seed");
+    }
+
+    // Trusted: the declared URI steers runtime resolution, so the
+    // recorded vector satisfies the pending count.
+    let trusted = open_with_config(&db, &cfg);
+    assert_eq!(trusted.ensure_models_configured().embed, "hf:custom/e.gguf");
+    assert_eq!(
+        trusted
+            .update_tail_counts()
+            .expect("tail counts")
+            .needs_embedding,
+        0
+    );
+    trusted.close().expect("close");
+
+    // Gated: runtime resolution ignores the declared URI and falls back
+    // to the default — the custom-model vector no longer satisfies.
+    let gated = Qmd::builder(&db)
+        .environment(Environment::default())
+        .config_file(&cfg)
+        .use_config_models(false)
+        .build()
+        .expect("build");
+    assert_eq!(
+        gated
+            .update_tail_counts()
+            .expect("tail counts")
+            .needs_embedding,
+        1
+    );
+
+    // `ensure_models_configured` is not gated: it resolves the declared
+    // triple and the write-back pins missing fields while preserving
+    // the custom `embed` URI rather than clobbering it with the
+    // runtime default.
+    assert_eq!(gated.ensure_models_configured().embed, "hf:custom/e.gguf");
+    gated.close().expect("close");
+    let after = std::fs::read_to_string(&cfg).expect("read cfg");
+    assert!(after.contains("embed: hf:custom/e.gguf"), "{after}");
+    assert!(
+        !after.contains(&format!("embed: {}", qmd::llm::DEFAULT_EMBED_MODEL)),
+        "{after}"
+    );
+
+    // An env override wins runtime resolution under the gate (the
+    // declared value is invisible to it) — a vector recorded under the
+    // env model now satisfies the pending count.
+    let env_fp = qmd::llm::embedding_fingerprint("hf:env/model.gguf", None);
+    let conn = rusqlite::Connection::open(&db).expect("conn");
+    conn.execute(
+        "UPDATE content_vectors SET model = 'hf:env/model.gguf', \
+         embed_fingerprint = ? WHERE hash = 'h1'",
+        [&env_fp],
+    )
+    .expect("re-tag vector");
+    drop(conn);
+    let mut env = Environment::default();
+    env.qmd_embed_model = Some("hf:env/model.gguf".to_owned());
+    let env_gated = Qmd::builder(&db)
+        .environment(env)
+        .config_file(&cfg)
+        .use_config_models(false)
+        .build()
+        .expect("build");
+    assert_eq!(
+        env_gated
+            .update_tail_counts()
+            .expect("tail counts")
+            .needs_embedding,
+        0
+    );
+    // But `ensure_models_configured` still prefers declared > env.
+    assert_eq!(
+        env_gated.ensure_models_configured().embed,
+        "hf:custom/e.gguf"
     );
 }

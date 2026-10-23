@@ -219,6 +219,9 @@ fn update_emits_progress_for_every_file() {
     let docs = tmp.path().join("docs");
     write(&docs, "a.md", "# A");
     write(&docs, "b.md", "# B");
+    // Whitespace-only files tick `processed` but emit no `onProgress`
+    // upstream (store.ts:1685-1687) — `total` still counts them.
+    write(&docs, "blank.md", "  \n \n");
     let db = tmp.path().join("i.sqlite");
     let qmd = open_with_docs(&docs, &db);
 
@@ -231,7 +234,7 @@ fn update_emits_progress_for_every_file() {
     assert_eq!(seen.len(), 2);
     assert_eq!(seen[0].1, 1);
     assert_eq!(seen[1].1, 2);
-    assert_eq!(seen[0].2, 2);
+    assert_eq!(seen[0].2, 3);
 }
 
 // --- scanning: masks, excludes, hidden, ignores ---------------------------
@@ -546,4 +549,106 @@ fn db_only_reopen_can_update() {
     write(&docs, "b.md", "# B");
     let report = update(&qmd);
     assert_eq!((report.indexed, report.unchanged), (1, 1));
+}
+
+// --- per-collection update + update tail (P4.2) ---------------------------
+
+#[test]
+fn update_collection_indexes_one_collection() {
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = tmp.path().join("docs");
+    write(&docs, "a.md", "# A");
+    write(&docs, "b.md", "# B");
+    let db = tmp.path().join("i.sqlite");
+    let qmd = open_with_docs(&docs, &db);
+
+    // Fresh index: both files are new.
+    let report = qmd.update_collection("docs", &mut |_| {}).unwrap();
+    assert_eq!((report.indexed, report.updated, report.skipped), (2, 0, 0));
+    assert!(report.skipped_files.is_empty());
+
+    // Second pass is all unchanged — `skipped` mirrors
+    // `skipped_files.len()`.
+    let report = qmd.update_collection("docs", &mut |_| {}).unwrap();
+    assert_eq!((report.indexed, report.unchanged), (0, 2));
+
+    // Unknown name maps to `CollectionNotFound`, matching
+    // `update_collection_settings` conventions.
+    let err = qmd.update_collection("gone", &mut |_| {}).unwrap_err();
+    assert!(
+        matches!(err, qmd::Error::CollectionNotFound { .. }),
+        "{err}"
+    );
+}
+
+#[test]
+fn update_report_carries_per_collection_detail() {
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = tmp.path().join("docs");
+    let notes = tmp.path().join("notes");
+    write(&docs, "a.md", "# A");
+    write(&notes, "n.md", "# N");
+    let db = tmp.path().join("i.sqlite");
+    let qmd = open(&db);
+    qmd.add_collection(
+        "docs",
+        &CollectionSpec {
+            path: docs.to_string_lossy().into_owned(),
+            ..CollectionSpec::default()
+        },
+    )
+    .unwrap();
+    qmd.add_collection(
+        "notes",
+        &CollectionSpec {
+            path: notes.to_string_lossy().into_owned(),
+            ..CollectionSpec::default()
+        },
+    )
+    .unwrap();
+
+    let report = qmd.update(&UpdateOptions::default(), &mut |_| {}).unwrap();
+    assert_eq!(report.collections, 2);
+    assert_eq!(report.per_collection.len(), 2);
+    // Aggregates equal the per-collection sums.
+    assert_eq!(
+        report.indexed,
+        report
+            .per_collection
+            .iter()
+            .map(|c| c.indexed)
+            .sum::<usize>()
+    );
+
+    // A filtered update reports only that collection.
+    let report = qmd
+        .update(
+            &UpdateOptions {
+                collections: Some(vec!["docs".to_owned()]),
+            },
+            &mut |_| {},
+        )
+        .unwrap();
+    assert_eq!(report.per_collection.len(), 1);
+    assert_eq!(report.per_collection[0].unchanged, 1);
+}
+
+#[test]
+fn update_tail_counts_match_status() {
+    let tmp = tempfile::tempdir().unwrap();
+    let docs = tmp.path().join("docs");
+    write(&docs, "a.md", "# A");
+    let db = tmp.path().join("i.sqlite");
+    let qmd = open_with_docs(&docs, &db);
+    update(&qmd);
+
+    let tail = qmd.update_tail_counts().unwrap();
+    let status = qmd.status().unwrap();
+    // Same model resolution + fingerprint → same counts as `status`.
+    assert_eq!(tail.needs_embedding, status.needs_embedding);
+    assert_eq!(tail.vector_total, status.vector_count);
+    assert_eq!(tail.orphaned_vectors, status.orphaned_vectors);
+    // No embeddings have run — the one active hash is pending.
+    assert_eq!(tail.needs_embedding, 1);
+    assert_eq!(tail.vector_total, 0);
 }
