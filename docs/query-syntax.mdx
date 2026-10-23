@@ -25,7 +25,7 @@ newline        = "\n" ;
 ## Query types
 
 | Type | Method | Description |
-|------|--------|-------------|
+| --- | --- | --- |
 | `lex` | BM25 | Keyword search with exact matching |
 | `vec` | Vector | Semantic similarity search |
 | `hyde` | Vector | Hypothetical document embedding |
@@ -37,7 +37,7 @@ Any single-line query with no prefix is treated as an expand query and
 passed to the expansion model, which emits lex, vec, and hyde variants
 automatically.
 
-```
+```text
 # These are equivalent and cannot be combined with typed lines:
 how does authentication work
 expand: how does authentication work
@@ -56,7 +56,7 @@ word        = { letter | digit | "'" } ;
 ```
 
 | Syntax | Meaning | Example |
-|--------|---------|---------|
+| --- | --- | --- |
 | `word` | Prefix match | `perf` matches "performance" |
 | `"phrase"` | Exact phrase | `"rate limiter"` |
 | `-word` | Exclude term | `-sports` |
@@ -64,7 +64,7 @@ word        = { letter | digit | "'" } ;
 
 ### Examples
 
-```
+```text
 lex: CAP theorem consistency
 lex: "machine learning" -"deep learning"
 lex: auth -oauth -saml
@@ -75,7 +75,7 @@ lex: auth -oauth -saml
 Vec queries are natural language questions. No special syntax — just
 write what you're looking for.
 
-```
+```text
 vec: how does the rate limiter handle burst traffic
 vec: what is the tradeoff between consistency and availability
 ```
@@ -85,7 +85,7 @@ vec: what is the tradeoff between consistency and availability
 Hyde queries are hypothetical answer passages (50–100 words). Write
 what you expect the answer to look like.
 
-```
+```text
 hyde: The rate limiter uses a sliding window algorithm with a 60-second
 window. When a client exceeds 100 requests per minute, subsequent
 requests return 429 Too Many Requests.
@@ -96,7 +96,7 @@ requests return 429 Too Many Requests.
 Combine multiple query types for best results. The first query gets 2×
 weight in fusion.
 
-```
+```text
 lex: rate limiter algorithm
 vec: how does rate limiting work in the API
 hyde: The API implements rate limiting using a token bucket algorithm...
@@ -107,7 +107,7 @@ hyde: The API implements rate limiting using a token bucket algorithm...
 An expand query stands alone; it is not mixed with typed lines. Either
 rely on the default untyped form or add the explicit `expand:` prefix:
 
-```
+```text
 expand: error handling best practices
 # equivalent
 error handling best practices
@@ -127,7 +127,7 @@ extraction but does not search on its own.
   `hyde:` line is required
 - Intent is also available via the `--intent` CLI flag
 
-```
+```text
 intent: web page load times and Core Web Vitals
 lex: performance
 vec: how to improve performance
