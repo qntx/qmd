@@ -713,19 +713,25 @@ fn print_hook_output(output: &str, io: &mut Io<'_>) {
 }
 
 /// Upstream `formatBytes` (qmd.ts:433-438): `B` under 1 KiB, then
-/// `KB`/`MB`/`GB` with one decimal (`toFixed(1)`).
+/// `KB`/`MB`/`GB` with one decimal — `toFixed(1)` rounds half-up, so
+/// [`qmd::js::to_fixed`] rather than Rust's ties-to-even `{:.1}`
+/// (1.25 KB prints `1.3 KB` upstream).
 fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = 1024 * 1024;
     const GB: u64 = 1024 * 1024 * 1024;
+    let b = bytes as f64;
     if bytes < KB {
         format!("{bytes} B")
     } else if bytes < MB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
+        format!("{} KB", qmd::js::to_fixed(b / 1024.0, 1))
     } else if bytes < GB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
+        format!("{} MB", qmd::js::to_fixed(b / (1024.0 * 1024.0), 1))
     } else {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
+        format!(
+            "{} GB",
+            qmd::js::to_fixed(b / (1024.0 * 1024.0 * 1024.0), 1)
+        )
     }
 }
 
