@@ -12,6 +12,8 @@ use std::process::ExitCode;
 use clap as _;
 #[cfg(test)]
 use regex as _;
+#[cfg(test)]
+use rusqlite as _;
 use serde_json as _;
 #[cfg(test)]
 use tempfile as _;

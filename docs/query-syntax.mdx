@@ -1,0 +1,184 @@
+---
+title: Query syntax
+description: Structured query documents for `qmd query` — lex/vec/hyde/intent/expand. Ported from upstream docs/SYNTAX.md.
+---
+
+QMD queries are structured documents with typed sub-queries. Each line
+specifies a search type and query text.
+
+## Grammar
+
+```ebnf
+query          = expand_query | query_document ;
+expand_query   = text | explicit_expand ;
+explicit_expand= "expand:" text ;
+query_document = [ intent_line ] { typed_line } ;
+intent_line    = "intent:" text newline ;
+typed_line     = type ":" text newline ;
+type           = "lex" | "vec" | "hyde" ;
+text           = quoted_phrase | plain_text ;
+quoted_phrase  = '"' { character } '"' ;
+plain_text     = { character } ;
+newline        = "\n" ;
+```
+
+## Query types
+
+| Type | Method | Description |
+| --- | --- | --- |
+| `lex` | BM25 | Keyword search with exact matching |
+| `vec` | Vector | Semantic similarity search |
+| `hyde` | Vector | Hypothetical document embedding |
+
+## Default behavior
+
+A query is either a single expand query or a multi-line query document.
+Any single-line query with no prefix is treated as an expand query and
+passed to the expansion model, which emits lex, vec, and hyde variants
+automatically.
+
+```text
+# These are equivalent and cannot be combined with typed lines:
+how does authentication work
+expand: how does authentication work
+```
+
+## Lex query syntax
+
+Lex queries support special syntax for precise keyword matching:
+
+```ebnf
+lex_query   = { lex_term } ;
+lex_term    = negation | phrase | word ;
+negation    = "-" ( phrase | word ) ;
+phrase      = '"' { character } '"' ;
+word        = { letter | digit | "'" } ;
+```
+
+| Syntax | Meaning | Example |
+| --- | --- | --- |
+| `word` | Prefix match | `perf` matches "performance" |
+| `"phrase"` | Exact phrase | `"rate limiter"` |
+| `-word` | Exclude term | `-sports` |
+| `-"phrase"` | Exclude phrase | `-"test data"` |
+
+### Examples
+
+```text
+lex: CAP theorem consistency
+lex: "machine learning" -"deep learning"
+lex: auth -oauth -saml
+```
+
+## Vec query syntax
+
+Vec queries are natural language questions. No special syntax — just
+write what you're looking for.
+
+```text
+vec: how does the rate limiter handle burst traffic
+vec: what is the tradeoff between consistency and availability
+```
+
+## Hyde query syntax
+
+Hyde queries are hypothetical answer passages (50–100 words). Write
+what you expect the answer to look like.
+
+```text
+hyde: The rate limiter uses a sliding window algorithm with a 60-second
+window. When a client exceeds 100 requests per minute, subsequent
+requests return 429 Too Many Requests.
+```
+
+## Multi-line queries
+
+Combine multiple query types for best results. The first query gets 2×
+weight in fusion.
+
+```text
+lex: rate limiter algorithm
+vec: how does rate limiting work in the API
+hyde: The API implements rate limiting using a token bucket algorithm...
+```
+
+## Expand queries
+
+An expand query stands alone; it is not mixed with typed lines. Either
+rely on the default untyped form or add the explicit `expand:` prefix:
+
+```text
+expand: error handling best practices
+# equivalent
+error handling best practices
+```
+
+Both forms call the local query expansion model, which generates lex,
+vec, and hyde variations automatically.
+
+## Intent
+
+An optional `intent:` line provides background context to disambiguate
+ambiguous queries. It steers query expansion, reranking, and snippet
+extraction but does not search on its own.
+
+- At most one `intent:` line per query document
+- `intent:` cannot appear alone — at least one `lex:`, `vec:`, or
+  `hyde:` line is required
+- Intent is also available via the `--intent` CLI flag
+
+```text
+intent: web page load times and Core Web Vitals
+lex: performance
+vec: how to improve performance
+```
+
+Without intent, "performance" is ambiguous (web-perf? team health?
+fitness?). With intent, the search pipeline preferentially selects and
+ranks web-performance content.
+
+## Constraints
+
+- The top-level query must be either a standalone expand query or a
+  multi-line document
+- Query documents allow only `lex`, `vec`, `hyde`, and `intent` typed
+  lines (no `expand:` inside)
+- `lex` syntax (`-term`, `"phrase"`) only works in lex queries
+- At most one `intent:` line per query document; cannot appear alone
+- Empty lines are ignored
+- Leading/trailing whitespace is trimmed
+- Multiple unprefixed lines are an error — every line in a query
+  document must carry a `lex:`/`vec:`/`hyde:`/`intent:` prefix
+
+## Scoping
+
+Restrict queries to specific collections with `-c`:
+
+```bash
+# By collection name (see `qmd collection list`)
+qmd query -c docs "how does auth work"
+qmd query -c docs -c notes $'lex: auth\nvec: authentication flow'
+```
+
+Multiple `-c` values are OR-combined. Without scoping, all
+default-included collections are searched; collections marked excluded
+(`qmd collection exclude <name>`) are skipped unless explicitly named.
+
+## CLI examples
+
+```bash
+# Single line (implicit expand)
+qmd query "how does auth work"
+
+# Multi-line with types
+qmd query $'lex: auth token\nvec: how does authentication work'
+
+# Structured
+qmd query $'lex: keywords\nvec: question\nhyde: hypothetical answer...'
+
+# With intent (inline)
+qmd query $'intent: web performance and latency\nlex: performance\nvec: how to improve performance'
+
+# With intent (flag)
+qmd query --intent "web performance and latency" "performance"
+```

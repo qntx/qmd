@@ -1,0 +1,111 @@
+---
+title: Commands
+description: CLI command reference — retrieval, collections, indexing, models and diagnostics.
+---
+
+All commands share the search/output options where applicable:
+`-c/--collection` (repeatable), `-n`, `--all`, `--min-score`,
+`--format cli|json|csv|md|xml|files` (the legacy `--json`/`--csv`/
+`--md`/`--xml`/`--files` flags remain aliases), `--filter '<json>'`,
+`--full`, `--full-path` and `--explain`.
+
+## Retrieval
+
+| Command | Purpose |
+| --- | --- |
+| `qmd search <query>` | BM25 keyword search — no LLM involved |
+| `qmd query <query>` (alias `deep-search`) | Query expansion + hybrid RRF + reranking — recommended |
+| `qmd vsearch <query>` (alias `vector-search`) | Pure vector similarity — no reranking |
+| `qmd get <file>[:from[:count]]` | Fetch a document by path or `#docid` |
+| `qmd multi-get <pattern>` | Fetch many docs by glob or comma list |
+| `qmd ls [collection[/path]]` | List collections or files |
+
+### `qmd query`
+
+`query` accepts either a plain question or a multi-line structured
+document of `lex:`/`vec:`/`hyde:`/`intent:`/`expand:` lines — see
+[Query syntax](/docs/query-syntax). On top of the shared options:
+
+- `--intent <text>` sharpens ranking (overrides a document `intent:` line)
+- `--candidate-limit <n>` caps the per-list candidate pool
+- `--no-rerank` skips the LLM reranking step (faster, lower quality)
+- `--chunk-strategy auto|regex` selects the tokenizer strategy used for
+  hyde/vec text handling (`auto` adds AST breakpoints for code files)
+
+### `qmd vsearch`
+
+Pure vector search — embeds the query, runs sqlite-vec kNN, no
+expansion and no reranking. Useful as a quick semantic probe; `query`
+is the better default.
+
+## Indexing & collections
+
+| Command | Purpose |
+| --- | --- |
+| `qmd collection add <path>` | Create/update a collection |
+| `qmd collection list/remove/rename/show` | Manage collections |
+| `qmd context add/list/check/rm` | Manage path contexts shown in results |
+| `qmd update` | Re-index collections (runs update hooks first) |
+| `qmd status` | Index status and collection summary |
+| `qmd trust` | Approve a checked-in `.qmd` config's hooks/paths/models |
+| `qmd ls` / `qmd cleanup` | File listing / index maintenance |
+
+## Models
+
+### `qmd embed`
+
+Generates vector embeddings for all documents whose content hash lacks
+one — the step that makes `vsearch`/`query` produce vector results.
+
+```bash
+qmd embed [options]
+  --force                  # clear all vectors and re-embed from scratch
+  -c, --collection <name>  # embed only this collection
+  --max-docs-per-batch <n> # docs per embedding batch
+  --max-batch-mb <n>       # input megabytes per batch
+  --chunk-strategy <auto|regex>
+  --timeout <minutes>      # 0 = no limit (default 30)
+```
+
+`embed` takes an exclusive lock on the index database; a second
+concurrent run prints `Another embed process is already running.
+Skipping.` and exits 0. With no pending work it exits early —
+`✓ All content hashes already have embeddings.` — without touching
+the model.
+
+### `qmd pull`
+
+Downloads (or re-validates) the three configured models — embed,
+generate and rerank — into the model cache. Never opens the index.
+
+```bash
+qmd pull [--refresh] [--progress]
+  --refresh   # delete cached files and re-download
+  --progress  # byte-progress line on stderr (TTY only)
+```
+
+Model selection order, like upstream: `models:` pinned in `index.yml` >
+`QMD_*_MODEL` environment > built-in defaults. Local file paths are
+accepted as model URIs (handy for air-gapped setups); anything starting
+with `hf:` resolves through the Hugging Face cache layout.
+
+## Diagnostics
+
+### `qmd doctor`
+
+Runs the full health report: SQLite/sqlite-vec versions, `index.yml`
+validity and collection count, environment overrides with their
+consequences, model defaults vs. configured models, model-cache GGUF
+validation, device mode and a native GPU probe (skip with
+`QMD_DOCTOR_DEVICE_PROBE=0`, force CPU mode display with
+`QMD_FORCE_CPU=1`), embedding freshness/fingerprint groups and a
+vector-sample reproduction check. Findings end in a deduplicated
+`Recommended next steps` list.
+
+## CI behavior
+
+`CI=<anything non-empty>` disables real LLM operations — expansion,
+reranking and embedding fail fast with
+`LLM operations are disabled in CI`. `search` and `lex:`-only `query`
+documents keep working (they never touch a model), as do `doctor`'s
+SQL-level probes.

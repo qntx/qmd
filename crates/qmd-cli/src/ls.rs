@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use qmd::vpath::parse_virtual_path;
-use qmd::{Environment, Qmd, js};
+use qmd::{Environment, Qmd};
 use time::format_description::BorrowedFormatItem;
 use time::macros::format_description;
 use time::{OffsetDateTime, UtcOffset};
@@ -18,7 +18,7 @@ use time::{OffsetDateTime, UtcOffset};
 use crate::Failure;
 use crate::args::LsArgs;
 use crate::context::CliContext;
-use crate::output::{Io, Palette};
+use crate::output::{Io, Palette, format_bytes};
 
 /// `modified_at` is `YYYY-MM-DDTHH:MM:SS.sssZ` (upstream `toISOString`).
 const ISO: &[BorrowedFormatItem<'_>] =
@@ -77,12 +77,16 @@ pub(crate) fn run(
 
     let max_size = files
         .iter()
-        .map(|f| format_bytes(f.size).len())
+        .map(|f| format_bytes(u64::try_from(f.size).unwrap_or(u64::MAX)).len())
         .max()
         .unwrap_or(0);
     let now = OffsetDateTime::now_utc();
     for file in &files {
-        let size_str = format!("{:>width$}", format_bytes(file.size), width = max_size);
+        let size_str = format!(
+            "{:>width$}",
+            format_bytes(u64::try_from(file.size).unwrap_or(u64::MAX)),
+            width = max_size
+        );
         let time_str = format_ls_time(&file.modified_at, now, io.local_offset);
         let _ = writeln!(
             io.out,
@@ -190,22 +194,6 @@ fn non_empty(s: &str) -> Option<String> {
     (!s.is_empty()).then(|| s.to_owned())
 }
 
-/// `formatBytes` (qmd.ts:433-438): `<1024` bytes stay unitless, then
-/// KB/MB/GB at `toFixed(1)`.
-fn format_bytes(bytes: usize) -> String {
-    let b = bytes as f64;
-    if bytes < 1024 {
-        return format!("{bytes} B");
-    }
-    if bytes < 1024 * 1024 {
-        return format!("{} KB", js::to_fixed(b / 1024.0, 1));
-    }
-    if bytes < 1024 * 1024 * 1024 {
-        return format!("{} MB", js::to_fixed(b / (1024.0 * 1024.0), 1));
-    }
-    format!("{} GB", js::to_fixed(b / (1024.0 * 1024.0 * 1024.0), 1))
-}
-
 /// `formatLsTime` (qmd.ts:1767-1783): `Jan  1 09:05`-style for the last
 /// six 30-day months, `Jan  1  2020` beyond. `now` is injected so the
 /// function stays pure; `offset` is the process-local UTC offset.
@@ -246,7 +234,8 @@ mod tests {
     use time::format_description::well_known::Rfc3339;
     use time::{OffsetDateTime, UtcOffset};
 
-    use super::{format_bytes, format_ls_time};
+    use super::format_ls_time;
+    use crate::output::format_bytes;
 
     fn now() -> OffsetDateTime {
         OffsetDateTime::parse("2025-06-01T12:00:00Z", &Rfc3339).unwrap()

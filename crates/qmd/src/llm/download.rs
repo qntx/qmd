@@ -735,21 +735,63 @@ fn validate_gguf_file(path: &Path, model_uri: &str) -> Result<()> {
     })
 }
 
+/// `Content-Length` of the response, when the server sends one.
+fn content_length(resp: &ureq::http::Response<ureq::Body>) -> Option<u64> {
+    resp.headers()
+        .get("content-length")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+}
+
+/// Stream `reader` into `out`, reporting `(bytes_done, total)` after
+/// every chunk — `total` is the response `Content-Length` (`None` when
+/// the server does not send one, e.g. chunked encoding).
+fn copy_with_progress(
+    reader: &mut impl Read,
+    out: &mut std::fs::File,
+    path: &Path,
+    total: Option<u64>,
+    on_progress: &mut dyn FnMut(u64, Option<u64>),
+) -> Result<()> {
+    let mut done = 0u64;
+    let mut buf = vec![0u8; 64 * 1024].into_boxed_slice();
+    loop {
+        let n = reader.read(&mut buf).map_err(|e| Error::Io {
+            path: path.to_path_buf(),
+            source: e,
+        })?;
+        if n == 0 {
+            break;
+        }
+        out.write_all(buf.get(..n).unwrap_or_default())
+            .map_err(|e| Error::Io {
+                path: path.to_path_buf(),
+                source: e,
+            })?;
+        done = done.saturating_add(u64::try_from(n).unwrap_or(u64::MAX));
+        on_progress(done, total);
+    }
+    Ok(())
+}
+
 /// Download `url` to `dest` via `{dest}.part`, promoting by rename.
-fn download_to(agent: &ureq::Agent, url: &str, dest: &Path) -> Result<()> {
+fn download_to(
+    agent: &ureq::Agent,
+    url: &str,
+    dest: &Path,
+    on_progress: &mut dyn FnMut(u64, Option<u64>),
+) -> Result<()> {
     let part = dest.with_file_name(format!("{}.part", dest_display_name(dest)));
     let mut resp = agent.get(url).call().map_err(|e| Error::Download {
         reason: format!("download failed for {url}: {e}"),
     })?;
+    let total = content_length(&resp);
     let mut out = std::fs::File::create(&part).map_err(|e| Error::Io {
         path: part.clone(),
         source: e,
     })?;
     let mut reader = resp.body_mut().as_reader();
-    std::io::copy(&mut reader, &mut out).map_err(|e| Error::Io {
-        path: part.clone(),
-        source: e,
-    })?;
+    copy_with_progress(&mut reader, &mut out, &part, total, on_progress)?;
     out.flush().map_err(|e| Error::Io {
         path: part.clone(),
         source: e,
@@ -780,6 +822,27 @@ pub fn pull_models(
     env: &Environment,
     cache_dir: Option<&Path>,
     refresh: bool,
+) -> Result<Vec<PullResult>> {
+    pull_models_with_progress(models, env, cache_dir, refresh, &mut |_, _, _| {})
+}
+
+/// [`pull_models`] with download progress — upstream's `cli` option
+/// (`pullModels({cli: …})`, llm.ts:523-568).
+///
+/// `on_progress(model, done, total)` fires after every written chunk:
+/// `done`/`total` are the in-flight response's byte counters and
+/// `total` is `None` when the server omits `Content-Length`.
+///
+/// # Errors
+/// [`Error::Download`] on HTTP failure or a confirmed-bad (HTML/invalid)
+/// download; [`Error::Io`] on filesystem failure; [`Error::InvalidInput`]
+/// on an `hf:` URI with fewer than three parts.
+pub fn pull_models_with_progress(
+    models: &[String],
+    env: &Environment,
+    cache_dir: Option<&Path>,
+    refresh: bool,
+    on_progress: &mut dyn FnMut(&str, u64, Option<u64>),
 ) -> Result<Vec<PullResult>> {
     let dir = cache_dir.map_or_else(|| model_cache_dir(env), Path::to_path_buf);
     std::fs::create_dir_all(&dir).map_err(|e| Error::Io {
@@ -817,7 +880,9 @@ pub fn pull_models(
                 refreshed = !cached.is_empty();
             }
 
-            let path = resolve_or_download(&agent, hf_ref, &endpoint, &dir)?;
+            let path = resolve_or_download(&agent, hf_ref, &endpoint, &dir, &mut |done, total| {
+                on_progress(model, done, total);
+            })?;
             validate_gguf_file(&path, model)?;
             let size_bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
             // Upstream HEADs again after the download (llm.ts:572) so the
@@ -883,11 +948,15 @@ fn cached_files_containing(dir: &Path, filename: &str) -> Vec<PathBuf> {
 
 /// `resolveModelFile` for `hf:` URIs: reuse the cache entry when present,
 /// else stream every part to disk and return the entrypoint name.
+/// `on_progress` fires per response chunk with that response's byte
+/// counters (the bar resets between split parts, like upstream's
+/// per-file progress).
 fn resolve_or_download(
     agent: &ureq::Agent,
     hf: &HfRef,
     endpoint: &str,
     dir: &Path,
+    on_progress: &mut dyn FnMut(u64, Option<u64>),
 ) -> Result<PathBuf> {
     let names = hf_cache_filenames(hf);
     let entrypoint = dir.join(names.first().cloned().unwrap_or_default());
@@ -909,11 +978,9 @@ fn resolve_or_download(
             let mut resp = agent.get(url).call().map_err(|e| Error::Download {
                 reason: format!("download failed for {url}: {e}"),
             })?;
+            let total = content_length(&resp);
             let mut reader = resp.body_mut().as_reader();
-            std::io::copy(&mut reader, &mut out).map_err(|e| Error::Io {
-                path: part.clone(),
-                source: e,
-            })?;
+            copy_with_progress(&mut reader, &mut out, &part, total, on_progress)?;
         }
         out.flush().map_err(|e| Error::Io {
             path: part.clone(),
@@ -927,7 +994,7 @@ fn resolve_or_download(
         return Ok(entrypoint);
     }
     for (name, url) in names.iter().zip(urls.iter()) {
-        download_to(agent, url, &dir.join(name))?;
+        download_to(agent, url, &dir.join(name), on_progress)?;
     }
     Ok(entrypoint)
 }

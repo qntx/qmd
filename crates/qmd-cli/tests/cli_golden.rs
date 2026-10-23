@@ -207,6 +207,20 @@ fn soft_normalize(s: &str) -> String {
     let s = Regex::new(r"(?m)^  Unavailable:.*\n")
         .unwrap()
         .replace_all(&s, "");
+    // P4.3 doctor tokens — driver/version differences between Bun's
+    // bundled libs and rusqlite (generator comments at softNormalize).
+    let s = Regex::new(r"(?m)^Runtime:.*$")
+        .unwrap()
+        .replace_all(&s, "Runtime: <DRIVER>");
+    let s = Regex::new(r"(?m)SQLite runtime:.*$")
+        .unwrap()
+        .replace_all(&s, "SQLite runtime: <VER>");
+    let s = Regex::new(r"(?m)better-sqlite3 package:.*$")
+        .unwrap()
+        .replace_all(&s, "better-sqlite3 package: <PKG>");
+    let s = Regex::new(r"(?m)sqlite-vec:.*$")
+        .unwrap()
+        .replace_all(&s, "sqlite-vec: <VER>");
     // The trust digest hashes absolute paths — `<ROOT>`-dependent.
     Regex::new(r#""hooks": "[0-9a-f]{64}""#)
         .unwrap()

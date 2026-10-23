@@ -32,6 +32,10 @@ use std::process::ExitCode;
 // lib itself never touches it.
 #[cfg(test)]
 use regex as _;
+// `rusqlite` is a dev-dependency used by `cli_doctor` to seed
+// `content_vectors` rows; the lib never touches it.
+#[cfg(test)]
+use rusqlite as _;
 // `signal-hook` is used by the `qmd` binary's cursor-restore handler
 // (main.rs); the lib installs no process-level state.
 use signal_hook as _;
@@ -42,6 +46,9 @@ mod collections;
 mod commit_stamp;
 mod context;
 mod contexts;
+mod doctor;
+mod embed;
+mod embed_lock;
 mod gate;
 mod get;
 mod help;
@@ -51,6 +58,7 @@ mod maintenance;
 mod multi_get;
 mod output;
 mod progress;
+mod query;
 mod search;
 mod slice;
 
@@ -135,6 +143,11 @@ pub fn run(
         args::Command::Update => maintenance::update(&env, &ctx, io),
         args::Command::Cleanup(cleanup) => maintenance::cleanup(&env, &ctx, cleanup.dry_run, io),
         args::Command::Trust(trust_args) => maintenance::trust(&env, &ctx, &trust_args, io),
+        args::Command::Embed(embed_args) => embed::embed(&env, &ctx, &embed_args, io),
+        args::Command::Pull(pull_args) => embed::pull(&env, &ctx, &pull_args, io),
+        args::Command::Vsearch(query_args) => query::vsearch(&env, &ctx, &query_args, io),
+        args::Command::Query(query_args) => query::query(&env, &ctx, &query_args, io),
+        args::Command::Doctor => doctor::doctor(&env, &ctx, io),
         args::Command::Unknown(unknown) => {
             let _ = writeln!(io.err, "Unknown command: {}", unknown.command());
             let _ = writeln!(io.err, "Run 'qmd --help' for usage.");

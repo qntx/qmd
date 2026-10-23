@@ -71,6 +71,36 @@ pub struct Environment {
     /// `$QMD_EDITOR_URI` — editor link template for clickable TTY
     /// output (qmd.ts:2436).
     pub qmd_editor_uri: Option<String>,
+    /// `$QMD_DOCTOR_DEVICE_PROBE` — `0`/`false`/`off`/`no`/`skip` skips
+    /// `qmd doctor`'s native backend probe (qmd.ts:4131-4136).
+    pub qmd_doctor_device_probe: Option<String>,
+    /// `$CI` — upstream disables real LLM operations inside the
+    /// `LlamaCpp` wrapper; `doctor` only lists it as an override.
+    pub ci: Option<String>,
+    /// `$QMD_SKILLS_DIR` — where bundled skills are discovered from;
+    /// `doctor` lists it as an override.
+    pub qmd_skills_dir: Option<String>,
+    /// `$QMD_METAL_KEEP_RESIDENCY` — opts back into libggml-metal
+    /// residency sets on darwin (qmd.ts:3881).
+    pub qmd_metal_keep_residency: Option<String>,
+    /// `$GGML_METAL_NO_RESIDENCY` — launcher-set Metal residency
+    /// mitigation on darwin (qmd.ts:3882).
+    pub ggml_metal_no_residency: Option<String>,
+    /// `$QMD_WRAPPER_CAPTURE` — test/debug hook for the shell wrapper
+    /// (qmd.ts:3886); `doctor` lists it as an override.
+    pub qmd_wrapper_capture: Option<String>,
+    /// `$WSL_DISTRO_NAME` — enables WSL path heuristics upstream;
+    /// `doctor` lists it as an override.
+    pub wsl_distro_name: Option<String>,
+    /// `$WSL_INTEROP` — enables WSL path heuristics upstream;
+    /// `doctor` lists it as an override.
+    pub wsl_interop: Option<String>,
+    /// `$LD_LIBRARY_PATH` — searched by `qmd doctor`'s Linux CUDA
+    /// diagnostic (qmd.ts:4089-4092).
+    pub ld_library_path: Option<String>,
+    /// `$CUDA_PATH` — searched by `qmd doctor`'s Linux CUDA diagnostic
+    /// (qmd.ts:4089-4096).
+    pub cuda_path: Option<String>,
 }
 
 impl Environment {
@@ -112,6 +142,20 @@ impl Environment {
                 .map(|v| v.to_string_lossy().into_owned()),
             no_color: var_os("NO_COLOR").map(|v| v.to_string_lossy().into_owned()),
             qmd_editor_uri: var_os("QMD_EDITOR_URI").map(|v| v.to_string_lossy().into_owned()),
+            qmd_doctor_device_probe: var_os("QMD_DOCTOR_DEVICE_PROBE")
+                .map(|v| v.to_string_lossy().into_owned()),
+            ci: var_os("CI").map(|v| v.to_string_lossy().into_owned()),
+            qmd_skills_dir: var_os("QMD_SKILLS_DIR").map(|v| v.to_string_lossy().into_owned()),
+            qmd_metal_keep_residency: var_os("QMD_METAL_KEEP_RESIDENCY")
+                .map(|v| v.to_string_lossy().into_owned()),
+            ggml_metal_no_residency: var_os("GGML_METAL_NO_RESIDENCY")
+                .map(|v| v.to_string_lossy().into_owned()),
+            qmd_wrapper_capture: var_os("QMD_WRAPPER_CAPTURE")
+                .map(|v| v.to_string_lossy().into_owned()),
+            wsl_distro_name: var_os("WSL_DISTRO_NAME").map(|v| v.to_string_lossy().into_owned()),
+            wsl_interop: var_os("WSL_INTEROP").map(|v| v.to_string_lossy().into_owned()),
+            ld_library_path: var_os("LD_LIBRARY_PATH").map(|v| v.to_string_lossy().into_owned()),
+            cuda_path: var_os("CUDA_PATH").map(|v| v.to_string_lossy().into_owned()),
         }
     }
 }

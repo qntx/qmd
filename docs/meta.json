@@ -1,1 +1,5 @@
-{ "title": "qmd", "description": "Documentation stub.", "pages": ["index"] }
+{
+  "title": "qmd",
+  "description": "Rust port of tobi/qmd — local markdown search engine.",
+  "pages": ["index", "commands", "query-syntax"]
+}
