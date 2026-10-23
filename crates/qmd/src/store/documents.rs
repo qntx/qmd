@@ -258,11 +258,21 @@ pub(crate) fn active_document_paths(conn: &Connection, collection: &str) -> Resu
 }
 
 /// Upstream `cleanupOrphanedContent` (store.ts:2733-2738): drop `content`
-/// rows no longer referenced by any document. Returns rows removed.
+/// rows no longer referenced by any document. Returns the
+/// `sqlite3_total_changes()` delta like upstream's `run().changes`
+/// (cascade deletions of inactive documents still referencing the hash
+/// count too — same value upstream prints).
 pub(crate) fn cleanup_orphaned_content(conn: &Connection) -> Result<usize> {
+    let before: i64 = conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .map_err(DbError::from)?;
     conn.execute(
         "DELETE FROM content WHERE hash NOT IN (SELECT DISTINCT hash FROM documents)",
         [],
     )
-    .map_err(|e| DbError::from(e).into())
+    .map_err(DbError::from)?;
+    let after: i64 = conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .map_err(DbError::from)?;
+    Ok(usize::try_from(after - before).unwrap_or(0))
 }

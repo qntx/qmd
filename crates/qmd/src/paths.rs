@@ -162,7 +162,11 @@ pub fn normalize_index_name(name: &str, cwd: &Path) -> String {
 
 /// Lexical `path.resolve(dir, rel)`: join and normalize without touching
 /// the filesystem. Absolute `rel` wins over `dir`, like Node's resolve.
-pub(crate) fn resolve_lexical(dir: &Path, rel: &str) -> PathBuf {
+///
+/// Public for the CLI crate — upstream's `resolve(getPwd(), arg)`
+/// path handling.
+#[must_use]
+pub fn resolve_lexical(dir: &Path, rel: &str) -> PathBuf {
     lexical_normalize(&dir.join(rel))
 }
 

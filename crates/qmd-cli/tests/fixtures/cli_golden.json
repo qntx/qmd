@@ -4,7 +4,7 @@
     "commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
     "version": "2.8.3"
   },
-  "generated": "2026-10-22T14:53:57.202Z",
+  "generated": "2026-10-23T10:23:07.612Z",
   "groups": [
     {
       "name": "main",
@@ -75,8 +75,12 @@
           "mtime": 1577836800
         }
       ],
+      "extra_files": [],
       "config_name": "index.yml",
       "config_yaml": "global_context: Global knowledge base\ncollections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      /: Project documentation\n      /guide: User guides, with \"quotes\"\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n    context:\n      /: Team notes\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"**/*.md\"\n    includeByDefault: false\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n",
+      "local_config": null,
+      "proj_dir": false,
+      "no_setup": false,
       "index_name": null,
       "index_path": true,
       "delete_after_setup": [],
@@ -99,7 +103,8 @@
           "check": "exact",
           "stdout": "qmd://notes/meeting.md:3 #b5403a\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n\nqmd://docs/changelog.md:10 #13d291\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n\nqmd://docs/readme.md:3 #d3cb8e\nTitle: QMD Readme\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n\n\nqmd://docs/faq.md:13 #a34a09\nTitle: FAQ\nContext: Global knowledge base\n\nProject documentation\nScore:  39%\n\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search json",
@@ -112,7 +117,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0.41,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"docid\": \"#a34a09\",\n    \"score\": 0.39,\n    \"file\": \"qmd://docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -12,4 @@ (11 before, 0 after)\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search csv",
@@ -125,7 +131,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n#b5403a,0.4137,qmd://notes/meeting.md,Weekly Meeting,\"Global knowledge base\n\nTeam notes\",3,\"@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\"\n#13d291,0.3986,qmd://docs/changelog.md,Changelog,\"Global knowledge base\n\nProject documentation\",10,\"@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\"\n#d3cb8e,0.3986,qmd://docs/readme.md,QMD Readme,\"Global knowledge base\n\nProject documentation\",3,\"@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\"\n#a34a09,0.3892,qmd://docs/faq.md,FAQ,\"Global knowledge base\n\nProject documentation\",13,\"@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search md",
@@ -138,7 +145,8 @@
           "check": "exact",
           "stdout": "---\n# Weekly Meeting\n**file:** `qmd://notes/meeting.md`\n**docid:** `#b5403a`\n**context:** Global knowledge base\n\nTeam notes\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n---\n# Changelog\n**file:** `qmd://docs/changelog.md`\n**docid:** `#13d291`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n---\n# QMD Readme\n**file:** `qmd://docs/readme.md`\n**docid:** `#d3cb8e`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n\n---\n# FAQ\n**file:** `qmd://docs/faq.md`\n**docid:** `#a34a09`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search xml",
@@ -151,7 +159,8 @@
           "check": "exact",
           "stdout": "<file docid=\"#b5403a\" name=\"qmd://notes/meeting.md\" title=\"Weekly Meeting\" context=\"Global knowledge base\n\nTeam notes\">\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n</file>\n\n<file docid=\"#13d291\" name=\"qmd://docs/changelog.md\" title=\"Changelog\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n</file>\n\n<file docid=\"#d3cb8e\" name=\"qmd://docs/readme.md\" title=\"QMD Readme\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n</file>\n\n<file docid=\"#a34a09\" name=\"qmd://docs/faq.md\" title=\"FAQ\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n</file>\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search files",
@@ -164,7 +173,8 @@
           "check": "exact",
           "stdout": "#b5403a,0.41,qmd://notes/meeting.md,\"Global knowledge base\n\nTeam notes\"\n#13d291,0.40,qmd://docs/changelog.md,\"Global knowledge base\n\nProject documentation\"\n#d3cb8e,0.40,qmd://docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n#a34a09,0.39,qmd://docs/faq.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty cli",
@@ -176,7 +186,8 @@
           "check": "exact",
           "stdout": "No results found.\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty json",
@@ -189,7 +200,8 @@
           "check": "exact",
           "stdout": "[]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty csv",
@@ -202,7 +214,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty md",
@@ -215,7 +228,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty xml",
@@ -228,7 +242,8 @@
           "check": "exact",
           "stdout": "<results></results>\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search empty files",
@@ -241,7 +256,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score cli",
@@ -255,7 +271,8 @@
           "check": "exact",
           "stdout": "No results found above minimum score threshold.\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score json",
@@ -270,7 +287,8 @@
           "check": "exact",
           "stdout": "[]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score csv",
@@ -285,7 +303,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score md",
@@ -300,7 +319,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score xml",
@@ -315,7 +335,8 @@
           "check": "exact",
           "stdout": "<results></results>\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search min-score files",
@@ -330,7 +351,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --format json",
@@ -344,7 +366,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0.41,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"docid\": \"#a34a09\",\n    \"score\": 0.39,\n    \"file\": \"qmd://docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -12,4 @@ (11 before, 0 after)\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --format md",
@@ -358,7 +381,8 @@
           "check": "exact",
           "stdout": "---\n# Weekly Meeting\n**file:** `qmd://notes/meeting.md`\n**docid:** `#b5403a`\n**context:** Global knowledge base\n\nTeam notes\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n---\n# Changelog\n**file:** `qmd://docs/changelog.md`\n**docid:** `#13d291`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n---\n# QMD Readme\n**file:** `qmd://docs/readme.md`\n**docid:** `#d3cb8e`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n\n---\n# FAQ\n**file:** `qmd://docs/faq.md`\n**docid:** `#a34a09`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --format bogus",
@@ -372,7 +396,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Unknown --format value: bogus\nValid: cli, json, csv, md, xml, files\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "search --full json",
@@ -386,7 +411,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0.41,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"body\": \"# Weekly Meeting\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"body\": \"---\\nqmd:\\n  metadata:\\n    status: draft\\n    priority: 1\\n---\\n\\n# Changelog\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"# QMD Readme\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"docid\": \"#a34a09\",\n    \"score\": 0.39,\n    \"file\": \"qmd://docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"# FAQ\\n\\n## How do I search?\\nRun qmd search with a keyword.\\nSearch ranks results with BM25.\\n\\n## Does search work offline?\\nYes, search never needs the network.\\n\\n## What about vectors?\\nVector search needs embeddings first.\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --full md",
@@ -402,7 +428,8 @@
           "check": "exact",
           "stdout": "---\n# Weekly Meeting\n**file:** `qmd://notes/meeting.md`\n**docid:** `#b5403a`\n**context:** Global knowledge base\n\nTeam notes\n\n# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n\n\n---\n# Changelog\n**file:** `qmd://docs/changelog.md`\n**docid:** `#13d291`\n**context:** Global knowledge base\n\nProject documentation\n\n---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --full cli",
@@ -417,7 +444,8 @@
           "check": "exact",
           "stdout": "qmd://notes/meeting.md:3 #b5403a\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n\n\n\nqmd://docs/changelog.md:10 #13d291\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --full xml",
@@ -433,7 +461,8 @@
           "check": "exact",
           "stdout": "<file docid=\"#b5403a\" name=\"qmd://notes/meeting.md\" title=\"Weekly Meeting\" context=\"Global knowledge base\n\nTeam notes\">\n# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n\n</file>\n\n<file docid=\"#13d291\" name=\"qmd://docs/changelog.md\" title=\"Changelog\" context=\"Global knowledge base\n\nProject documentation\">\n---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n\n</file>\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --full csv",
@@ -449,7 +478,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n#b5403a,0.4137,qmd://notes/meeting.md,Weekly Meeting,\"Global knowledge base\n\nTeam notes\",3,\"# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n\"\n#13d291,0.3986,qmd://docs/changelog.md,Changelog,\"Global knowledge base\n\nProject documentation\",10,\"---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --line-numbers cli",
@@ -462,7 +492,8 @@
           "check": "exact",
           "stdout": "qmd://notes/meeting.md:3 #b5403a\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n3: @@ -2,3 @@ (1 before, 0 after)\n4: \n5: Discussed search quality, the index size and next steps.\n6: \n\n\nqmd://docs/changelog.md:10 #13d291\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n10: @@ -9,3 @@ (8 before, 0 after)\n11: \n12: Added faster search and a new index format.\n13: \n\n\nqmd://docs/readme.md:3 #d3cb8e\nTitle: QMD Readme\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n3: @@ -2,4 @@ (1 before, 0 after)\n4: \n5: QMD indexes markdown notes for search.\n6: Search works offline and stays local.\n7: \n\n\nqmd://docs/faq.md:13 #a34a09\nTitle: FAQ\nContext: Global knowledge base\n\nProject documentation\nScore:  39%\n\n13: @@ -12,4 @@ (11 before, 0 after)\n14: \n15: ## Where is the index?\n16: The index lives in the cache directory.\n17: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --line-numbers json",
@@ -476,7 +507,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0.41,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"1: @@ -2,3 @@ (1 before, 0 after)\\n2: \\n3: Discussed search quality, the index size and next steps.\\n4: \"\n  },\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"1: @@ -9,3 @@ (8 before, 0 after)\\n2: \\n3: Added faster search and a new index format.\\n4: \"\n  },\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"1: @@ -2,4 @@ (1 before, 0 after)\\n2: \\n3: QMD indexes markdown notes for search.\\n4: Search works offline and stays local.\\n5: \"\n  },\n  {\n    \"docid\": \"#a34a09\",\n    \"score\": 0.39,\n    \"file\": \"qmd://docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"1: @@ -12,4 @@ (11 before, 0 after)\\n2: \\n3: ## Where is the index?\\n4: The index lives in the cache directory.\\n5: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --line-numbers csv",
@@ -490,7 +522,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n#b5403a,0.4137,qmd://notes/meeting.md,Weekly Meeting,\"Global knowledge base\n\nTeam notes\",3,\"3: @@ -2,3 @@ (1 before, 0 after)\n4: \n5: Discussed search quality, the index size and next steps.\n6: \"\n#13d291,0.3986,qmd://docs/changelog.md,Changelog,\"Global knowledge base\n\nProject documentation\",10,\"10: @@ -9,3 @@ (8 before, 0 after)\n11: \n12: Added faster search and a new index format.\n13: \"\n#d3cb8e,0.3986,qmd://docs/readme.md,QMD Readme,\"Global knowledge base\n\nProject documentation\",3,\"3: @@ -2,4 @@ (1 before, 0 after)\n4: \n5: QMD indexes markdown notes for search.\n6: Search works offline and stays local.\n7: \"\n#a34a09,0.3892,qmd://docs/faq.md,FAQ,\"Global knowledge base\n\nProject documentation\",13,\"13: @@ -12,4 @@ (11 before, 0 after)\n14: \n15: ## Where is the index?\n16: The index lives in the cache directory.\n17: \"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search -n 2",
@@ -504,7 +537,8 @@
           "check": "exact",
           "stdout": "qmd://notes/meeting.md:3 #b5403a\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n\nqmd://docs/changelog.md:10 #13d291\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search -n 2 json",
@@ -519,7 +553,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0.41,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search --all files",
@@ -533,7 +568,8 @@
           "check": "exact",
           "stdout": "#068f46,0.00,qmd://docs/guide/search-tips.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n#a34a09,0.00,qmd://docs/faq.md,\"Global knowledge base\n\nProject documentation\"\n#d3cb8e,0.00,qmd://docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n#8d7a28,0.00,qmd://notes/todo.md,\"Global knowledge base\n\nTeam notes\"\n#ca1b0c,0.00,qmd://docs/plain.md,\"Global knowledge base\n\nProject documentation\"\n#b5403a,0.00,qmd://notes/meeting.md,\"Global knowledge base\n\nTeam notes\"\n#d3dba6,0.00,qmd://docs/guide/install.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n#ef66f8,0.00,qmd://docs/big.md,\"Global knowledge base\n\nProject documentation\"\n#13d291,0.00,qmd://docs/changelog.md,\"Global knowledge base\n\nProject documentation\"\n#4abbc7,0.00,qmd://docs/api.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search offline json",
@@ -546,7 +582,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.6,\n    \"file\": \"qmd://docs/readme.md\",\n    \"line\": 4,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -3,3 @@ (2 before, 0 after)\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"docid\": \"#a34a09\",\n    \"score\": 0.48,\n    \"file\": \"qmd://docs/faq.md\",\n    \"line\": 7,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -6,4 @@ (5 before, 6 after)\\n\\n## Does search work offline?\\nYes, search never needs the network.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search cjk json",
@@ -559,7 +596,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#65d628\",\n    \"score\": 0.71,\n    \"file\": \"qmd://docs/cjk.md\",\n    \"line\": 3,\n    \"title\": \"中文文档\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\n这是一个关于搜索的中文文档。\\n全文搜索支持中文。\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search phrase files",
@@ -572,7 +610,8 @@
           "check": "exact",
           "stdout": "#068f46,0.65,qmd://docs/guide/search-tips.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search no query",
@@ -583,7 +622,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Usage: qmd search [options] <query>\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "search -c notes json",
@@ -598,7 +638,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#8d7a28\",\n    \"score\": 0,\n    \"file\": \"qmd://notes/todo.md\",\n    \"line\": 3,\n    \"title\": \"Todo\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\n- improve search speed\\n- write docs\\n\"\n  },\n  {\n    \"docid\": \"#b5403a\",\n    \"score\": 0,\n    \"file\": \"qmd://notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search -c docs -c notes files",
@@ -615,7 +656,8 @@
           "check": "exact",
           "stdout": "#068f46,0.00,qmd://docs/guide/search-tips.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n#a34a09,0.00,qmd://docs/faq.md,\"Global knowledge base\n\nProject documentation\"\n#d3cb8e,0.00,qmd://docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n#8d7a28,0.00,qmd://notes/todo.md,\"Global knowledge base\n\nTeam notes\"\n#ca1b0c,0.00,qmd://docs/plain.md,\"Global knowledge base\n\nProject documentation\"\n#b5403a,0.00,qmd://notes/meeting.md,\"Global knowledge base\n\nTeam notes\"\n#d3dba6,0.00,qmd://docs/guide/install.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n#ef66f8,0.00,qmd://docs/big.md,\"Global knowledge base\n\nProject documentation\"\n#13d291,0.00,qmd://docs/changelog.md,\"Global knowledge base\n\nProject documentation\"\n#4abbc7,0.00,qmd://docs/api.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search -c archive files",
@@ -630,7 +672,8 @@
           "check": "exact",
           "stdout": "#5f5473,0.00,qmd://archive/old.md,\"Global knowledge base\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search -c missing",
@@ -644,7 +687,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Collection not found: missing\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "search filter eq json",
@@ -659,7 +703,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#4abbc7\",\n    \"score\": 0,\n    \"file\": \"qmd://docs/api.md\",\n    \"line\": 11,\n    \"title\": \"API Reference\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"published\",\n      \"priority\": 2,\n      \"tags\": [\n        \"api\",\n        \"reference\"\n      ]\n    },\n    \"snippet\": \"@@ -10,3 @@ (9 before, 0 after)\\n\\nThe search API returns ranked documents.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter nested files",
@@ -674,7 +719,8 @@
           "check": "exact",
           "stdout": "#13d291,0.00,qmd://docs/changelog.md,\"Global knowledge base\n\nProject documentation\"\n#4abbc7,0.00,qmd://docs/api.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match cli",
@@ -688,7 +734,8 @@
           "check": "exact",
           "stdout": "No results found.\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match json",
@@ -703,7 +750,8 @@
           "check": "exact",
           "stdout": "[]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match csv",
@@ -718,7 +766,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match md",
@@ -733,7 +782,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match xml",
@@ -748,7 +798,8 @@
           "check": "exact",
           "stdout": "<results></results>\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter no-match files",
@@ -763,7 +814,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search filter invalid json",
@@ -777,7 +829,8 @@
           "check": "stdout-exit",
           "stdout": "",
           "stderr": "Invalid --filter JSON: JSON Parse error: Expected '}'\nExample: --filter '{\"key\":\"status\",\"operator\":\"eq\",\"value\":\"published\"}'\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "search filter invalid ast",
@@ -791,7 +844,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Invalid metadata filter at $: unknown operator 'bogus' — expected one of: and, or, not, eq, ne, gt, gte, lt, lte, in, nin, all, exists\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "search full-path cli",
@@ -804,7 +858,8 @@
           "check": "exact",
           "stdout": "./notes/meeting.md:3\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n\n./docs/changelog.md:10\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n\n./docs/readme.md:3\nTitle: QMD Readme\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n\n\n./docs/faq.md:13\nTitle: FAQ\nContext: Global knowledge base\n\nProject documentation\nScore:  39%\n\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path json",
@@ -818,7 +873,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"score\": 0.41,\n    \"file\": \"./notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"./docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"./docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"score\": 0.39,\n    \"file\": \"./docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -12,4 @@ (11 before, 0 after)\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path csv",
@@ -832,7 +888,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n,0.4137,./notes/meeting.md,Weekly Meeting,\"Global knowledge base\n\nTeam notes\",3,\"@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\"\n,0.3986,./docs/changelog.md,Changelog,\"Global knowledge base\n\nProject documentation\",10,\"@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\"\n,0.3986,./docs/readme.md,QMD Readme,\"Global knowledge base\n\nProject documentation\",3,\"@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\"\n,0.3892,./docs/faq.md,FAQ,\"Global knowledge base\n\nProject documentation\",13,\"@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path md",
@@ -846,7 +903,8 @@
           "check": "exact",
           "stdout": "---\n# Weekly Meeting\n**file:** `./notes/meeting.md`\n**context:** Global knowledge base\n\nTeam notes\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n---\n# Changelog\n**file:** `./docs/changelog.md`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n---\n# QMD Readme\n**file:** `./docs/readme.md`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n\n---\n# FAQ\n**file:** `./docs/faq.md`\n**context:** Global knowledge base\n\nProject documentation\n\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path xml",
@@ -860,7 +918,8 @@
           "check": "exact",
           "stdout": "<file name=\"./notes/meeting.md\" title=\"Weekly Meeting\" context=\"Global knowledge base\n\nTeam notes\">\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n</file>\n\n<file name=\"./docs/changelog.md\" title=\"Changelog\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n</file>\n\n<file name=\"./docs/readme.md\" title=\"QMD Readme\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n</file>\n\n<file name=\"./docs/faq.md\" title=\"FAQ\" context=\"Global knowledge base\n\nProject documentation\">\n@@ -12,4 @@ (11 before, 0 after)\n\n## Where is the index?\nThe index lives in the cache directory.\n\n</file>\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path files",
@@ -874,7 +933,8 @@
           "check": "exact",
           "stdout": "0.41,./notes/meeting.md,\"Global knowledge base\n\nTeam notes\"\n0.40,./docs/changelog.md,\"Global knowledge base\n\nProject documentation\"\n0.40,./docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n0.39,./docs/faq.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path json from docs",
@@ -888,7 +948,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"score\": 0.41,\n    \"file\": \"<ROOT>/corpus/notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"./changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"./readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"score\": 0.39,\n    \"file\": \"./faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -12,4 @@ (11 before, 0 after)\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path json from outside",
@@ -902,7 +963,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"score\": 0.41,\n    \"file\": \"<ROOT>/corpus/notes/meeting.md\",\n    \"line\": 3,\n    \"title\": \"Weekly Meeting\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"snippet\": \"@@ -2,3 @@ (1 before, 0 after)\\n\\nDiscussed search quality, the index size and next steps.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"<ROOT>/corpus/docs/changelog.md\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"score\": 0.4,\n    \"file\": \"<ROOT>/corpus/docs/readme.md\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  },\n  {\n    \"score\": 0.39,\n    \"file\": \"<ROOT>/corpus/docs/faq.md\",\n    \"line\": 13,\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"snippet\": \"@@ -12,4 @@ (11 before, 0 after)\\n\\n## Where is the index?\\nThe index lives in the cache directory.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "search full-path cli from outside",
@@ -917,7 +979,8 @@
           "check": "exact",
           "stdout": "<ROOT>/corpus/notes/meeting.md:3\nTitle: Weekly Meeting\nContext: Global knowledge base\n\nTeam notes\nScore:  41%\n\n@@ -2,3 @@ (1 before, 0 after)\n\nDiscussed search quality, the index size and next steps.\n\n\n\n<ROOT>/corpus/docs/changelog.md:10\nTitle: Changelog\nContext: Global knowledge base\n\nProject documentation\nScore:  40%\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get bare",
@@ -929,7 +992,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get qmd uri",
@@ -941,7 +1005,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get collection path",
@@ -953,7 +1018,8 @@
           "check": "exact",
           "stdout": "qmd://docs/guide/install.md  #d3dba6\nFolder Context: Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n---\n\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get double slash",
@@ -965,7 +1031,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get extra slashes",
@@ -977,7 +1044,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get :line",
@@ -989,7 +1057,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n8: Yes, search never needs the network.\n9: \n10: ## What about vectors?\n11: Vector search needs embeddings first.\n12: \n13: ## Where is the index?\n14: The index lives in the cache directory.\n15: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get qmd :from:count",
@@ -1001,7 +1070,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get :from:count -l override",
@@ -1015,7 +1085,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n5: Search ranks results with BM25.\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get --from -l",
@@ -1031,7 +1102,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n3: ## How do I search?\n4: Run qmd search with a keyword.\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get negative --from",
@@ -1047,7 +1119,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # FAQ\n2: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get --no-line-numbers",
@@ -1060,7 +1133,8 @@
           "check": "exact",
           "stdout": "qmd://docs/faq.md  #a34a09\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n# FAQ\n\n## How do I search?\nRun qmd search with a keyword.\nSearch ranks results with BM25.\n\n## Does search work offline?\nYes, search never needs the network.\n\n## What about vectors?\nVector search needs embeddings first.\n\n## Where is the index?\nThe index lives in the cache directory.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get context",
@@ -1072,7 +1146,8 @@
           "check": "exact",
           "stdout": "qmd://notes/meeting.md  #b5403a\nFolder Context: Global knowledge base\n\nTeam notes\n---\n\n1: # Weekly Meeting\n2: \n3: Discussed search quality, the index size and next steps.\n4: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get nested context",
@@ -1084,7 +1159,8 @@
           "check": "exact",
           "stdout": "qmd://docs/guide/search-tips.md  #068f46\nFolder Context: Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n---\n\n1: # Search \"Tips\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get #docid",
@@ -1096,7 +1172,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get docid bare",
@@ -1108,7 +1185,8 @@
           "check": "exact",
           "stdout": "qmd://notes/todo.md  #8d7a28\nFolder Context: Global knowledge base\n\nTeam notes\n---\n\n1: # Todo\n2: \n3: - improve search speed\n4: - write docs\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get missing",
@@ -1120,7 +1198,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Document not found: docs/missing.md\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "get typo similar",
@@ -1132,7 +1211,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Document not found: docs/redme.md\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "get ignored",
@@ -1144,7 +1224,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Document is excluded by ignore rule: drafts/secret.md\nCollection: docs\nMatched path: drafts/secret.md\nIgnore rule: drafts/**\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "get no arg",
@@ -1155,7 +1236,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Usage: qmd get <filepath>[:from[:count]] [--from <line>] [-l <lines>] [--no-line-numbers] [--full-path]\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "get full-path under pwd",
@@ -1170,7 +1252,8 @@
           "check": "exact",
           "stdout": "./docs/readme.md\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get full-path outside pwd",
@@ -1185,7 +1268,8 @@
           "check": "exact",
           "stdout": "<ROOT>/corpus/docs/readme.md\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob cli",
@@ -1197,7 +1281,8 @@
           "check": "exact",
           "stdout": "\n============================================================\nFile: guide/install.md  #d3dba6\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n---\n\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n\n============================================================\nFile: guide/search-tips.md  #068f46\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n---\n\n1: # Search \"Tips\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob json",
@@ -1210,7 +1295,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"file\": \"guide/install.md\",\n    \"docid\": \"#d3dba6\",\n    \"title\": \"Install Guide\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\\n\\nUser guides, with \\\"quotes\\\"\",\n    \"body\": \"1: # Install Guide\\n2: \\n3: Install the binary, then run search once to verify.\\n4: \"\n  },\n  {\n    \"file\": \"guide/search-tips.md\",\n    \"docid\": \"#068f46\",\n    \"title\": \"Search \\\"Tips\\\", Tricks\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\\n\\nUser guides, with \\\"quotes\\\"\",\n    \"body\": \"1: # Search \\\"Tips\\\", Tricks\\n2: \\n3: Search tips: quote phrases to search exact text.\\n4: Search, search, search — repetition raises the score.\\n5: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob csv",
@@ -1223,7 +1309,8 @@
           "check": "exact",
           "stdout": "docid,file,title,context,skipped,body\n#d3dba6,guide/install.md,Install Guide,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\",false,\"1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \"\n#068f46,guide/search-tips.md,\"Search \"\"Tips\"\", Tricks\",\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\",false,\"1: # Search \"\"Tips\"\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob md",
@@ -1236,7 +1323,8 @@
           "check": "exact",
           "stdout": "## guide/install.md\n\n**docid:** `#d3dba6`\n\n**Title:** Install Guide\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n```\n\n## guide/search-tips.md\n\n**docid:** `#068f46`\n\n**Title:** Search \"Tips\", Tricks\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n1: # Search \"Tips\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \n```\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob xml",
@@ -1249,7 +1337,8 @@
           "check": "exact",
           "stdout": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<documents>\n  <document docid=\"#d3dba6\">\n    <file>guide/install.md</file>\n    <title>Install Guide</title>\n    <context>Global knowledge base\n\nProject documentation\n\nUser guides, with &quot;quotes&quot;</context>\n    <body>1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: </body>\n  </document>\n  <document docid=\"#068f46\">\n    <file>guide/search-tips.md</file>\n    <title>Search &quot;Tips&quot;, Tricks</title>\n    <context>Global knowledge base\n\nProject documentation\n\nUser guides, with &quot;quotes&quot;</context>\n    <body>1: # Search &quot;Tips&quot;, Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: </body>\n  </document>\n</documents>\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get glob files",
@@ -1262,7 +1351,8 @@
           "check": "exact",
           "stdout": "#d3dba6,guide/install.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n#068f46,guide/search-tips.md,\"Global knowledge base\n\nProject documentation\n\nUser guides, with \"\"quotes\"\"\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get comma json",
@@ -1275,7 +1365,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"file\": \"qmd://docs/readme.md\",\n    \"docid\": \"#d3cb8e\",\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"1: # QMD Readme\\n2: \\n3: QMD indexes markdown notes for search.\\n4: Search works offline and stays local.\\n5: \"\n  },\n  {\n    \"file\": \"qmd://notes/todo.md\",\n    \"docid\": \"#8d7a28\",\n    \"title\": \"Todo\",\n    \"context\": \"Global knowledge base\\n\\nTeam notes\",\n    \"body\": \"1: # Todo\\n2: \\n3: - improve search speed\\n4: - write docs\\n5: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get comma prefixed md",
@@ -1288,7 +1379,8 @@
           "check": "exact",
           "stdout": "## qmd://docs/readme.md\n\n**docid:** `#d3cb8e`\n\n**Title:** QMD Readme\n\n**Context:** Global knowledge base\n\nProject documentation\n\n```\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n```\n\n## qmd://notes/todo.md\n\n**docid:** `#8d7a28`\n\n**Title:** Todo\n\n**Context:** Global knowledge base\n\nTeam notes\n\n```\n1: # Todo\n2: \n3: - improve search speed\n4: - write docs\n5: \n```\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get comma fragment",
@@ -1300,7 +1392,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "File not found: readme (did you mean: readme.md, api.md, big.md?)\nFile not found: todo (did you mean: todo.md, old.md?)\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get docid json",
@@ -1313,7 +1406,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"file\": \"qmd://docs/api.md\",\n    \"docid\": \"#4abbc7\",\n    \"title\": \"API Reference\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"1: ---\\n2: qmd:\\n3:   metadata:\\n4:     status: published\\n5:     priority: 2\\n6:     tags: [api, reference]\\n7: ---\\n8: \\n9: # API Reference\\n10: \\n11: The search API returns ranked documents.\\n12: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get missing docid",
@@ -1325,7 +1419,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "File not found: #ffffff\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "multi-get comma docids files",
@@ -1338,7 +1433,8 @@
           "check": "exact",
           "stdout": "#d3cb8e,qmd://docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n#b5403a,qmd://notes/meeting.md,\"Global knowledge base\n\nTeam notes\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes cli",
@@ -1352,7 +1448,8 @@
           "check": "exact",
           "stdout": "\n============================================================\nFile: qmd://docs/faq.md  #a34a09\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # FAQ\n2: \n3: ## How do I search?\n4: Run qmd search with a keyword.\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n8: Yes, search never needs the network.\n9: \n10: ## What about vectors?\n11: Vector search needs embeddings first.\n12: \n13: ## Where is the index?\n14: The index lives in the cache directory.\n15: \n\n============================================================\nFile: qmd://docs/big.md  #ef66f8\n============================================================\n\n[SKIPPED: File too large (1KB > 1KB). Use 'qmd get qmd://docs/big.md' to retrieve.]\n\n============================================================\nFile: qmd://docs/readme.md  #d3cb8e\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n\n============================================================\nFile: qmd://docs/api.md  #4abbc7\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: ---\n2: qmd:\n3:   metadata:\n4:     status: published\n5:     priority: 2\n6:     tags: [api, reference]\n7: ---\n8: \n9: # API Reference\n10: \n11: The search API returns ranked documents.\n12: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes json",
@@ -1367,7 +1464,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"file\": \"qmd://docs/faq.md\",\n    \"docid\": \"#a34a09\",\n    \"title\": \"FAQ\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"1: # FAQ\\n2: \\n3: ## How do I search?\\n4: Run qmd search with a keyword.\\n5: Search ranks results with BM25.\\n6: \\n7: ## Does search work offline?\\n8: Yes, search never needs the network.\\n9: \\n10: ## What about vectors?\\n11: Vector search needs embeddings first.\\n12: \\n13: ## Where is the index?\\n14: The index lives in the cache directory.\\n15: \"\n  },\n  {\n    \"file\": \"qmd://docs/big.md\",\n    \"docid\": \"#ef66f8\",\n    \"title\": \"big.md\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"skipped\": true,\n    \"reason\": \"File too large (1KB > 1KB). Use 'qmd get qmd://docs/big.md' to retrieve.\"\n  },\n  {\n    \"file\": \"qmd://docs/readme.md\",\n    \"docid\": \"#d3cb8e\",\n    \"title\": \"QMD Readme\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"1: # QMD Readme\\n2: \\n3: QMD indexes markdown notes for search.\\n4: Search works offline and stays local.\\n5: \"\n  },\n  {\n    \"file\": \"qmd://docs/api.md\",\n    \"docid\": \"#4abbc7\",\n    \"title\": \"API Reference\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\",\n    \"body\": \"1: ---\\n2: qmd:\\n3:   metadata:\\n4:     status: published\\n5:     priority: 2\\n6:     tags: [api, reference]\\n7: ---\\n8: \\n9: # API Reference\\n10: \\n11: The search API returns ranked documents.\\n12: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes csv",
@@ -1382,7 +1480,8 @@
           "check": "exact",
           "stdout": "docid,file,title,context,skipped,body\n#a34a09,qmd://docs/faq.md,FAQ,\"Global knowledge base\n\nProject documentation\",false,\"1: # FAQ\n2: \n3: ## How do I search?\n4: Run qmd search with a keyword.\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n8: Yes, search never needs the network.\n9: \n10: ## What about vectors?\n11: Vector search needs embeddings first.\n12: \n13: ## Where is the index?\n14: The index lives in the cache directory.\n15: \"\n#ef66f8,qmd://docs/big.md,big.md,\"Global knowledge base\n\nProject documentation\",true,File too large (1KB > 1KB). Use 'qmd get qmd://docs/big.md' to retrieve.\n#d3cb8e,qmd://docs/readme.md,QMD Readme,\"Global knowledge base\n\nProject documentation\",false,\"1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \"\n#4abbc7,qmd://docs/api.md,API Reference,\"Global knowledge base\n\nProject documentation\",false,\"1: ---\n2: qmd:\n3:   metadata:\n4:     status: published\n5:     priority: 2\n6:     tags: [api, reference]\n7: ---\n8: \n9: # API Reference\n10: \n11: The search API returns ranked documents.\n12: \"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes md",
@@ -1397,7 +1496,8 @@
           "check": "exact",
           "stdout": "## qmd://docs/faq.md\n\n**docid:** `#a34a09`\n\n**Title:** FAQ\n\n**Context:** Global knowledge base\n\nProject documentation\n\n```\n1: # FAQ\n2: \n3: ## How do I search?\n4: Run qmd search with a keyword.\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n8: Yes, search never needs the network.\n9: \n10: ## What about vectors?\n11: Vector search needs embeddings first.\n12: \n13: ## Where is the index?\n14: The index lives in the cache directory.\n15: \n```\n\n## qmd://docs/big.md\n\n**docid:** `#ef66f8`\n\n**Title:** big.md\n\n**Context:** Global knowledge base\n\nProject documentation\n\n> File too large (1KB > 1KB). Use 'qmd get qmd://docs/big.md' to retrieve.\n\n## qmd://docs/readme.md\n\n**docid:** `#d3cb8e`\n\n**Title:** QMD Readme\n\n**Context:** Global knowledge base\n\nProject documentation\n\n```\n1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: \n```\n\n## qmd://docs/api.md\n\n**docid:** `#4abbc7`\n\n**Title:** API Reference\n\n**Context:** Global knowledge base\n\nProject documentation\n\n```\n1: ---\n2: qmd:\n3:   metadata:\n4:     status: published\n5:     priority: 2\n6:     tags: [api, reference]\n7: ---\n8: \n9: # API Reference\n10: \n11: The search API returns ranked documents.\n12: \n```\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes xml",
@@ -1412,7 +1512,8 @@
           "check": "exact",
           "stdout": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<documents>\n  <document docid=\"#a34a09\">\n    <file>qmd://docs/faq.md</file>\n    <title>FAQ</title>\n    <context>Global knowledge base\n\nProject documentation</context>\n    <body>1: # FAQ\n2: \n3: ## How do I search?\n4: Run qmd search with a keyword.\n5: Search ranks results with BM25.\n6: \n7: ## Does search work offline?\n8: Yes, search never needs the network.\n9: \n10: ## What about vectors?\n11: Vector search needs embeddings first.\n12: \n13: ## Where is the index?\n14: The index lives in the cache directory.\n15: </body>\n  </document>\n  <document docid=\"#ef66f8\">\n    <file>qmd://docs/big.md</file>\n    <title>big.md</title>\n    <context>Global knowledge base\n\nProject documentation</context>\n    <skipped>true</skipped>\n    <reason>File too large (1KB &gt; 1KB). Use &apos;qmd get qmd://docs/big.md&apos; to retrieve.</reason>\n  </document>\n  <document docid=\"#d3cb8e\">\n    <file>qmd://docs/readme.md</file>\n    <title>QMD Readme</title>\n    <context>Global knowledge base\n\nProject documentation</context>\n    <body>1: # QMD Readme\n2: \n3: QMD indexes markdown notes for search.\n4: Search works offline and stays local.\n5: </body>\n  </document>\n  <document docid=\"#4abbc7\">\n    <file>qmd://docs/api.md</file>\n    <title>API Reference</title>\n    <context>Global knowledge base\n\nProject documentation</context>\n    <body>1: ---\n2: qmd:\n3:   metadata:\n4:     status: published\n5:     priority: 2\n6:     tags: [api, reference]\n7: ---\n8: \n9: # API Reference\n10: \n11: The search API returns ranked documents.\n12: </body>\n  </document>\n</documents>\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get max-bytes files",
@@ -1427,7 +1528,8 @@
           "check": "exact",
           "stdout": "#a34a09,qmd://docs/faq.md,\"Global knowledge base\n\nProject documentation\"\n#ef66f8,qmd://docs/big.md,\"Global knowledge base\n\nProject documentation\",[SKIPPED]\n#d3cb8e,qmd://docs/readme.md,\"Global knowledge base\n\nProject documentation\"\n#4abbc7,qmd://docs/api.md,\"Global knowledge base\n\nProject documentation\"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get -l 2",
@@ -1441,7 +1543,8 @@
           "check": "exact",
           "stdout": "\n============================================================\nFile: qmd://docs/faq.md  #a34a09\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # FAQ\n2: \n3: \n4: [... truncated 13 more lines]\n\n============================================================\nFile: qmd://docs/readme.md  #d3cb8e\n============================================================\n\nFolder Context: Global knowledge base\n\nProject documentation\n---\n\n1: # QMD Readme\n2: \n3: \n4: [... truncated 3 more lines]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get --no-line-numbers md",
@@ -1455,7 +1558,8 @@
           "check": "exact",
           "stdout": "## guide/install.md\n\n**docid:** `#d3dba6`\n\n**Title:** Install Guide\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n# Install Guide\n\nInstall the binary, then run search once to verify.\n\n```\n\n## guide/search-tips.md\n\n**docid:** `#068f46`\n\n**Title:** Search \"Tips\", Tricks\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n# Search \"Tips\", Tricks\n\nSearch tips: quote phrases to search exact text.\nSearch, search, search — repetition raises the score.\n\n```\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get full-path md",
@@ -1469,7 +1573,8 @@
           "check": "exact",
           "stdout": "## ./docs/guide/install.md\n\n**Title:** Install Guide\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n```\n\n## ./docs/guide/search-tips.md\n\n**Title:** Search \"Tips\", Tricks\n\n**Context:** Global knowledge base\n\nProject documentation\n\nUser guides, with \"quotes\"\n\n```\n1: # Search \"Tips\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \n```\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get full-path json from outside",
@@ -1483,7 +1588,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"file\": \"<ROOT>/corpus/docs/guide/install.md\",\n    \"title\": \"Install Guide\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\\n\\nUser guides, with \\\"quotes\\\"\",\n    \"body\": \"1: # Install Guide\\n2: \\n3: Install the binary, then run search once to verify.\\n4: \"\n  },\n  {\n    \"file\": \"<ROOT>/corpus/docs/guide/search-tips.md\",\n    \"title\": \"Search \\\"Tips\\\", Tricks\",\n    \"context\": \"Global knowledge base\\n\\nProject documentation\\n\\nUser guides, with \\\"quotes\\\"\",\n    \"body\": \"1: # Search \\\"Tips\\\", Tricks\\n2: \\n3: Search tips: quote phrases to search exact text.\\n4: Search, search, search — repetition raises the score.\\n5: \"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "multi-get no match",
@@ -1495,7 +1601,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "No files matched pattern: nothing/*.zz\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "multi-get cjk csv",
@@ -1508,7 +1615,8 @@
           "check": "exact",
           "stdout": "docid,file,title,context,skipped,body\n#65d628,qmd://docs/cjk.md,中文文档,\"Global knowledge base\n\nProject documentation\",false,\"1: # 中文文档\n2: \n3: 这是一个关于搜索的中文文档。\n4: 全文搜索支持中文。\n5: \"\n#ca1b0c,qmd://docs/plain.md,plain,\"Global knowledge base\n\nProject documentation\",false,\"1: No heading here, just a plain search note.\n2: \"\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls",
@@ -1519,7 +1627,8 @@
           "check": "exact",
           "stdout": "Collections:\n\n  qmd://docs/  (9 files)\n  qmd://notes/  (2 files)\n  qmd://archive/  (1 files)\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls collection",
@@ -1531,7 +1640,8 @@
           "check": "exact",
           "stdout": " 149 B  Jan  1  2020  qmd://docs/api.md\n1.3 KB  Jan  1  2020  qmd://docs/big.md\n 117 B  Jan  1  2020  qmd://docs/changelog.md\n  33 B  Jan  1  2020  qmd://docs/cjk.md\n 283 B  Jan  1  2020  qmd://docs/faq.md\n  69 B  Jan  1  2020  qmd://docs/guide/install.md\n 128 B  Jan  1  2020  qmd://docs/guide/search-tips.md\n  43 B  Jan  1  2020  qmd://docs/plain.md\n  91 B  Jan  1  2020  qmd://docs/readme.md\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls prefix",
@@ -1543,7 +1653,8 @@
           "check": "exact",
           "stdout": " 69 B  Jan  1  2020  qmd://docs/guide/install.md\n128 B  Jan  1  2020  qmd://docs/guide/search-tips.md\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls qmd uri",
@@ -1555,7 +1666,8 @@
           "check": "exact",
           "stdout": " 69 B  Jan  1  2020  qmd://docs/guide/install.md\n128 B  Jan  1  2020  qmd://docs/guide/search-tips.md\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls qmd extra slashes",
@@ -1567,7 +1679,8 @@
           "check": "exact",
           "stdout": " 69 B  Jan  1  2020  qmd://docs/guide/install.md\n128 B  Jan  1  2020  qmd://docs/guide/search-tips.md\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls empty prefix",
@@ -1579,7 +1692,8 @@
           "check": "exact",
           "stdout": "No files found under qmd://docs/nowhere\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "ls missing collection",
@@ -1591,7 +1705,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Collection not found: nope\nRun 'qmd ls' to see available collections.\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "unknown command",
@@ -1602,7 +1717,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Unknown command: nosuchcmd\nRun 'qmd --help' for usage.\nIf qmd still behaves unexpectedly, run 'qmd doctor' for diagnostics.\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "help is not a command",
@@ -1613,7 +1729,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Unknown command: help\nRun 'qmd --help' for usage.\nIf qmd still behaves unexpectedly, run 'qmd doctor' for diagnostics.\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "version is not a command",
@@ -1624,7 +1741,8 @@
           "check": "exact",
           "stdout": "",
           "stderr": "Unknown command: version\nRun 'qmd --help' for usage.\nIf qmd still behaves unexpectedly, run 'qmd doctor' for diagnostics.\n",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "no args",
@@ -1633,7 +1751,8 @@
           "check": "record",
           "stdout": "qmd — Quick Markdown Search\n\nUsage:\n  qmd <command> [options]\n\nPrimary commands:\n  qmd query <query>             - Hybrid search with auto expansion + reranking (recommended)\n  qmd query 'lex:..\\nvec:...'   - Structured query document (you provide lex/vec/hyde lines)\n  qmd search <query>            - Full-text BM25 keywords (no LLM)\n  qmd vsearch <query>           - Vector similarity only\n  qmd get <file>[:from[:count]] - Show a document (line-numbered; #docid in header)\n  qmd multi-get <pattern>       - Batch fetch via glob or comma-separated list\n  qmd skills list/get/path      - List and retrieve bundled runtime skills\n  qmd skill show/install        - Show or install the QMD skill\n  qmd mcp                       - Start the MCP server (stdio transport for AI agents)\n  qmd bench <fixture.json>      - Run search quality benchmarks against a fixture file\n\nCollections & context:\n  qmd collection add/list/remove/rename/show   - Manage indexed folders\n  qmd context add/list/rm                      - Attach human-written summaries\n  qmd ls [collection[/path]]                   - Inspect indexed files\n\nMaintenance:\n  qmd init                      - Create a project-local .qmd index\n  qmd status                    - View index + collection health\n  qmd update [--pull]           - Re-index collections (optionally git pull first)\n  qmd trust [list|revoke]       - Approve a checked-in .qmd config's hooks/paths/models\n  qmd embed [-f] [-c <name>]    - Generate/refresh vector embeddings\n    --max-docs-per-batch <n>    - Cap docs loaded into memory per embedding batch\n    --max-batch-mb <n>          - Cap UTF-8 MB loaded into memory per embedding batch\n    --timeout <minutes>         - Embed session cap in minutes (0 = no limit; default 30)\n  qmd pull [--refresh] [--progress] - Download embedding/generation/rerank models\n  qmd cleanup [--dry-run]       - Drop inactive docs/orphans, compact FTS, vacuum\n\nQuery syntax (qmd query):\n  QMD queries are either a single expand query (no prefix) or a multi-line\n  document where every line is typed with lex:, vec:, or hyde:. This grammar\n  matches the docs in docs/SYNTAX.md and is enforced in the CLI.\n\n  Grammar:\n    query          = expand_query | query_document ;\n    expand_query   = text | explicit_expand ;\n    explicit_expand= \"expand:\" text ;\n    query_document = [ intent_line ] { typed_line } ;\n    intent_line    = \"intent:\" text newline ;\n    typed_line     = type \":\" text newline ;\n    type           = \"lex\" | \"vec\" | \"hyde\" ;\n    text           = quoted_phrase | plain_text ;\n    quoted_phrase  = '\"' { character } '\"' ;\n    plain_text     = { character } ;\n    newline        = \"\\n\" ;\n\n  Examples:\n    qmd query \"how does auth work\"                # single-line → implicit expand\n    qmd query $'lex: CAP theorem\\nvec: consistency'  # typed query document\n    qmd query $'lex: \"exact matches\" sports -baseball'  # phrase + negation lex search\n    qmd query $'hyde: Hypothetical answer text'       # hyde-only document\n\n  Constraints:\n    - Standalone expand queries cannot mix with typed lines.\n    - Query documents allow only lex:, vec:, or hyde: prefixes.\n    - Each typed line must be single-line text with balanced quotes.\n\nAI agents & integrations:\n  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs.\n  - Run `qmd skills get qmd --full` for version-matched agent instructions.\n  - `qmd skill install` installs the QMD skill into ./.agents/skills/qmd.\n  - Use `qmd skill install --global` for ~/.agents/skills/qmd.\n  - `qmd --skill` is kept as an alias for `qmd skill show`.\n  - Advanced: `qmd mcp --http ...` and `qmd mcp --http --daemon` are optional for custom transports.\n\nGlobal options:\n  --index <name>             - Use a named index (default: index)\n  QMD_EDITOR_URI             - Editor link template for clickable TTY search output\n\nSearch options:\n  -n <num>                   - Max results (default 5, or 20 for --format files|json)\n  --all                      - Return all matches (pair with --min-score)\n  --min-score <num>          - Minimum similarity score\n  --full                     - Output full document instead of snippet\n  -C, --candidate-limit <n>  - Max candidates to rerank (default 40, lower = faster)\n  --no-rerank                - Skip LLM reranking (use RRF scores only, much faster on CPU)\n  --no-gpu                   - Force CPU mode for llama.cpp operations (same as QMD_FORCE_CPU=1)\n  --line-numbers             - Include line numbers (search; get/multi-get are on by default)\n  --no-line-numbers          - Disable line numbers for get/multi-get\n  --full-path                - Show on-disk paths instead of qmd:// + docid (get/multi-get/search/query)\n                                Paths are ./-prefixed when under $PWD, absolute otherwise\n                                Results whose file is gone keep qmd:// + docid and warn on stderr\n  --explain                  - Include retrieval score traces (query, CLI/--format json)\n  --format <kind>            - Output format: cli (default) | json | csv | md | xml | files\n  -c, --collection <name>    - Filter by one or more collections\n  --filter <json>            - Metadata filter (recursive JSON AST; search/vsearch/query)\n                                e.g. '{\"key\":\"status\",\"operator\":\"eq\",\"value\":\"published\"}'\n\nEmbed/query options:\n  --chunk-strategy <auto|regex> - Chunking mode (default: regex; auto uses AST for code files)\n  --timeout <minutes>          - Embed session cap in minutes (0 = no limit; default 30)\n\nMulti-get options:\n  -l <num>                   - Maximum lines per file\n  --max-bytes <num>          - Skip files larger than N bytes (default 65536)\n  --format <kind>            - Same formats as search\n\nIndex: <ROOT>/index.sqlite\n",
           "stderr": "",
-          "exit_code": 1
+          "exit_code": 1,
+          "state": []
         },
         {
           "name": "--help",
@@ -1644,7 +1763,8 @@
           "check": "record",
           "stdout": "qmd — Quick Markdown Search\n\nUsage:\n  qmd <command> [options]\n\nPrimary commands:\n  qmd query <query>             - Hybrid search with auto expansion + reranking (recommended)\n  qmd query 'lex:..\\nvec:...'   - Structured query document (you provide lex/vec/hyde lines)\n  qmd search <query>            - Full-text BM25 keywords (no LLM)\n  qmd vsearch <query>           - Vector similarity only\n  qmd get <file>[:from[:count]] - Show a document (line-numbered; #docid in header)\n  qmd multi-get <pattern>       - Batch fetch via glob or comma-separated list\n  qmd skills list/get/path      - List and retrieve bundled runtime skills\n  qmd skill show/install        - Show or install the QMD skill\n  qmd mcp                       - Start the MCP server (stdio transport for AI agents)\n  qmd bench <fixture.json>      - Run search quality benchmarks against a fixture file\n\nCollections & context:\n  qmd collection add/list/remove/rename/show   - Manage indexed folders\n  qmd context add/list/rm                      - Attach human-written summaries\n  qmd ls [collection[/path]]                   - Inspect indexed files\n\nMaintenance:\n  qmd init                      - Create a project-local .qmd index\n  qmd status                    - View index + collection health\n  qmd update [--pull]           - Re-index collections (optionally git pull first)\n  qmd trust [list|revoke]       - Approve a checked-in .qmd config's hooks/paths/models\n  qmd embed [-f] [-c <name>]    - Generate/refresh vector embeddings\n    --max-docs-per-batch <n>    - Cap docs loaded into memory per embedding batch\n    --max-batch-mb <n>          - Cap UTF-8 MB loaded into memory per embedding batch\n    --timeout <minutes>         - Embed session cap in minutes (0 = no limit; default 30)\n  qmd pull [--refresh] [--progress] - Download embedding/generation/rerank models\n  qmd cleanup [--dry-run]       - Drop inactive docs/orphans, compact FTS, vacuum\n\nQuery syntax (qmd query):\n  QMD queries are either a single expand query (no prefix) or a multi-line\n  document where every line is typed with lex:, vec:, or hyde:. This grammar\n  matches the docs in docs/SYNTAX.md and is enforced in the CLI.\n\n  Grammar:\n    query          = expand_query | query_document ;\n    expand_query   = text | explicit_expand ;\n    explicit_expand= \"expand:\" text ;\n    query_document = [ intent_line ] { typed_line } ;\n    intent_line    = \"intent:\" text newline ;\n    typed_line     = type \":\" text newline ;\n    type           = \"lex\" | \"vec\" | \"hyde\" ;\n    text           = quoted_phrase | plain_text ;\n    quoted_phrase  = '\"' { character } '\"' ;\n    plain_text     = { character } ;\n    newline        = \"\\n\" ;\n\n  Examples:\n    qmd query \"how does auth work\"                # single-line → implicit expand\n    qmd query $'lex: CAP theorem\\nvec: consistency'  # typed query document\n    qmd query $'lex: \"exact matches\" sports -baseball'  # phrase + negation lex search\n    qmd query $'hyde: Hypothetical answer text'       # hyde-only document\n\n  Constraints:\n    - Standalone expand queries cannot mix with typed lines.\n    - Query documents allow only lex:, vec:, or hyde: prefixes.\n    - Each typed line must be single-line text with balanced quotes.\n\nAI agents & integrations:\n  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs.\n  - Run `qmd skills get qmd --full` for version-matched agent instructions.\n  - `qmd skill install` installs the QMD skill into ./.agents/skills/qmd.\n  - Use `qmd skill install --global` for ~/.agents/skills/qmd.\n  - `qmd --skill` is kept as an alias for `qmd skill show`.\n  - Advanced: `qmd mcp --http ...` and `qmd mcp --http --daemon` are optional for custom transports.\n\nGlobal options:\n  --index <name>             - Use a named index (default: index)\n  QMD_EDITOR_URI             - Editor link template for clickable TTY search output\n\nSearch options:\n  -n <num>                   - Max results (default 5, or 20 for --format files|json)\n  --all                      - Return all matches (pair with --min-score)\n  --min-score <num>          - Minimum similarity score\n  --full                     - Output full document instead of snippet\n  -C, --candidate-limit <n>  - Max candidates to rerank (default 40, lower = faster)\n  --no-rerank                - Skip LLM reranking (use RRF scores only, much faster on CPU)\n  --no-gpu                   - Force CPU mode for llama.cpp operations (same as QMD_FORCE_CPU=1)\n  --line-numbers             - Include line numbers (search; get/multi-get are on by default)\n  --no-line-numbers          - Disable line numbers for get/multi-get\n  --full-path                - Show on-disk paths instead of qmd:// + docid (get/multi-get/search/query)\n                                Paths are ./-prefixed when under $PWD, absolute otherwise\n                                Results whose file is gone keep qmd:// + docid and warn on stderr\n  --explain                  - Include retrieval score traces (query, CLI/--format json)\n  --format <kind>            - Output format: cli (default) | json | csv | md | xml | files\n  -c, --collection <name>    - Filter by one or more collections\n  --filter <json>            - Metadata filter (recursive JSON AST; search/vsearch/query)\n                                e.g. '{\"key\":\"status\",\"operator\":\"eq\",\"value\":\"published\"}'\n\nEmbed/query options:\n  --chunk-strategy <auto|regex> - Chunking mode (default: regex; auto uses AST for code files)\n  --timeout <minutes>          - Embed session cap in minutes (0 = no limit; default 30)\n\nMulti-get options:\n  -l <num>                   - Maximum lines per file\n  --max-bytes <num>          - Skip files larger than N bytes (default 65536)\n  --format <kind>            - Same formats as search\n\nIndex: <ROOT>/index.sqlite\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "--version",
@@ -1655,7 +1775,8 @@
           "check": "record",
           "stdout": "qmd 2.8.3 (04e4dbd)\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         }
       ]
     },
@@ -1728,8 +1849,12 @@
           "mtime": 1577836800
         }
       ],
+      "extra_files": [],
       "config_name": "work.yml",
       "config_yaml": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n",
+      "local_config": null,
+      "proj_dir": false,
+      "no_setup": false,
       "index_name": "work",
       "index_path": false,
       "delete_after_setup": [],
@@ -1759,7 +1884,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#13d291\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/changelog.md?index=work\",\n    \"line\": 10,\n    \"title\": \"Changelog\",\n    \"metadata\": {\n      \"status\": \"draft\",\n      \"priority\": 1\n    },\n    \"snippet\": \"@@ -9,3 @@ (8 before, 0 after)\\n\\nAdded faster search and a new index format.\\n\"\n  },\n  {\n    \"docid\": \"#d3cb8e\",\n    \"score\": 0.4,\n    \"file\": \"qmd://docs/readme.md?index=work\",\n    \"line\": 3,\n    \"title\": \"QMD Readme\",\n    \"snippet\": \"@@ -2,4 @@ (1 before, 0 after)\\n\\nQMD indexes markdown notes for search.\\nSearch works offline and stays local.\\n\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "index search cli",
@@ -1775,7 +1901,8 @@
           "check": "exact",
           "stdout": "qmd://docs/changelog.md?index=work:10 #13d291\nTitle: Changelog\nScore:  40%\n\n@@ -9,3 @@ (8 before, 0 after)\n\nAdded faster search and a new index format.\n\n\n\nqmd://docs/readme.md?index=work:3 #d3cb8e\nTitle: QMD Readme\nScore:  40%\n\n@@ -2,4 @@ (1 before, 0 after)\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "index search files",
@@ -1792,7 +1919,8 @@
           "check": "exact",
           "stdout": "#13d291,0.40,qmd://docs/changelog.md?index=work\n#d3cb8e,0.40,qmd://docs/readme.md?index=work\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "get ?index= switches index",
@@ -1806,7 +1934,8 @@
           "check": "exact",
           "stdout": "qmd://docs/readme.md  #d3cb8e\n---\n\n1: # QMD Readme\n2: \n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "index ls",
@@ -1820,7 +1949,8 @@
           "check": "exact",
           "stdout": " 69 B  Jan  1  2020  qmd://docs/guide/install.md\n128 B  Jan  1  2020  qmd://docs/guide/search-tips.md\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         }
       ]
     },
@@ -1893,8 +2023,12 @@
           "mtime": 1577836800
         }
       ],
+      "extra_files": [],
       "config_name": "index.yml",
       "config_yaml": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n",
+      "local_config": null,
+      "proj_dir": false,
+      "no_setup": false,
       "index_name": null,
       "index_path": true,
       "delete_after_setup": [
@@ -1920,7 +2054,8 @@
           "check": "exact",
           "stdout": "qmd://docs/guide/install.md:1 #d3dba6\nTitle: Install Guide\nScore:  77%\n\n@@ -1,3 @@ (0 before, 1 after)\n# Install Guide\n\nInstall the binary, then run search once to verify.\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search full-path json",
@@ -1934,7 +2069,8 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#d3dba6\",\n    \"score\": 0.77,\n    \"file\": \"qmd://docs/guide/install.md\",\n    \"line\": 1,\n    \"title\": \"Install Guide\",\n    \"snippet\": \"@@ -1,3 @@ (0 before, 1 after)\\n# Install Guide\\n\\nInstall the binary, then run search once to verify.\"\n  }\n]\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search full-path csv",
@@ -1948,7 +2084,8 @@
           "check": "exact",
           "stdout": "docid,score,file,title,context,line,snippet\n#d3dba6,0.7722,qmd://docs/guide/install.md,Install Guide,,1,\"@@ -1,3 @@ (0 before, 1 after)\n# Install Guide\n\nInstall the binary, then run search once to verify.\"\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search full-path md",
@@ -1962,7 +2099,8 @@
           "check": "exact",
           "stdout": "---\n# Install Guide\n**file:** `qmd://docs/guide/install.md`\n**docid:** `#d3dba6`\n\n@@ -1,3 @@ (0 before, 1 after)\n# Install Guide\n\nInstall the binary, then run search once to verify.\n\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search full-path xml",
@@ -1976,7 +2114,8 @@
           "check": "exact",
           "stdout": "<file docid=\"#d3dba6\" name=\"qmd://docs/guide/install.md\" title=\"Install Guide\">\n@@ -1,3 @@ (0 before, 1 after)\n# Install Guide\n\nInstall the binary, then run search once to verify.\n</file>\n\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search full-path files",
@@ -1990,7 +2129,8 @@
           "check": "exact",
           "stdout": "0.77,qmd://docs/guide/install.md\n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale get full-path",
@@ -2003,7 +2143,8 @@
           "check": "exact",
           "stdout": "qmd://docs/guide/install.md  #d3dba6\n---\n\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n",
           "stderr": "warning: --full-path could not resolve the file on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale multi-get full-path md",
@@ -2017,7 +2158,8 @@
           "check": "exact",
           "stdout": "## guide/install.md\n\n**docid:** `#d3dba6`\n\n**Title:** Install Guide\n\n```\n1: # Install Guide\n2: \n3: Install the binary, then run search once to verify.\n4: \n```\n\n## ./docs/guide/search-tips.md\n\n**Title:** Search \"Tips\", Tricks\n\n```\n1: # Search \"Tips\", Tricks\n2: \n3: Search tips: quote phrases to search exact text.\n4: Search, search, search — repetition raises the score.\n5: \n```\n\n",
           "stderr": "warning: --full-path could not resolve 1 of 2 results on disk (moved or deleted since indexing); showing qmd:// + docid instead. Run 'qmd update' to refresh the index.\n",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
         },
         {
           "name": "stale search without full-path",
@@ -2030,7 +2172,1175 @@
           "check": "exact",
           "stdout": "[\n  {\n    \"docid\": \"#d3dba6\",\n    \"score\": 0.77,\n    \"file\": \"qmd://docs/guide/install.md\",\n    \"line\": 1,\n    \"title\": \"Install Guide\",\n    \"snippet\": \"@@ -1,3 @@ (0 before, 1 after)\\n# Install Guide\\n\\nInstall the binary, then run search once to verify.\"\n  }\n]\n",
           "stderr": "",
-          "exit_code": 0
+          "exit_code": 0,
+          "state": []
+        }
+      ]
+    },
+    {
+      "name": "mutate",
+      "files": [
+        {
+          "path": "docs/readme.md",
+          "content": "# QMD Readme\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/install.md",
+          "content": "# Install Guide\n\nInstall the binary, then run search once to verify.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/search-tips.md",
+          "content": "# Search \"Tips\", Tricks\n\nSearch tips: quote phrases to search exact text.\nSearch, search, search — repetition raises the score.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/api.md",
+          "content": "---\nqmd:\n  metadata:\n    status: published\n    priority: 2\n    tags: [api, reference]\n---\n\n# API Reference\n\nThe search API returns ranked documents.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/changelog.md",
+          "content": "---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/faq.md",
+          "content": "# FAQ\n\n## How do I search?\nRun qmd search with a keyword.\nSearch ranks results with BM25.\n\n## Does search work offline?\nYes, search never needs the network.\n\n## What about vectors?\nVector search needs embeddings first.\n\n## Where is the index?\nThe index lives in the cache directory.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/big.md",
+          "content": "# Big Reference\n\nThis big search reference exists to exceed small byte limits.\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/cjk.md",
+          "content": "# 中文文档\n\n这是一个关于搜索的中文文档。\n全文搜索支持中文。\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/plain.md",
+          "content": "No heading here, just a plain search note.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/drafts/secret.md",
+          "content": "# Secret Draft\n\nThis draft mentions search but is ignored.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/meeting.md",
+          "content": "# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/todo.md",
+          "content": "# Todo\n\n- improve search speed\n- write docs\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "archive/old.md",
+          "content": "# Old Archive Note\n\nAn archived search experiment.\n",
+          "mtime": 1577836800
+        }
+      ],
+      "extra_files": [],
+      "config_name": "index.yml",
+      "config_yaml": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n",
+      "local_config": null,
+      "proj_dir": false,
+      "no_setup": false,
+      "index_name": null,
+      "index_path": true,
+      "delete_after_setup": [],
+      "setup": {
+        "argv": [
+          "update"
+        ],
+        "stdout": "Updating 1 collection(s)...\n\n[1/1] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 9 new, 0 updated, 0 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (9 unique hashes need vectors)\n",
+        "stderr": "",
+        "exit_code": 0
+      },
+      "scenarios": [
+        {
+          "name": "collection list baseline",
+          "argv": [
+            "collection",
+            "list"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "Collections (1):\n\ndocs (qmd://docs/)\n  Pattern:  **/*.md\n  Ignore:   drafts/**\n  Files:    9\n  Updated:  <AGO>\n\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "collection add",
+          "argv": [
+            "collection",
+            "add",
+            "notes"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Creating collection 'notes'...\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 2 new, 0 updated, 0 unchanged, 0 removed\n\nRun 'qmd embed' to update embeddings (11 unique hashes need vectors)\n✓ Collection 'notes' created successfully\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection add dup name",
+          "argv": [
+            "collection",
+            "add",
+            "archive",
+            "--name",
+            "notes"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection 'notes' already exists.\nUse a different name with --name <name>\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection add dup path+pattern",
+          "argv": [
+            "collection",
+            "add",
+            "notes",
+            "--name",
+            "other"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "A collection already exists for this path and pattern:\n  Name: notes (qmd://notes/)\n  Pattern: **/*.md\n\nUse 'qmd update' to re-index it, or remove it first with 'qmd collection remove notes'\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection add missing",
+          "argv": [
+            "collection",
+            "add",
+            "nosuchdir"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection path does not exist.\n  Received: nosuchdir\n  Resolved: <ROOT>/corpus/nosuchdir\nProvide an existing directory and run 'qmd collection add <path>' again.\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection add file",
+          "argv": [
+            "collection",
+            "add",
+            "docs/big.md"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection path is not a directory.\n  Received: docs/big.md\n  Resolved: <ROOT>/corpus/docs/big.md\nChoose a directory and run 'qmd collection add <path>' again.\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection add no arg",
+          "argv": [
+            "collection",
+            "add"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Usage: qmd collection add <path> [--name NAME] [--mask GLOB]\n  Pass '.' to index the current directory.\n  --mask / --glob: glob (default **/*.md), brace group, or comma-separated list\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection add --name --mask",
+          "argv": [
+            "collection",
+            "add",
+            "docs/guide",
+            "--name",
+            "guides",
+            "--mask",
+            "search-*.md"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Creating collection 'guides'...\nCollection: <ROOT>/corpus/docs/guide (search-*.md)\n\nIndexed: 1 new, 0 updated, 0 unchanged, 0 removed\n\nRun 'qmd embed' to update embeddings (11 unique hashes need vectors)\n✓ Collection 'guides' created successfully\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection add --glob alias",
+          "argv": [
+            "collection",
+            "add",
+            "archive",
+            "--glob",
+            "*.md"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Creating collection 'archive'...\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 1 new, 0 updated, 0 unchanged, 0 removed\n\nRun 'qmd embed' to update embeddings (12 unique hashes need vectors)\n✓ Collection 'archive' created successfully\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection list",
+          "argv": [
+            "collection",
+            "list"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "Collections (4):\n\ndocs (qmd://docs/)\n  Pattern:  **/*.md\n  Ignore:   drafts/**\n  Files:    9\n  Updated:  <AGO>\n\nnotes (qmd://notes/)\n  Pattern:  **/*.md\n  Files:    2\n  Updated:  <AGO>\n\nguides (qmd://guides/)\n  Pattern:  search-*.md\n  Files:    1\n  Updated:  <AGO>\n\narchive (qmd://archive/)\n  Pattern:  *.md\n  Files:    1\n  Updated:  <AGO>\n\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "collection show",
+          "argv": [
+            "collection",
+            "show",
+            "docs"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Collection: docs\n  Path:     <ROOT>/corpus/docs\n  Pattern:  **/*.md\n  Include:  yes (default)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "collection show missing",
+          "argv": [
+            "collection",
+            "show",
+            "nope"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection not found: nope\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection exclude",
+          "argv": [
+            "collection",
+            "exclude",
+            "docs"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Collection 'docs' excluded from default queries\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    includeByDefault: false\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection include",
+          "argv": [
+            "collection",
+            "include",
+            "docs"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Collection 'docs' included in default queries\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection exclude missing",
+          "argv": [
+            "collection",
+            "exclude",
+            "nope"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection not found: nope\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection update-cmd set",
+          "argv": [
+            "collection",
+            "update-cmd",
+            "docs",
+            "echo upd-hook"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Set update command for 'docs': echo upd-hook\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    update: echo upd-hook\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection update-cmd clear",
+          "argv": [
+            "collection",
+            "update-cmd",
+            "docs"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Cleared update command for 'docs'\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  guides:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection update-cmd missing",
+          "argv": [
+            "collection",
+            "update-cmd",
+            "nope",
+            "x"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection not found: nope\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection rename",
+          "argv": [
+            "collection",
+            "rename",
+            "guides",
+            "tutorials"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Renamed collection 'guides' to 'tutorials'\n  Virtual paths updated: qmd://guides/ → qmd://tutorials/\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\n  tutorials:\n    path: <ROOT>/corpus/docs/guide\n    pattern: search-*.md\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection rename to existing",
+          "argv": [
+            "collection",
+            "rename",
+            "tutorials",
+            "docs"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection name already exists: docs\nChoose a different name or remove the existing collection first.\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection rm alias",
+          "argv": [
+            "collection",
+            "rm",
+            "tutorials"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Removed collection 'tutorials'\n  Deleted 9 documents\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "collection remove missing",
+          "argv": [
+            "collection",
+            "remove",
+            "nope"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection not found: nope\nRun 'qmd collection list' to see available collections.\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "collection bogus sub",
+          "argv": [
+            "collection",
+            "bogus"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Unknown subcommand: bogus\nRun 'qmd collection help' for usage\nIf qmd still behaves unexpectedly, run 'qmd doctor' for diagnostics.\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "context add qmd uri",
+          "argv": [
+            "context",
+            "add",
+            "qmd://docs/guide",
+            "Guide files"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Added context for: qmd://docs/guide\nContext: Guide files\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      guide: Guide files\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "context add global",
+          "argv": [
+            "context",
+            "add",
+            "/",
+            "Root context"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Set global context\nContext: Root context\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      guide: Guide files\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\nglobal_context: Root context\n"
+            }
+          ]
+        },
+        {
+          "name": "context add fs path",
+          "argv": [
+            "context",
+            "add",
+            "docs/faq.md",
+            "FAQ file"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Added context for: qmd://docs/faq.md\nContext: FAQ file\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      guide: Guide files\n      faq.md: FAQ file\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\nglobal_context: Root context\n"
+            }
+          ]
+        },
+        {
+          "name": "context add not indexed",
+          "argv": [
+            "context",
+            "add",
+            "nosuchdir/x.md",
+            "x"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Path is not in any indexed collection: <ROOT>/corpus/nosuchdir/x.md\nRun 'qmd status' to see indexed collections\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "context add missing coll",
+          "argv": [
+            "context",
+            "add",
+            "qmd://nope/x",
+            "x"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Collection not found: nope\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "context list",
+          "argv": [
+            "context",
+            "list"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "\nConfigured Contexts\n\n*\n  /\n    Root context\ndocs\n  guide\n    Guide files\n  faq.md\n    FAQ file\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "context rm",
+          "argv": [
+            "context",
+            "rm",
+            "qmd://docs/guide"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Removed context for: qmd://docs/guide\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      faq.md: FAQ file\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\nglobal_context: Root context\n"
+            }
+          ]
+        },
+        {
+          "name": "context rm missing",
+          "argv": [
+            "context",
+            "rm",
+            "qmd://docs/nowhere"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "No context found for: qmd://docs/nowhere\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "status",
+          "argv": [
+            "status"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "QMD Status\n\nIndex: <ROOT>/index.sqlite\nSize: <SIZE>\n\nDocuments\n  Total:    12 files indexed\n  Vectors:  0 embedded\n  Pending:  12 need embedding (run 'qmd embed')\n  Updated:  <AGO>\n\nAST Chunking\n  Status: <AST>\n\nCollections\n  docs (qmd://docs/)\n    Pattern:  **/*.md\n    Files:    9 (updated <AGO>)\n    Contexts: 1\n      /faq.md: FAQ file\n  notes (qmd://notes/)\n    Pattern:  **/*.md\n    Files:    2 (updated <AGO>)\n  archive (qmd://archive/)\n    Pattern:  *.md\n    Files:    1 (updated <AGO>)\n\nExamples\n  # List files in a collection\n  qmd ls docs\n  # Get a document\n  qmd get qmd://docs/path/to/file.md\n  # Search within a collection\n  qmd search \"query\" -c docs\n\nModels\n  Embedding:   https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF\n  Reranking:   https://huggingface.co/ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF\n  Generation:  https://huggingface.co/tobil/qmd-query-expansion-1.7B-gguf\n\nTips\n  Add context to collections for better search results: notes, archive\n    qmd context add qmd://<name>/ \"What this collection contains\"\n    qmd context add qmd://<name>/meeting-notes \"Weekly team meeting notes\"\n  Add update commands to keep collections fresh: docs, notes, archive\n    qmd collection update-cmd <name> 'git stash && git pull --rebase --ff-only && git stash pop'\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "cleanup dry-run",
+          "argv": [
+            "cleanup",
+            "--dry-run"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Dry run — no changes made.\n\nWould clear 0 cached API responses\nNo orphaned embeddings to remove\nWould compact FTS and vacuum the database\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "cleanup",
+          "argv": [
+            "cleanup"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Cleared 0 cached API responses\nNo orphaned embeddings to remove\n✓ FTS compacted, database vacuumed\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "collection add dot",
+          "argv": [
+            "collection",
+            "add",
+            "."
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Creating collection 'corpus'...\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 13 new, 0 updated, 0 unchanged, 0 removed\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n✓ Collection 'corpus' created successfully\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      faq.md: FAQ file\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\n  corpus:\n    path: <ROOT>/corpus\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\nglobal_context: Root context\n"
+            }
+          ]
+        },
+        {
+          "name": "update no-op",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 9 unchanged, 0 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 0 new, 0 updated, 13 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "update changed",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "write": {
+            "docs/faq.md": "# FAQ\n\n## How do I search?\nRun qmd search with a keyword.\nSearch ranks results with BM25.\n\n## Does search work offline?\nYes, search never needs the network.\n\n## What about vectors?\nVector search needs embeddings first.\n\n## Where is the index?\nThe index lives in the cache directory.\n\nA brand new line about search.\n"
+          },
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 1 updated, 8 unchanged, 0 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 0 new, 1 updated, 12 unchanged, 0 removed\nCleaned up 1 orphaned content hash(es)\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "update new file",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "write": {
+            "docs/newfile.md": "# New File\n\nFresh content about search.\n"
+          },
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 1 new, 0 updated, 9 unchanged, 0 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 1 new, 0 updated, 13 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (14 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "update removed",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "delete": [
+            "docs/newfile.md"
+          ],
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 9 unchanged, 1 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 0 new, 0 updated, 13 unchanged, 1 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "update with hook",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "pre": [
+            "collection",
+            "update-cmd",
+            "docs",
+            "echo upd-hook"
+          ],
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\n    Running update command: echo upd-hook\n    upd-hook\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 9 unchanged, 0 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 0 new, 0 updated, 13 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "update hook fails",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "pre": [
+            "collection",
+            "update-cmd",
+            "docs",
+            "exit 3"
+          ],
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\n    Running update command: exit 3\n✗ Update command failed with exit code 3\n",
+          "stderr": "",
+          "exit_code": 3,
+          "state": []
+        },
+        {
+          "name": "update after hook cleared",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "pre": [
+            "collection",
+            "update-cmd",
+            "docs"
+          ],
+          "stdout": "Updating 4 collection(s)...\n\n[1/4] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 9 unchanged, 0 removed\n\n[2/4] notes (**/*.md)\nCollection: <ROOT>/corpus/notes (**/*.md)\n\nIndexed: 0 new, 0 updated, 2 unchanged, 0 removed\n\n[3/4] archive (*.md)\nCollection: <ROOT>/corpus/archive (*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n[4/4] corpus (**/*.md)\nCollection: <ROOT>/corpus (**/*.md)\n\nIndexed: 0 new, 0 updated, 13 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (13 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/index.yml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    ignore:\n      - drafts/**\n    context:\n      faq.md: FAQ file\n  notes:\n    path: <ROOT>/corpus/notes\n    pattern: \"**/*.md\"\n  archive:\n    path: <ROOT>/corpus/archive\n    pattern: \"*.md\"\n  corpus:\n    path: <ROOT>/corpus\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\nglobal_context: Root context\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "local",
+      "files": [
+        {
+          "path": "docs/readme.md",
+          "content": "# QMD Readme\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/install.md",
+          "content": "# Install Guide\n\nInstall the binary, then run search once to verify.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/search-tips.md",
+          "content": "# Search \"Tips\", Tricks\n\nSearch tips: quote phrases to search exact text.\nSearch, search, search — repetition raises the score.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/api.md",
+          "content": "---\nqmd:\n  metadata:\n    status: published\n    priority: 2\n    tags: [api, reference]\n---\n\n# API Reference\n\nThe search API returns ranked documents.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/changelog.md",
+          "content": "---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/faq.md",
+          "content": "# FAQ\n\n## How do I search?\nRun qmd search with a keyword.\nSearch ranks results with BM25.\n\n## Does search work offline?\nYes, search never needs the network.\n\n## What about vectors?\nVector search needs embeddings first.\n\n## Where is the index?\nThe index lives in the cache directory.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/big.md",
+          "content": "# Big Reference\n\nThis big search reference exists to exceed small byte limits.\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/cjk.md",
+          "content": "# 中文文档\n\n这是一个关于搜索的中文文档。\n全文搜索支持中文。\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/plain.md",
+          "content": "No heading here, just a plain search note.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/drafts/secret.md",
+          "content": "# Secret Draft\n\nThis draft mentions search but is ignored.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/meeting.md",
+          "content": "# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/todo.md",
+          "content": "# Todo\n\n- improve search speed\n- write docs\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "archive/old.md",
+          "content": "# Old Archive Note\n\nAn archived search experiment.\n",
+          "mtime": 1577836800
+        }
+      ],
+      "extra_files": [
+        {
+          "path": "external/ext.md",
+          "content": "# External\n\nContent outside the project root.\n",
+          "mtime": 1577836800
+        }
+      ],
+      "config_name": null,
+      "config_yaml": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    update: echo hook-ran\n  outside:\n    path: <ROOT>/external\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n",
+      "local_config": "corpus/.qmd/index.yaml",
+      "proj_dir": false,
+      "no_setup": false,
+      "index_name": null,
+      "index_path": false,
+      "delete_after_setup": [],
+      "setup": {
+        "argv": [
+          "update"
+        ],
+        "stdout": "This project's config defines update commands:\n  docs: echo hook-ran\nCollection paths outside this project:\n  outside: <ROOT>/external\nConfig that came with a checkout is not trusted by default.\nSkipping them — no terminal to confirm on. Indexing of this project continues.\nApprove with 'qmd trust', or set QMD_TRUST_LOCAL_CONFIG=1 for unattended runs.\n\nUpdating 2 collection(s)...\n\n[1/2] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 10 new, 0 updated, 0 unchanged, 0 removed\n\n[2/2] outside (**/*.md)\nSkipping collection 'outside' — path <ROOT>/external is outside this project and this .qmd config is not trusted.\nApprove with 'qmd trust'.\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (10 unique hashes need vectors)\n",
+        "stderr": "",
+        "exit_code": 0
+      },
+      "scenarios": [
+        {
+          "name": "update untrusted skips gated",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "This project's config defines update commands:\n  docs: echo hook-ran\nCollection paths outside this project:\n  outside: <ROOT>/external\nConfig that came with a checkout is not trusted by default.\nSkipping them — no terminal to confirm on. Indexing of this project continues.\nApprove with 'qmd trust', or set QMD_TRUST_LOCAL_CONFIG=1 for unattended runs.\n\nUpdating 2 collection(s)...\n\n[1/2] docs (**/*.md)\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 10 unchanged, 0 removed\n\n[2/2] outside (**/*.md)\nSkipping collection 'outside' — path <ROOT>/external is outside this project and this .qmd config is not trusted.\nApprove with 'qmd trust'.\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (10 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "corpus/.qmd/index.yaml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    update: echo hook-ran\n  outside:\n    path: <ROOT>/external\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "trust list empty",
+          "argv": [
+            "trust",
+            "list"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "No trusted project configs.\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "trust",
+          "argv": [
+            "trust"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "This project's config defines update commands:\n  docs: echo hook-ran\nCollection paths outside this project:\n  outside: <ROOT>/external\n✓ Trusted <ROOT>/corpus/.qmd/index.yaml\nEditing a hook, out-of-project path, or custom model will ask again. Revoke with 'qmd trust revoke'.\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/trusted.json",
+              "exists": true,
+              "content": "{\n  \"<ROOT>/corpus/.qmd/index.yaml\": {\n    \"hooks\": \"b05f6e92e137205f8e44178cf4df924cb4224b296909656365e6cece35b3909b\",\n    \"trustedAt\": \"<TS>\"\n  }\n}\n"
+            }
+          ]
+        },
+        {
+          "name": "update trusted runs hook",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "Updating 2 collection(s)...\n\n[1/2] docs (**/*.md)\n    Running update command: echo hook-ran\n    hook-ran\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 10 unchanged, 0 removed\n\n[2/2] outside (**/*.md)\nCollection: <ROOT>/external (**/*.md)\n\nIndexed: 1 new, 0 updated, 0 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (11 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "trust list",
+          "argv": [
+            "trust",
+            "list"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "<ROOT>/corpus/.qmd/index.yaml (trusted <TS>)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "trust revoke",
+          "argv": [
+            "trust",
+            "revoke"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "✓ Revoked trust for <ROOT>/corpus/.qmd/index.yaml\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "config/trusted.json",
+              "exists": true,
+              "content": "{}\n"
+            }
+          ]
+        },
+        {
+          "name": "update env opted-in",
+          "argv": [
+            "update"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "env": {
+            "QMD_TRUST_LOCAL_CONFIG": "1"
+          },
+          "stdout": "Updating 2 collection(s)...\n\n[1/2] docs (**/*.md)\n    Running update command: echo hook-ran\n    hook-ran\nCollection: <ROOT>/corpus/docs (**/*.md)\n\nIndexed: 0 new, 0 updated, 10 unchanged, 0 removed\n\n[2/2] outside (**/*.md)\nCollection: <ROOT>/external (**/*.md)\n\nIndexed: 0 new, 0 updated, 1 unchanged, 0 removed\n\n✓ All collections updated.\n\nRun 'qmd embed' to update embeddings (11 unique hashes need vectors)\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        },
+        {
+          "name": "trust bogus sub",
+          "argv": [
+            "trust",
+            "bogus"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "",
+          "stderr": "Usage: qmd trust [list|revoke]\n",
+          "exit_code": 1,
+          "state": []
+        },
+        {
+          "name": "init existing local config",
+          "argv": [
+            "init"
+          ],
+          "cwd": "corpus",
+          "check": "exact",
+          "stdout": "ready to go with new local index\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "corpus/.qmd/index.yaml",
+              "exists": true,
+              "content": "collections:\n  docs:\n    path: <ROOT>/corpus/docs\n    pattern: \"**/*.md\"\n    update: echo hook-ran\n  outside:\n    path: <ROOT>/external\n    pattern: \"**/*.md\"\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "status local",
+          "argv": [
+            "status"
+          ],
+          "cwd": "corpus",
+          "check": "normalized",
+          "stdout": "QMD Status\n\nIndex: <ROOT>/corpus/.qmd/index.sqlite\nSize: <SIZE>\n\nDocuments\n  Total:    11 files indexed\n  Vectors:  0 embedded\n  Pending:  11 need embedding (run 'qmd embed')\n  Updated:  <AGO>\n\nAST Chunking\n  Status: <AST>\n\nCollections\n  docs (qmd://docs/)\n    Pattern:  **/*.md\n    Files:    10 (updated <AGO>)\n  outside (qmd://outside/)\n    Pattern:  **/*.md\n    Files:    1 (updated <AGO>)\n\nExamples\n  # List files in a collection\n  qmd ls docs\n  # Get a document\n  qmd get qmd://docs/path/to/file.md\n  # Search within a collection\n  qmd search \"query\" -c docs\n\nModels\n  Embedding:   https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF\n  Reranking:   https://huggingface.co/ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF\n  Generation:  https://huggingface.co/tobil/qmd-query-expansion-1.7B-gguf\n\nTips\n  Add context to collections for better search results: docs, outside\n    qmd context add qmd://<name>/ \"What this collection contains\"\n    qmd context add qmd://<name>/meeting-notes \"Weekly team meeting notes\"\n  Add update commands to keep collections fresh: outside\n    qmd collection update-cmd <name> 'git stash && git pull --rebase --ff-only && git stash pop'\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": []
+        }
+      ]
+    },
+    {
+      "name": "init",
+      "files": [
+        {
+          "path": "docs/readme.md",
+          "content": "# QMD Readme\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/install.md",
+          "content": "# Install Guide\n\nInstall the binary, then run search once to verify.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/guide/search-tips.md",
+          "content": "# Search \"Tips\", Tricks\n\nSearch tips: quote phrases to search exact text.\nSearch, search, search — repetition raises the score.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/api.md",
+          "content": "---\nqmd:\n  metadata:\n    status: published\n    priority: 2\n    tags: [api, reference]\n---\n\n# API Reference\n\nThe search API returns ranked documents.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/changelog.md",
+          "content": "---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/faq.md",
+          "content": "# FAQ\n\n## How do I search?\nRun qmd search with a keyword.\nSearch ranks results with BM25.\n\n## Does search work offline?\nYes, search never needs the network.\n\n## What about vectors?\nVector search needs embeddings first.\n\n## Where is the index?\nThe index lives in the cache directory.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/big.md",
+          "content": "# Big Reference\n\nThis big search reference exists to exceed small byte limits.\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/cjk.md",
+          "content": "# 中文文档\n\n这是一个关于搜索的中文文档。\n全文搜索支持中文。\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/plain.md",
+          "content": "No heading here, just a plain search note.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "docs/drafts/secret.md",
+          "content": "# Secret Draft\n\nThis draft mentions search but is ignored.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/meeting.md",
+          "content": "# Weekly Meeting\n\nDiscussed search quality, the index size and next steps.\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "notes/todo.md",
+          "content": "# Todo\n\n- improve search speed\n- write docs\n",
+          "mtime": 1577836800
+        },
+        {
+          "path": "archive/old.md",
+          "content": "# Old Archive Note\n\nAn archived search experiment.\n",
+          "mtime": 1577836800
+        }
+      ],
+      "extra_files": [],
+      "config_name": "unused.yml",
+      "config_yaml": "",
+      "local_config": null,
+      "proj_dir": true,
+      "no_setup": true,
+      "index_name": null,
+      "index_path": true,
+      "delete_after_setup": [],
+      "setup": null,
+      "scenarios": [
+        {
+          "name": "init",
+          "argv": [
+            "init"
+          ],
+          "cwd": "proj",
+          "check": "exact",
+          "stdout": "ready to go with new local index\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "proj/.qmd/index.yml",
+              "exists": true,
+              "content": "collections: {}\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "init again",
+          "argv": [
+            "init"
+          ],
+          "cwd": "proj",
+          "check": "exact",
+          "stdout": "ready to go with new local index\n",
+          "stderr": "",
+          "exit_code": 0,
+          "state": [
+            {
+              "path": "proj/.qmd/index.yml",
+              "exists": true,
+              "content": "collections: {}\nmodels:\n  embed: hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf\n  generate: hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf\n  rerank: hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf\n"
+            }
+          ]
+        },
+        {
+          "name": "init refuses HOME",
+          "argv": [
+            "init"
+          ],
+          "cwd": "proj",
+          "check": "exact",
+          "env": {
+            "HOME": "<PROJ>"
+          },
+          "stdout": "",
+          "stderr": "Refusing to initialize a local index in $HOME. The global index is automatically created; run `qmd collection add <path>` for the global index, or run `qmd init` inside a project folder.\nIf qmd still behaves unexpectedly, run 'qmd doctor' for diagnostics.\n",
+          "exit_code": 1,
+          "state": []
         }
       ]
     }

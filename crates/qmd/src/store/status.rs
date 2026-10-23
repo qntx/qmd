@@ -124,6 +124,15 @@ pub(crate) fn count_orphaned_vectors(conn: &Connection) -> Result<usize> {
     Ok(usize::try_from(n).unwrap_or(0))
 }
 
+/// Total `content_vectors` rows — the CLI `status` / `update` epilogue
+/// `vector_total` (cli/qmd.ts:1011).
+pub(crate) fn count_content_vectors(conn: &Connection) -> Result<usize> {
+    let n: i64 = conn
+        .query_row("SELECT COUNT(*) FROM content_vectors", [], |r| r.get(0))
+        .map_err(DbError::from)?;
+    Ok(usize::try_from(n).unwrap_or(0))
+}
+
 /// Whether the `vectors_vec` shadow table exists (upstream checks
 /// `sqlite_master` for `hasVectorIndex`).
 pub(crate) fn has_vectors_vec(conn: &Connection) -> Result<bool> {
@@ -185,15 +194,12 @@ pub(crate) fn get_status(
             r.get(0)
         })
         .map_err(DbError::from)?;
-    let vector_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM content_vectors", [], |r| r.get(0))
-        .map_err(DbError::from)?;
 
     Ok(StatusRow {
         total_documents: usize::try_from(total_docs).unwrap_or(0),
         needs_embedding: hashes_needing_embedding(conn, None, model, fingerprint_extra)?,
         has_vector_index: has_vectors_vec(conn)?,
-        vector_count: usize::try_from(vector_count).unwrap_or(0),
+        vector_count: count_content_vectors(conn)?,
         orphaned_vectors: count_orphaned_vectors(conn)?,
         latest_modified: latest_modified(conn)?,
         reindex_required: super::config_get(conn, "reindex_required")?.as_deref() == Some("1"),

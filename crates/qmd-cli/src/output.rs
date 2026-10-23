@@ -8,7 +8,7 @@
 //! Renderers write through [`Io`]; pure string helpers
 //! ([`format_score`], [`term_link`], …) are unit-testable.
 
-use std::io::Write;
+use std::io::{BufRead, Write};
 use std::path::Path;
 
 use qmd::metadata::DocumentMetadata;
@@ -22,6 +22,9 @@ pub struct Io<'a> {
     pub out: &'a mut dyn Write,
     /// stderr sink.
     pub err: &'a mut dyn Write,
+    /// stdin source — only read by the interactive local-config trust
+    /// prompt (`confirmOnTty`, P4.2); every other command leaves it alone.
+    pub stdin: &'a mut dyn BufRead,
     /// `stdout.isTTY` — drives OSC 8 links and `--full-path` nothing
     /// else.
     pub stdout_tty: bool,
@@ -821,15 +824,26 @@ fn output_cli(
 mod tests {
     use super::*;
 
-    fn io<'a>(out: &'a mut Vec<u8>, err: &'a mut Vec<u8>, stdout_tty: bool) -> Io<'a> {
+    fn io<'a>(
+        out: &'a mut Vec<u8>,
+        err: &'a mut Vec<u8>,
+        stdout_tty: bool,
+        stdin: &'a mut dyn BufRead,
+    ) -> Io<'a> {
         Io {
             out,
             err,
+            stdin,
             stdout_tty,
             stderr_tty: false,
             stdin_tty: false,
             local_offset: time::UtcOffset::UTC,
         }
+    }
+
+    /// Empty stdin — the prompt path answers "no" on EOF.
+    fn empty_stdin() -> &'static mut dyn BufRead {
+        Box::leak(Box::new(std::io::empty()))
     }
 
     // Ported from upstream `test/cli.test.ts` "editor URI templates".
@@ -1014,7 +1028,11 @@ mod tests {
         for (format, min_score, want) in cases {
             let mut out = Vec::new();
             let mut err = Vec::new();
-            print_empty_search_results(format, min_score, &mut io(&mut out, &mut err, false));
+            print_empty_search_results(
+                format,
+                min_score,
+                &mut io(&mut out, &mut err, false, empty_stdin()),
+            );
             assert_eq!(String::from_utf8(out).unwrap(), want, "{format:?}");
         }
     }
@@ -1024,7 +1042,12 @@ mod tests {
         let mut out = Vec::new();
         let mut err = Vec::new();
         let plain = Palette::new(false);
-        warn_unresolved_full_paths(1, 1, &mut io(&mut out, &mut err, false), plain);
+        warn_unresolved_full_paths(
+            1,
+            1,
+            &mut io(&mut out, &mut err, false, empty_stdin()),
+            plain,
+        );
         assert_eq!(
             String::from_utf8(err).unwrap(),
             "warning: --full-path could not resolve the file on disk \
@@ -1034,12 +1057,22 @@ mod tests {
 
         let mut out = Vec::new();
         let mut err = Vec::new();
-        warn_unresolved_full_paths(2, 5, &mut io(&mut out, &mut err, false), plain);
+        warn_unresolved_full_paths(
+            2,
+            5,
+            &mut io(&mut out, &mut err, false, empty_stdin()),
+            plain,
+        );
         assert!(String::from_utf8(err).unwrap().contains("2 of 5 results"));
 
         let mut out = Vec::new();
         let mut err = Vec::new();
-        warn_unresolved_full_paths(0, 3, &mut io(&mut out, &mut err, false), plain);
+        warn_unresolved_full_paths(
+            0,
+            3,
+            &mut io(&mut out, &mut err, false, empty_stdin()),
+            plain,
+        );
         assert!(err.is_empty());
     }
 }

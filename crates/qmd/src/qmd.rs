@@ -13,7 +13,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use rusqlite::Connection;
 
 use crate::chunk::ChunkStrategy;
-use crate::config::{Collection, Config};
+use crate::collection::CollectionUpdateReport;
+use crate::config::{Collection, Config, ModelsConfig};
 use crate::document::{
     Document, DocumentEntry, GetOptions, LineRange, MultiGet, MultiGetOptions, MultiGetSelection,
 };
@@ -71,16 +72,20 @@ pub struct CollectionSettings {
         reason = "three-way semantics: set / clear / leave unchanged"
     )]
     pub update: Option<Option<String>>,
-    /// `Some(_)` replaces the include-by-default flag.
+    /// `Some(false)` persists `includeByDefault: false`; `Some(true)`
+    /// deletes the key (upstream deletes it — absent is the default).
     pub include_by_default: Option<bool>,
 }
 
-/// Result of [`Qmd::remove_collection`].
+/// Result of [`Qmd::remove_collection`] — upstream `removeCollection`'s
+/// `{deletedDocs, cleanedHashes}` (store.ts:3680-3695).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct CollectionRemoval {
-    /// Documents deactivated (removed from search) by the removal.
-    pub documents_deactivated: usize,
+    /// `documents` rows hard-deleted (upstream `deletedDocs`).
+    pub deleted_docs: usize,
+    /// Orphan `content` rows removed (upstream `cleanedHashes`).
+    pub cleaned_hashes: usize,
 }
 
 /// One row of [`Qmd::collections`], mirroring upstream `listCollections`.
@@ -437,8 +442,8 @@ pub struct UpdateProgress {
 }
 
 /// Aggregate result of [`Qmd::update`], mirroring upstream
-/// `UpdateResult` minus per-collection detail.
-#[derive(Debug, Clone)]
+/// `UpdateResult` (index.ts:165-173) plus per-collection detail.
+#[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct UpdateReport {
     /// Collections processed.
@@ -459,6 +464,24 @@ pub struct UpdateReport {
     /// Distinct active content hashes with no vector rows; the embedding
     /// pipeline arrives in P2, so every active hash counts for now.
     pub needs_embedding: usize,
+    /// Per-collection results in update order (upstream `ReindexResult`
+    /// per collection).
+    pub per_collection: Vec<CollectionUpdateReport>,
+}
+
+/// The counts `qmd update` reports in its epilogue — upstream
+/// cli/qmd.ts:1008-1019 (`getHashesNeedingEmbedding`, the
+/// `content_vectors` total, `countOrphanedVectors`), surfaced by
+/// [`Qmd::update_tail_counts`].
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct UpdateTailCounts {
+    /// Distinct active content hashes lacking current vectors.
+    pub needs_embedding: usize,
+    /// Total `content_vectors` rows.
+    pub vector_total: usize,
+    /// `content_vectors` rows no active document references.
+    pub orphaned_vectors: usize,
 }
 
 /// Open handle to a qmd index.
@@ -479,6 +502,9 @@ pub struct Qmd {
     config: Mutex<ConfigSource>,
     db_path: PathBuf,
     env: Environment,
+    /// Whether the config's `models:` block steers model resolution
+    /// ([`QmdBuilder::use_config_models`]).
+    use_config_models: bool,
     /// `Mutex` — under `llama` a missing embedder is lazily built on
     /// first use (architecture §3.2; upstream resolves the model inside
     /// the embed path, llm.ts:1128-1133).
@@ -505,6 +531,55 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
+/// One collection reindex over an already-held connection — the loop
+/// body shared by [`Qmd::update`] and [`Qmd::update_collection`].
+/// `pattern`/`ignore` come from the `store_collections` mirror like
+/// upstream (`col.glob_pattern || "**/*.md"`, `col.ignore`,
+/// store.ts:2060-2077 / index.ts:547-552).
+fn reindex_locked(
+    conn: &mut Connection,
+    col: &store::DbCollection,
+    progress: &mut dyn FnMut(&UpdateProgress),
+) -> Result<CollectionUpdateReport> {
+    let ignore = col.ignore.clone().unwrap_or_default();
+    let pattern = if col.pattern.is_empty() {
+        crate::config::DEFAULT_PATTERN
+    } else {
+        &col.pattern
+    };
+    let name = col.name.clone();
+    let mut on_file = |fp: &crate::collection::index::FileProgress<'_>| {
+        progress(&UpdateProgress {
+            collection: name.clone(),
+            file: fp.file.to_owned(),
+            current: fp.current,
+            total: fp.total,
+        });
+    };
+    crate::collection::index::reindex_collection(
+        conn,
+        Path::new(&col.path),
+        pattern,
+        &col.name,
+        &ignore,
+        &mut on_file,
+    )
+}
+
+/// Upstream `sameDirectory` (cli/qmd.ts:440-445): compare real paths,
+/// and when either side cannot be resolved fall back to the lexical
+/// resolution of both against `$PWD` (`pathResolve` semantics). When
+/// both realpaths exist but differ, upstream does *not* fall back —
+/// two resolvable paths are simply different directories.
+fn same_directory(a: &Path, b: &Path, env: &Environment) -> bool {
+    if let (Ok(ra), Ok(rb)) = (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        return ra == rb;
+    }
+    let base = crate::paths::pwd(env);
+    crate::paths::resolve_lexical(&base, &a.to_string_lossy())
+        == crate::paths::resolve_lexical(&base, &b.to_string_lossy())
+}
+
 /// Builder for [`Qmd`], mirroring upstream `createStore(options)`.
 #[derive(Debug)]
 #[must_use]
@@ -515,6 +590,7 @@ pub struct QmdBuilder {
     embedder: Option<Arc<dyn Embedder>>,
     reranker: Option<Arc<dyn Reranker>>,
     generator: Option<Arc<dyn Generator>>,
+    use_config_models: bool,
 }
 
 impl QmdBuilder {
@@ -557,6 +633,21 @@ impl QmdBuilder {
         self
     }
 
+    /// Whether the config's `models:` block may steer *runtime* model
+    /// resolution — `true` by default. Pass `false` for an untrusted
+    /// project-local `.qmd` config (upstream `resolveModelsForRuntime`,
+    /// qmd.ts:2183-2188): declared model URIs and `embed_pooling` are
+    /// ignored while `QMD_*_MODEL` environment variables still apply.
+    ///
+    /// The flag does not affect [`Qmd::ensure_models_configured`]:
+    /// upstream `ensureModelsConfiguredForCli` (qmd.ts:2143-2163) always
+    /// resolves the *declared* triple, so a config with custom URIs is
+    /// left untouched rather than overwritten with env/defaults.
+    pub const fn use_config_models(mut self, allow: bool) -> Self {
+        self.use_config_models = allow;
+        self
+    }
+
     /// Open the database, initialize schema/versioning, and sync the
     /// config source into `store_collections`.
     ///
@@ -584,6 +675,7 @@ impl QmdBuilder {
             embedder: Mutex::new(self.embedder),
             reranker: Mutex::new(self.reranker),
             generator: Mutex::new(self.generator),
+            use_config_models: self.use_config_models,
             cache_writes: AtomicUsize::new(0),
         })
     }
@@ -599,6 +691,7 @@ impl Qmd {
             embedder: None,
             reranker: None,
             generator: None,
+            use_config_models: true,
         }
     }
 
@@ -608,9 +701,100 @@ impl Qmd {
         &self.db_path
     }
 
+    /// Initialize a project-local index at `cwd` — upstream
+    /// `initLocalIndex` (cli/qmd.ts:447-477), minus the `ready to go`
+    /// line (printing stays with the CLI).
+    ///
+    /// Refuses to run in the home directory, creates `.qmd/` next to
+    /// `cwd`, then picks `index.yaml` over `index.yml` when one already
+    /// exists and writes a fresh config pinning the resolved model
+    /// triple; an existing config instead goes through
+    /// [`Qmd::ensure_models_configured`]. The database is opened at
+    /// `.qmd/index-rs.sqlite` ([`crate::paths::local_db_path`] — a
+    /// deliberate `-rs` deviation from upstream's `index.sqlite`) and
+    /// the config mirror is synced before the handle is dropped.
+    ///
+    /// Returns the config file path so the caller can report it and run
+    /// the local-config trust flow.
+    ///
+    /// # Errors
+    /// [`Error::LocalInitRefused`] when `cwd` is the home directory —
+    /// its `reason` is the upstream message verbatim. Propagates
+    /// [`Error::Io`], [`Error::Config`] (a malformed existing config)
+    /// and [`Error::Db`].
+    pub fn init_local(env: &Environment, cwd: &Path) -> Result<PathBuf> {
+        if same_directory(cwd, &crate::paths::home_dir(env), env) {
+            return Err(Error::LocalInitRefused {
+                reason: "Refusing to initialize a local index in $HOME. The global index is \
+                         automatically created; run `qmd collection add <path>` for the global \
+                         index, or run `qmd init` inside a project folder."
+                    .to_owned(),
+            });
+        }
+
+        let qmd_dir = cwd.join(".qmd");
+        std::fs::create_dir_all(&qmd_dir).map_err(|source| Error::Io {
+            path: qmd_dir.clone(),
+            source,
+        })?;
+        let yaml_path = qmd_dir.join("index.yaml");
+        let config_path = if yaml_path.exists() {
+            yaml_path
+        } else {
+            qmd_dir.join("index.yml")
+        };
+
+        let existed = config_path.exists();
+        if !existed {
+            // Fresh local config, like upstream `saveConfig` of the
+            // resolved triple — `collections: {}` + `models:` block.
+            let models = crate::llm::resolve_models(None, env);
+            crate::config::save(
+                &config_path,
+                &Config {
+                    models: Some(ModelsConfig {
+                        embed: Some(models.embed),
+                        generate: Some(models.generate),
+                        rerank: Some(models.rerank),
+                        ..ModelsConfig::default()
+                    }),
+                    ..Config::default()
+                },
+            )?;
+        }
+
+        // Opening the handle runs `sync_config_to_db` for file sources;
+        // `ensure_models_configured` then pins the triple into an
+        // existing config like upstream's `ensureModelsConfiguredForCli`
+        // (cli/qmd.ts:469-470).
+        let qmd = Self::builder(crate::paths::local_db_path(&config_path))
+            .environment(env.clone())
+            .config_file(&config_path)
+            .build()?;
+        if existed {
+            let _resolved = qmd.ensure_models_configured();
+        }
+        qmd.close()?;
+        Ok(config_path)
+    }
+
     /// Connection guard for [`Maintenance`] and internal helpers.
     pub(crate) fn lock_conn(&self) -> MutexGuard<'_, Connection> {
         lock(&self.conn)
+    }
+
+    /// The config's `models:` block as model resolution may use it —
+    /// `None` under `use_config_models(false)` so an untrusted
+    /// project-local config's declared URIs are ignored (upstream
+    /// `resolveModelsForRuntime` falls back to `resolveModels()`,
+    /// qmd.ts:2183-2188); `QMD_*_MODEL` env vars still apply inside
+    /// `resolve_*_model`.
+    const fn config_models<'a>(&self, config: &'a Config) -> Option<&'a ModelsConfig> {
+        if self.use_config_models {
+            config.models.as_ref()
+        } else {
+            None
+        }
     }
 
     /// The model identity a vector row would be tagged with: an injected
@@ -618,7 +802,7 @@ impl Qmd {
     /// `QMD_EMBED_MODEL` → upstream default (llm.ts:303-305).
     fn embed_model(&self, config: &Config) -> String {
         lock(&self.embedder).as_ref().map_or_else(
-            || crate::llm::resolve_embed_model(config.models.as_ref(), &self.env),
+            || crate::llm::resolve_embed_model(self.config_models(config), &self.env),
             |e| e.model_id().to_owned(),
         )
     }
@@ -634,9 +818,7 @@ impl Qmd {
             .filter(|s| !s.is_empty())
             .map(ToOwned::to_owned)
             .or_else(|| {
-                config
-                    .models
-                    .as_ref()
+                self.config_models(config)
                     .and_then(|m| m.embed_pooling)
                     .unwrap_or_default()
                     .fingerprint_extra()
@@ -691,11 +873,9 @@ impl Qmd {
         reason = "the `not(llama)` twin returns Err — the signature must be uniform"
     )]
     fn build_default_embedder(&self, config: &Config) -> Result<Arc<dyn Embedder>> {
-        let model_uri = crate::llm::resolve_embed_model(config.models.as_ref(), &self.env);
+        let model_uri = crate::llm::resolve_embed_model(self.config_models(config), &self.env);
         let mode = crate::llm::llamacpp::EmbeddingMode::from(
-            config
-                .models
-                .as_ref()
+            self.config_models(config)
                 .and_then(|m| m.embed_pooling)
                 .unwrap_or_default(),
         );
@@ -773,7 +953,7 @@ impl Qmd {
         reason = "the `not(llama)` twin returns Err — the signature must be uniform"
     )]
     fn build_default_reranker(&self, config: &Config) -> Result<Arc<dyn Reranker>> {
-        let model_uri = crate::llm::resolve_rerank_model(config.models.as_ref(), &self.env);
+        let model_uri = crate::llm::resolve_rerank_model(self.config_models(config), &self.env);
         Ok(Arc::new(crate::llm::llamacpp::LazyLlamaReranker::new(
             model_uri,
             self.env.clone(),
@@ -795,7 +975,7 @@ impl Qmd {
         reason = "the `not(llama)` twin returns Err — the signature must be uniform"
     )]
     fn build_default_generator(&self, config: &Config) -> Result<Arc<dyn Generator>> {
-        let model_uri = crate::llm::resolve_generate_model(config.models.as_ref(), &self.env);
+        let model_uri = crate::llm::resolve_generate_model(self.config_models(config), &self.env);
         Ok(Arc::new(crate::llm::llamacpp::LazyLlamaGenerator::new(
             model_uri,
             self.env.clone(),
@@ -848,6 +1028,11 @@ impl Qmd {
     /// env/defaults instead of failing. In `DbOnly` mode there is no
     /// config source to pin, so the resolved values are returned
     /// without a write.
+    ///
+    /// Resolution here always reads the *declared* `models:` block —
+    /// [`QmdBuilder::use_config_models`] only gates the runtime
+    /// resolution used by search/embed, mirroring upstream where
+    /// `ensureModelsConfiguredForCli` never consults the trust gate.
     #[must_use]
     pub fn ensure_models_configured(&self) -> ResolvedModels {
         self.try_ensure_models_configured()
@@ -857,6 +1042,10 @@ impl Qmd {
     /// Fallible body of [`Qmd::ensure_models_configured`].
     fn try_ensure_models_configured(&self) -> Result<ResolvedModels> {
         let config = self.config()?;
+        // Upstream `resolveModels(config.models)` — the declared block,
+        // not the `use_config_models` runtime gate: an untrusted local
+        // config keeps its custom URIs instead of being overwritten
+        // with env/defaults (which would silently re-arm nothing).
         let models = crate::llm::resolve_models(config.models.as_ref(), &self.env);
         let differs = config.models.as_ref().is_none_or(|m| {
             m.embed.as_deref() != Some(models.embed.as_str())
@@ -901,7 +1090,10 @@ impl Qmd {
                 });
             }
             let duplicate = cfg.collections.iter().find(|(_, coll)| {
-                coll.path == spec.path && coll.pattern_or_default() == spec.pattern_or_default()
+                // Upstream compares the *stored* `pattern` verbatim
+                // (cli/qmd.ts:1845-1846): a collection with no `pattern`
+                // key never collides, matching `undefined === glob`.
+                coll.path == spec.path && coll.pattern == spec.pattern
             });
             if let Some((existing, _)) = duplicate {
                 return Err(Error::DuplicateCollectionSource {
@@ -922,10 +1114,13 @@ impl Qmd {
         Ok(())
     }
 
-    /// Remove a collection by name. The collection's documents are
-    /// deactivated (hidden from search, reclaimable by `cleanup`), which
-    /// matches CLI semantics rather than the upstream SDK behavior of
-    /// leaving them searchable.
+    /// Remove a collection by name — upstream CLI `removeCollection`
+    /// (store.ts:3680-3695): its `documents` rows are hard-deleted and
+    /// content hashes left unreferenced by any *active* document are
+    /// dropped. (The config-vanish path in `sync_config_to_db` still
+    /// deactivates — a deliberate improvement over upstream, which
+    /// leaves them searchable; `collection rm` is the explicit-delete
+    /// path.)
     ///
     /// Returns `Ok(None)` when the name is unknown.
     ///
@@ -933,10 +1128,11 @@ impl Qmd {
     /// Propagates config I/O and database errors.
     pub fn remove_collection(&self, name: &str) -> Result<Option<CollectionRemoval>> {
         Ok(self
-            .mutate_config(|cfg| Ok(cfg.collections.shift_remove(name).map(|_| ())))?
-            .map(|((), outcome)| CollectionRemoval {
-                documents_deactivated: outcome.documents_deactivated,
-            }))
+            .mutate_config_then(
+                |cfg| Ok(cfg.collections.shift_remove(name).map(|_| ())),
+                |conn| store::collections::remove_collection_rows(conn, name),
+            )?
+            .map(|((), removal, _)| removal))
     }
 
     /// Rename a collection, updating its documents' `collection` field
@@ -991,7 +1187,10 @@ impl Qmd {
                 coll.update.clone_from(update);
             }
             if let Some(include) = settings.include_by_default {
-                coll.include_by_default = Some(include);
+                // Upstream collections.ts:299-304 — `true` deletes the
+                // key (absent means default-included); only `false` is
+                // persisted.
+                coll.include_by_default = (!include).then_some(false);
             }
             Ok(Some(()))
         })?;
@@ -1022,9 +1221,13 @@ impl Qmd {
         for coll in store::get_store_collections(&conn)? {
             let (doc_count, active_count, last_modified): (i64, i64, Option<String>) = conn
                 .query_row(
+                    // Upstream `listCollections` (store.ts:3648-3668):
+                    // `MAX(d.modified_at)` is *not* active-filtered — a
+                    // just-removed document still counts as the last
+                    // update time, matching upstream's display.
                     "SELECT COUNT(*), \
                      SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), \
-                     MAX(CASE WHEN active = 1 THEN modified_at END) \
+                     MAX(modified_at) \
                      FROM documents WHERE collection = ?",
                     [&coll.name],
                     |r| {
@@ -1146,9 +1349,13 @@ impl Qmd {
                 let Some(map) = coll.context.as_mut() else {
                     return Ok(None);
                 };
-                if map.shift_remove(path_prefix).is_none() {
+                // Upstream `collection?.context?.[pathPrefix]`
+                // (collections.ts:425) — an empty-string context is
+                // JS-falsy: reported missing and left in place.
+                if map.get(path_prefix).is_none_or(String::is_empty) {
                     return Ok(None);
                 }
+                map.shift_remove(path_prefix);
                 if map.is_empty() {
                     coll.context = None;
                 }
@@ -1208,7 +1415,12 @@ impl Qmd {
     /// Collections come from the `store_collections` mirror (like
     /// upstream, not the config file), `llm_cache` is cleared first, then
     /// each collection runs `reindexCollection`. `progress` fires once
-    /// per file, skipped files included.
+    /// per file — skipped files included, whitespace-only files
+    /// excluded (they tick `processed` silently, store.ts:1685-1687).
+    ///
+    /// Upstream's per-collection `update:` hooks are not run here: the
+    /// CLI's `update` interleaves them between per-collection
+    /// [`Qmd::update_collection`] calls (cli/qmd.ts:934-1005).
     ///
     /// # Errors
     /// Propagates glob, I/O and database errors.
@@ -1245,44 +1457,17 @@ impl Qmd {
 
         let mut report = UpdateReport {
             collections: filtered.len(),
-            indexed: 0,
-            updated: 0,
-            unchanged: 0,
-            removed: 0,
-            skipped: 0,
-            metadata_errors: 0,
-            needs_embedding: 0,
+            ..UpdateReport::default()
         };
         for col in &filtered {
-            let ignore = col.ignore.clone().unwrap_or_default();
-            let pattern = if col.pattern.is_empty() {
-                crate::config::DEFAULT_PATTERN
-            } else {
-                &col.pattern
-            };
-            let name = col.name.clone();
-            let mut on_file = |fp: &crate::collection::index::FileProgress<'_>| {
-                progress(&UpdateProgress {
-                    collection: name.clone(),
-                    file: fp.file.to_owned(),
-                    current: fp.current,
-                    total: fp.total,
-                });
-            };
-            let r = crate::collection::index::reindex_collection(
-                &mut conn,
-                Path::new(&col.path),
-                pattern,
-                &col.name,
-                &ignore,
-                &mut on_file,
-            )?;
+            let r = reindex_locked(&mut conn, col, progress)?;
             report.indexed += r.indexed;
             report.updated += r.updated;
             report.unchanged += r.unchanged;
             report.removed += r.removed;
-            report.skipped += r.skipped_files.len();
+            report.skipped += r.skipped;
             report.metadata_errors += r.metadata_errors;
+            report.per_collection.push(r);
         }
         report.needs_embedding = store::status::hashes_needing_embedding(
             &conn,
@@ -1291,6 +1476,61 @@ impl Qmd {
             fingerprint_extra.as_deref(),
         )?;
         Ok(report)
+    }
+
+    /// Re-index one collection by name — the building block the CLI's
+    /// `update` interleaves with per-collection `update:` hooks
+    /// (cli/qmd.ts:947-995): the caller decides the gate, runs the hook,
+    /// then calls this. Reports per-file progress like [`Qmd::update`]
+    /// and does not clear `llm_cache` — the caller clears once per run.
+    ///
+    /// # Errors
+    /// [`Error::CollectionNotFound`] when `name` is not in
+    /// `store_collections`; propagates glob, I/O and database errors.
+    #[allow(
+        clippy::significant_drop_tightening,
+        reason = "the connection guard is held for the whole reindex"
+    )]
+    pub fn update_collection(
+        &self,
+        name: &str,
+        progress: &mut dyn FnMut(&UpdateProgress),
+    ) -> Result<CollectionUpdateReport> {
+        let mut conn = lock(&self.conn);
+        let cols = store::get_store_collections(&conn)?;
+        let col =
+            cols.iter()
+                .find(|c| c.name == name)
+                .ok_or_else(|| Error::CollectionNotFound {
+                    name: name.to_owned(),
+                })?;
+        reindex_locked(&mut conn, col, progress)
+    }
+
+    /// The counts `qmd update` reports in its epilogue — upstream
+    /// `getHashesNeedingEmbedding`, the `content_vectors` total and
+    /// `countOrphanedVectors` (cli/qmd.ts:1008-1019). `needs_embedding`
+    /// resolves the embedding model like [`Qmd::status`]; upstream's
+    /// literal `DEFAULT_EMBED_MODEL` (cli/qmd.ts:1008) under-counts when
+    /// a custom model is configured.
+    ///
+    /// # Errors
+    /// Propagates config load and database errors.
+    pub fn update_tail_counts(&self) -> Result<UpdateTailCounts> {
+        let config = self.config()?;
+        let model = self.embed_model(&config);
+        let fingerprint_extra = self.embed_fingerprint_extra(&config);
+        let conn = lock(&self.conn);
+        Ok(UpdateTailCounts {
+            needs_embedding: store::status::hashes_needing_embedding(
+                &conn,
+                None,
+                &model,
+                fingerprint_extra.as_deref(),
+            )?,
+            vector_total: store::status::count_content_vectors(&conn)?,
+            orphaned_vectors: store::status::count_orphaned_vectors(&conn)?,
+        })
     }
 
     /// Fetch a single document by `qmd://` URI, filesystem path,
@@ -1783,12 +2023,15 @@ impl Qmd {
         &self,
         f: impl FnOnce(&mut Config) -> Result<Option<T>>,
     ) -> Result<Option<(T, store::SyncOutcome)>> {
-        self.mutate_config_then(f, |_| Ok(()))
+        Ok(self
+            .mutate_config_then(f, |_| Ok(()))?
+            .map(|(v, (), outcome)| (v, outcome)))
     }
 
     /// [`Qmd::mutate_config`] with an extra step that runs after the
     /// config is persisted but before the sync pass (used by rename to
-    /// move `documents` rows first).
+    /// move `documents` rows first). Its value travels in the middle
+    /// tuple slot so removals can report the rows they deleted.
     ///
     /// Failure semantics: if persistence succeeded but `between` or the
     /// sync fails, the config file (or inline state) is already updated
@@ -1797,11 +2040,11 @@ impl Qmd {
         clippy::significant_drop_tightening,
         reason = "guards must live until the sync transaction completes"
     )]
-    fn mutate_config_then<T>(
+    fn mutate_config_then<T, B>(
         &self,
         f: impl FnOnce(&mut Config) -> Result<Option<T>>,
-        between: impl FnOnce(&Connection) -> Result<()>,
-    ) -> Result<Option<(T, store::SyncOutcome)>> {
+        between: impl FnOnce(&Connection) -> Result<B>,
+    ) -> Result<Option<(T, B, store::SyncOutcome)>> {
         let mut guard = lock(&self.config);
         let mut config = self.load_config(&guard)?;
         let Some(value) = f(&mut config)? else {
@@ -1813,8 +2056,8 @@ impl Qmd {
             ConfigSource::DbOnly => {}
         }
         let mut conn = lock(&self.conn);
-        between(&conn)?;
+        let between_value = between(&conn)?;
         let outcome = store::sync_config_to_db(&mut conn, &config, true)?;
-        Ok(Some((value, outcome)))
+        Ok(Some((value, between_value, outcome)))
     }
 }

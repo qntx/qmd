@@ -3,4 +3,5 @@
 pub(crate) mod index;
 mod scan;
 
+pub use index::{CollectionUpdateReport, SkippedFile};
 pub use scan::split_glob_mask;

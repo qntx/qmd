@@ -13,12 +13,16 @@
 //! show/install` lines — both commands land in P4.2/P4.4, so our help
 //! lists implemented commands only.
 //!
-//! `CLI Skills`, `CLI Embed`, `CLI Skill Commands`, `CLI Init`, `CLI
-//! Add`, `CLI Status`/`doctor`, `CLI Update`, `CLI Add-Context`, `CLI
-//! Cleanup`, `CLI Context Management`, `CLI Collection Commands`,
-//! `collection ignore patterns` (update-side), `status and collection
-//! list hide filesystem paths`, `mcp http daemon` and `mcp stdio
-//! launcher` are all out of P4.1 scope.
+//! `CLI Skills`, `CLI Embed`, `CLI Skill Commands`, `CLI
+//! Status`/`doctor` (beyond the two status assertions in
+//! `cli_maintenance.rs`), `mcp http daemon` and `mcp stdio launcher`
+//! remain out of scope. The mutation describes live in
+//! `cli_collections.rs` (`CLI Add`, `CLI Collection Commands`,
+//! `collection ignore patterns`), `cli_contexts.rs` (`CLI Add-Context`,
+//! `CLI Context Management`), `cli_maintenance.rs` (`CLI Init`,
+//! `CLI Update`, `CLI Cleanup`, path hiding) and `cli_trust.rs`
+//! (`local-config-trust-cli.test.ts`, `update-hook-trust-cli.test.ts`,
+//! the CLI half of `local-config.test.ts`).
 
 #![allow(
     unused_crate_dependencies,
@@ -36,36 +40,13 @@
 
 mod common;
 
-use common::{CliEnv, collection_yaml};
+use common::{CliEnv, collection_yaml, fixtures_corpus};
 
 /// The corpus upstream's `beforeAll` writes plus a `fixtures`
 /// collection over it.
 fn env_with_fixtures() -> CliEnv {
     let env = CliEnv::new();
-    env.write_file(
-        "README.md",
-        "# Test Project\n\nThis is a test project for QMD CLI testing.\n\n## Features\n\n- Full-text search with BM25\n- Vector similarity search\n- Hybrid search with reranking\n",
-    );
-    env.write_file(
-        "notes/meeting.md",
-        "# Team Meeting Notes\n\nDate: 2024-01-15\n\n## Attendees\n- Alice\n- Bob\n- Charlie\n\n## Discussion Topics\n- Project timeline review\n- Resource allocation\n- Technical debt prioritization\n\n## Action Items\n1. Alice to update documentation\n2. Bob to fix authentication bug\n3. Charlie to review pull requests\n",
-    );
-    env.write_file(
-        "notes/ideas.md",
-        "# Product Ideas\n\n## Feature Requests\n- Dark mode support\n- Keyboard shortcuts\n- Export to PDF\n\n## Technical Improvements\n- Improve search performance\n- Add caching layer\n- Optimize database queries\n",
-    );
-    env.write_file(
-        "docs/api.md",
-        "# API Documentation\n\n## Endpoints\n\n### GET /search\nSearch for documents.\n\nParameters:\n- q: Search query (required)\n- limit: Max results (default: 10)\n\n### GET /document/:id\nRetrieve a specific document.\n\n### POST /index\nIndex new documents.\n",
-    );
-    env.write_file(
-        "test1.md",
-        "# Test Document 1\n\nThis is the first test document.\n\nIt has multiple lines for testing line numbers.\nLine 6 is here.\nLine 7 is here.\n",
-    );
-    env.write_file(
-        "test2.md",
-        "# Test Document 2\n\nThis is the second test document.\n",
-    );
+    fixtures_corpus(&env);
     env.write_config(
         "index",
         &collection_yaml("fixtures", &env.fixtures, "**/*.md"),

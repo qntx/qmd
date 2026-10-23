@@ -271,6 +271,7 @@ collections:
     let p_zeta = emitted.find("zeta:").expect("zeta");
     let p_2024 = emitted
         .find("'2024':")
+        .or_else(|| emitted.find("\"2024\":"))
         .or_else(|| emitted.find("2024:"))
         .expect("2024");
     let p_alpha = emitted.find("alpha:").expect("alpha");

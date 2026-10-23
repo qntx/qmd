@@ -31,34 +31,43 @@ pub(crate) struct FileProgress<'a> {
     pub(crate) total: usize,
 }
 
-/// A file that could not be indexed.
-#[derive(Debug)]
-pub(crate) struct SkippedFile {
+/// A file that could not be indexed — upstream `ReindexSkippedFile`
+/// (store.ts:1595-1598).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SkippedFile {
     /// Relative file path, `/`-separated.
-    #[allow(dead_code, reason = "kept for per-file diagnostics in P4 CLI")]
-    pub(crate) file: String,
+    pub file: String,
     /// Skip reason: `OUTSIDE_COLLECTION` or an errno-style code.
-    #[allow(dead_code, reason = "kept for per-file diagnostics in P4 CLI")]
-    pub(crate) code: String,
+    pub code: String,
 }
 
-/// Per-collection result, mirroring upstream `ReindexResult`.
-#[derive(Debug, Default)]
-pub(crate) struct ReindexReport {
+/// Per-collection result, mirroring upstream `ReindexResult`
+/// (store.ts:1600-1610) — returned by
+/// [`crate::Qmd::update_collection`] and aggregated by
+/// [`crate::Qmd::update`].
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct CollectionUpdateReport {
+    /// Files matched by the glob (`result.total` in upstream, needed
+    /// for `No files found matching pattern.`).
+    pub scanned: usize,
     /// Newly indexed files.
-    pub(crate) indexed: usize,
+    pub indexed: usize,
     /// Re-indexed files whose hash or title changed.
-    pub(crate) updated: usize,
+    pub updated: usize,
     /// Files already up to date.
-    pub(crate) unchanged: usize,
+    pub unchanged: usize,
     /// Documents deactivated because the file vanished.
-    pub(crate) removed: usize,
+    pub removed: usize,
     /// Orphan `content` rows removed.
-    pub(crate) orphaned_cleaned: usize,
-    /// Files skipped (see [`SkippedFile::code`]).
-    pub(crate) skipped_files: Vec<SkippedFile>,
+    pub orphaned_cleaned: usize,
+    /// Files skipped (`skipped_files.len()`).
+    pub skipped: usize,
+    /// Files skipped, with reason codes.
+    pub skipped_files: Vec<SkippedFile>,
     /// Documents whose frontmatter metadata failed extraction.
-    pub(crate) metadata_errors: usize,
+    pub metadata_errors: usize,
 }
 
 /// Upstream `fsErrorCode` (store.ts:1582-1589): Node errno names for the
@@ -105,13 +114,16 @@ pub(crate) fn reindex_collection(
     collection_name: &str,
     ignore: &[String],
     on_progress: &mut dyn FnMut(&FileProgress<'_>),
-) -> Result<ReindexReport> {
+) -> Result<CollectionUpdateReport> {
     let files = scan_collection(collection_path, glob_pattern, ignore)?;
     let total = files.len();
     let tx = conn.transaction().map_err(DbError::from)?;
     let now = documents::now_iso();
 
-    let mut report = ReindexReport::default();
+    let mut report = CollectionUpdateReport {
+        scanned: total,
+        ..CollectionUpdateReport::default()
+    };
     let mut seen_paths: HashSet<String> = HashSet::with_capacity(total);
     let mut processed = 0usize;
 
@@ -155,14 +167,11 @@ pub(crate) fn reindex_collection(
         };
 
         // Whitespace-only files are skipped *after* being marked seen:
-        // upstream keeps the previous document active (store.ts:1685-1687).
+        // upstream keeps the previous document active, and `processed`
+        // increments without an `onProgress` call — the only file class
+        // that ticks the counter silently (store.ts:1685-1687).
         if crate::chunk::js_trim(&content).is_empty() {
             processed += 1;
-            on_progress(&FileProgress {
-                file: relative_file,
-                current: processed,
-                total,
-            });
             continue;
         }
 
@@ -237,5 +246,6 @@ pub(crate) fn reindex_collection(
 
     report.orphaned_cleaned = documents::cleanup_orphaned_content(&tx)?;
     tx.commit().map_err(DbError::from)?;
+    report.skipped = report.skipped_files.len();
     Ok(report)
 }

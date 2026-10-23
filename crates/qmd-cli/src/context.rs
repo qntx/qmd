@@ -116,12 +116,37 @@ impl CliContext {
     /// `Qmd` handle, then pin resolved models into the config; its
     /// failure is ignored like upstream's `catch`.
     ///
+    /// Mirrors `modelsForLlm = localConfigIsFullyTrusted() ? active :
+    /// resolveModels()` (qmd.ts:164): an untrusted project-local config's
+    /// declared `models:` URIs are dropped from *runtime* resolution via
+    /// [`QmdBuilder::use_config_models`]. The pin itself
+    /// (`ensure_models_configured`) still resolves the declared triple,
+    /// like `ensureModelsConfiguredForCli`.
+    ///
     /// # Errors
     /// [`qmd::Error`] from `Qmd::builder(...).build()`.
     pub(crate) fn open_store(&self, env: &Environment) -> Result<Qmd> {
+        let config_path = self.config_path(env);
+        // `localConfigIsFullyTrusted` throws upstream only through
+        // `loadConfig` — a missing/broken file there lands in getStore's
+        // catch and leaves the default models; fail closed the same way.
+        let allow = qmd::config::load(&config_path)
+            .is_ok_and(|config| qmd::trust::local_config_fully_trusted(&config_path, &config, env));
+        self.open_store_with_models(env, allow)
+    }
+
+    /// [`open_store`] with an explicit `use_config_models` flag —
+    /// `status` passes `true` because upstream deliberately displays the
+    /// declared YAML values (`resolveModelsForCli`, qmd.ts:543+675-678)
+    /// even when the runtime models are gated.
+    ///
+    /// # Errors
+    /// [`qmd::Error`] from `Qmd::builder(...).build()`.
+    pub(crate) fn open_store_with_models(&self, env: &Environment, allow: bool) -> Result<Qmd> {
         let qmd = Qmd::builder(&self.db_path)
             .environment(env.clone())
             .config_file(self.config_path(env))
+            .use_config_models(allow)
             .build()?;
         let _ = qmd.ensure_models_configured();
         Ok(qmd)

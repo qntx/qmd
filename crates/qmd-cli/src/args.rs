@@ -36,6 +36,20 @@ pub(crate) enum Command {
     MultiGet(MultiGetArgs),
     /// `ls` with an optional path argument.
     Ls(LsArgs),
+    /// `collection` — state-mutating collection management (P4.2).
+    Collection(CollectionArgs),
+    /// `context` — collection/global context management (P4.2).
+    Context(ContextArgs),
+    /// `init` — create a project-local `.qmd` index.
+    Init,
+    /// `status` — index/collection health report.
+    Status,
+    /// `update` — re-index collections (runs `update:` hooks).
+    Update,
+    /// `cleanup` — maintenance vacuum/compaction (`--dry-run` previews).
+    Cleanup(CleanupArgs),
+    /// `trust` — approve/inspect/revoke local-config gating.
+    Trust(TrustArgs),
     /// Any unregistered first positional (`help`, `version`, …) —
     /// upstream's `default:` branch.
     Unknown(UnknownArgs),
@@ -184,6 +198,62 @@ pub(crate) struct LsArgs {
     pub(crate) path: Vec<String>,
 }
 
+/// Arguments for `qmd collection` (upstream `case "collection"`,
+/// qmd.ts:4513-4679). Upstream dispatches on `cli.args[0]` with a
+/// `switch`, so unknown subcommands fall through to a custom
+/// `Unknown subcommand:` error rather than a clap diagnostic — the
+/// positionals stay a flat `Vec` for the same reason.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct CollectionArgs {
+    /// Subcommand plus its positionals — upstream `cli.args`
+    /// (`args[0]` subcommand, `args[1..]` names/paths/hook words).
+    #[arg(num_args = 0..)]
+    pub(crate) args: Vec<String>,
+    /// `--name <name>` for `add` (upstream `cli.values.name`).
+    #[arg(long)]
+    pub(crate) name: Option<String>,
+    /// `--mask <glob>` for `add` (upstream `collectionGlobFromCli`,
+    /// qmd.ts:1824-1827).
+    #[arg(long)]
+    pub(crate) mask: Option<String>,
+    /// `--glob <glob>` — `--mask` alias (upstream #536).
+    #[arg(long)]
+    pub(crate) glob: Option<String>,
+}
+
+/// Arguments for `qmd context` (upstream `case "context"`,
+/// qmd.ts:4404-4478). `cli.args[0]` is the subcommand; `add` splits the
+/// rest into `[path] "text"`.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct ContextArgs {
+    /// Subcommand plus positionals — upstream `cli.args`.
+    #[arg(num_args = 0..)]
+    pub(crate) args: Vec<String>,
+}
+
+/// Options for `qmd cleanup` (upstream `case "cleanup"`,
+/// qmd.ts:4979-5019).
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct CleanupArgs {
+    /// `--dry-run` — report what a cleanup would remove.
+    #[arg(long = "dry-run")]
+    pub(crate) dry_run: bool,
+}
+
+/// Arguments for `qmd trust` (upstream `case "trust"`, qmd.ts:4701-4704
+/// → `manageTrust`, qmd.ts:850-905). `cli.args[0]` is `list`, `revoke`
+/// or empty.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct TrustArgs {
+    /// Subcommand positionals — upstream `cli.args`.
+    #[arg(num_args = 0..)]
+    pub(crate) args: Vec<String>,
+}
+
 #[derive(Parser)]
 #[command(
     name = "qmd",
@@ -211,6 +281,13 @@ enum RawCommand {
     #[command(name = "multi-get")]
     MultiGet(MultiGetArgs),
     Ls(LsArgs),
+    Collection(CollectionArgs),
+    Context(ContextArgs),
+    Init,
+    Status,
+    Update,
+    Cleanup(CleanupArgs),
+    Trust(TrustArgs),
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -225,6 +302,13 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         RawCommand::Get(get) => Command::Get(get),
         RawCommand::MultiGet(multi) => Command::MultiGet(multi),
         RawCommand::Ls(ls) => Command::Ls(ls),
+        RawCommand::Collection(collection) => Command::Collection(collection),
+        RawCommand::Context(context) => Command::Context(context),
+        RawCommand::Init => Command::Init,
+        RawCommand::Status => Command::Status,
+        RawCommand::Update => Command::Update,
+        RawCommand::Cleanup(cleanup) => Command::Cleanup(cleanup),
+        RawCommand::Trust(trust) => Command::Trust(trust),
         RawCommand::Other(words) => Command::Unknown(UnknownArgs(words)),
     });
     Ok(ParsedCli {
