@@ -24,6 +24,10 @@ pub(crate) fn show(io: &mut Io<'_>, ctx: &CliContext) {
         "  qmd vsearch <query>           - Vector similarity only",
         "  qmd get <file>[:from[:count]] - Show a document (line-numbered; #docid in header)",
         "  qmd multi-get <pattern>       - Batch fetch via glob or comma-separated list",
+        // Upstream also lists `mcp`/`bench` here (qmd.ts:3650-3651);
+        // they are not ported, so the block stops at `skill`.
+        "  qmd skills list/get/path      - List and retrieve bundled runtime skills",
+        "  qmd skill show/install        - Show or install the QMD skill",
         "",
         "Collections & context:",
         "  qmd collection add/list/remove/rename/show   - Manage indexed folders",

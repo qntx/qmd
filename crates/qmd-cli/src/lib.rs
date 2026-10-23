@@ -2,7 +2,8 @@
 //!
 //! Ports upstream `tobi/qmd` `src/cli/qmd.ts` dispatch (qmd.ts:4361-5032)
 //! and the read-only commands `search` (with its `outputResults`
-//! renderers, qmd.ts:2388-2704), `get`, `multi-get` and `ls`. The crate
+//! renderers, qmd.ts:2388-2704), `get`, `multi-get`, `ls` and the
+//! `skills`/`skill`/`--skill` surface (P4.4). The crate
 //! is a library plus a thin `qmd` binary: `main` only assembles the
 //! real process environment and calls [`run`], so tests drive the CLI
 //! in-process or through `CARGO_BIN_EXE_qmd` (P4-D1).
@@ -60,6 +61,7 @@ mod output;
 mod progress;
 mod query;
 mod search;
+mod skills;
 mod slice;
 
 pub use output::Io;
@@ -116,10 +118,26 @@ pub fn run(
     }
     let mut ctx = context::CliContext::resolve(&env, cwd, parsed.index.as_deref());
 
-    // Upstream precedence: --version > --skill (P4.4) > --help
+    // Upstream precedence: --version > --skill > --help
     // (qmd.ts:4374-4401).
     if parsed.version {
         let _ = writeln!(io.out, "{}", version_string());
+        return ExitCode::SUCCESS;
+    }
+    // `cli.values.skill` (qmd.ts:4379-4382) — `qmd skill show` alias.
+    // Upstream's unguarded `showSkill()` would crash on a missing
+    // skill; `Failure::Error` renders the message + doctor hint
+    // instead (deliberate clean-up).
+    if parsed.skill {
+        return exit_code(skills::show_skill(&env, &ctx, io), io);
+    }
+    // `cli.values.help && cli.command === "skill"` (qmd.ts:4384-4396)
+    // — skill usage, exit 0; checked before the general help branch
+    // like upstream.
+    if parsed.help
+        && let Some(args::Command::Skill(_)) = parsed.command
+    {
+        skills::print_skill_usage(io);
         return ExitCode::SUCCESS;
     }
     if parsed.help {
@@ -148,6 +166,8 @@ pub fn run(
         args::Command::Vsearch(query_args) => query::vsearch(&env, &ctx, &query_args, io),
         args::Command::Query(query_args) => query::query(&env, &ctx, &query_args, io),
         args::Command::Doctor => doctor::doctor(&env, &ctx, io),
+        args::Command::Skills(skills_args) => skills::run_skills(&env, &ctx, &skills_args, io),
+        args::Command::Skill(skill_args) => skills::run_skill(&env, &ctx, &skill_args, io),
         args::Command::Unknown(unknown) => {
             let _ = writeln!(io.err, "Unknown command: {}", unknown.command());
             let _ = writeln!(io.err, "Run 'qmd --help' for usage.");
@@ -155,6 +175,12 @@ pub fn run(
             return ExitCode::from(1);
         }
     };
+    exit_code(result, io)
+}
+
+/// Map a command result onto the process exit code — shared by the
+/// command dispatch and the `--skill` early return.
+fn exit_code(result: Result<(), Failure>, io: &mut Io<'_>) -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(Failure::Reported(code)) => ExitCode::from(code),

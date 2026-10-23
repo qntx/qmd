@@ -9,7 +9,11 @@ default: all
 # `--all-features` is not a supported configuration (see crates/qmd/Cargo.toml).
 FEATURES := "--features llama,testing"
 
-all: fmt clippy-fix deny test doc-check
+all: fmt clippy-fix deny test doc-check lint-docs
+
+# Docs lint mirrors the shared ci-docs workflow (markdownlint-cli2).
+lint-docs:
+    npx --yes markdownlint-cli2 "docs/*.mdx"
 
 list:
     @just --list

@@ -44,7 +44,8 @@ is the better default.
 | --- | --- |
 | `qmd collection add <path>` | Create/update a collection |
 | `qmd collection list/remove/rename/show` | Manage collections |
-| `qmd context add/list/check/rm` | Manage path contexts shown in results |
+| `qmd init` | Create a project-local `.qmd` index (refuses `$HOME`) |
+| `qmd context add/list/rm` | Manage path contexts shown in results |
 | `qmd update` | Re-index collections (runs update hooks first) |
 | `qmd status` | Index status and collection summary |
 | `qmd trust` | Approve a checked-in `.qmd` config's hooks/paths/models |
@@ -101,6 +102,35 @@ validation, device mode and a native GPU probe (skip with
 `QMD_FORCE_CPU=1`), embedding freshness/fingerprint groups and a
 vector-sample reproduction check. Findings end in a deduplicated
 `Recommended next steps` list.
+
+## Skills
+
+`qmd skills` and `qmd skill` expose the bundled QMD skill — agent
+instructions for driving the CLI — byte-identical to upstream's copy.
+The tree is embedded in the binary; set `QMD_SKILLS_DIR` to point at a
+real directory instead.
+
+| Command | Purpose |
+| --- | --- |
+| `qmd skills list` | List bundled runtime skills (`hidden:` entries are excluded) |
+| `qmd skills get <name>` | Print a skill's `SKILL.md` |
+| `qmd skills get <name> --full` | Also print `references/`/`templates/`/`scripts/` files |
+| `qmd skills get --all` | Print every runtime skill |
+| `qmd skills path [name]` | Print the skills search dir, or one skill's dir |
+| `qmd skill show` | Print the `qmd` skill (also `qmd --skill`) |
+| `qmd skill install [--global] [--yes] [-f]` | Install under `./.agents/skills/qmd` (or `~` with `--global`) |
+
+`skills` accepts `--json` — errors return `{"success":false,"error":...}`
+on stdout. `skills path` and `skill install` materialize the embedded
+tree under `<cache>/qmd/skills/<version>` (the port has no package
+directory; upstream resolves it next to the binary).
+
+`skill install` writes a bootstrap `SKILL.md` that defers to `qmd skill
+show`, then offers to create `.claude/skills/qmd` as a relative symlink:
+`--yes` accepts immediately, a TTY prompts `[y/N]`, and non-interactive
+runs print a `Tip:` line instead. `-f/--force` replaces an existing
+install or link path; if `.claude/skills` already resolves to
+`.agents/skills`, the link is skipped as already visible.
 
 ## CI behavior
 

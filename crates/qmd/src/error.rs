@@ -134,6 +134,16 @@ pub enum Error {
         reason: String,
     },
 
+    /// A `qmd skills`/`qmd skill`/`--skill` operation failed — `reason`
+    /// carries the upstream error text verbatim (cli/qmd.ts:3384-3587)
+    /// so the CLI can print it byte-identically, like
+    /// [`Error::LocalInitRefused`].
+    #[error("{reason}")]
+    Skill {
+        /// Upstream error message.
+        reason: String,
+    },
+
     /// A collection with this name does not exist.
     #[error("collection not found: {name}")]
     CollectionNotFound {

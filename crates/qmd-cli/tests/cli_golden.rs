@@ -17,7 +17,9 @@
 //! P4.1 §5 note 4); `normalized` applies the generator's
 //! `softNormalize` to our captured output before comparing; `record` is
 //! skipped. `pre` runs a silent scenario first; `write`/`delete`
-//! mutate the corpus before the run; `state` asserts post-run files.
+//! mutate the corpus before the run; `links` creates root-relative
+//! symlinks; `state` asserts post-run files (`link` compares the
+//! symlink target when the entry is one).
 //!
 //! The `mutate`, `local` and `init` groups exercise the P4.2 commands
 //! (`update`, `collection`, `context`, `status`, `trust`, `init`,
@@ -119,11 +121,13 @@ fn scenario_env(
     if let Some(overrides) = scenario["env"].as_object() {
         let proj = root.join("proj");
         for (key, value) in overrides {
-            // The generator substitutes only whole-value `<PROJ>`.
-            let value = if value.as_str().unwrap() == "<PROJ>" {
+            // The generator substitutes whole-value `<PROJ>` and `<ROOT>`
+            // in-place (e.g. `QMD_SKILLS_DIR: "<ROOT>/fskills"`).
+            let value = value.as_str().unwrap();
+            let value = if value == "<PROJ>" {
                 proj.to_string_lossy().into_owned()
             } else {
-                value.as_str().unwrap().to_owned()
+                value.replace("<ROOT>", &root.to_string_lossy())
             };
             env.retain(|(k, _)| k != key);
             env.push((key.clone(), value));
@@ -222,9 +226,23 @@ fn soft_normalize(s: &str) -> String {
         .unwrap()
         .replace_all(&s, "sqlite-vec: <VER>");
     // The trust digest hashes absolute paths — `<ROOT>`-dependent.
-    Regex::new(r#""hooks": "[0-9a-f]{64}""#)
+    let s = Regex::new(r#""hooks": "[0-9a-f]{64}""#)
         .unwrap()
-        .replace_all(&s, "\"hooks\": \"<HOOKS>\"")
+        .replace_all(&s, "\"hooks\": \"<HOOKS>\"");
+    // P4.4: the port does not ship upstream's `release` skill (P4-D7 —
+    // maintainer-only). Fold its `skills list` row and `--json` data
+    // entry out like the generator does.
+    let s = Regex::new(r"(?m)^  release  .*\n")
+        .unwrap()
+        .replace_all(&s, "");
+    let s = Regex::new(r#",\{"name":"release","description":"(?:[^"\\]|\\.)*"\}"#)
+        .unwrap()
+        .replace_all(&s, "");
+    // Upstream's `qmd` row was `padEnd(7)` for `release`; ours pads to
+    // its own max — fold the gap like the generator.
+    Regex::new(r"(?m)^  qmd {2,}")
+        .unwrap()
+        .replace_all(&s, "  qmd  ")
         .into_owned()
 }
 
@@ -374,9 +392,10 @@ fn run_qmd(argv: &[String], cwd: &Path, env: &[(String, String)]) -> std::proces
         .unwrap()
 }
 
-/// Apply a scenario's `write`/`delete` corpus mutations — `write`
-/// contents are verbatim, both are corpus-relative.
-fn apply_mutations(corpus: &Path, scenario: &Value) {
+/// Apply a scenario's `write`/`delete` corpus mutations (`write`
+/// contents are verbatim, both are corpus-relative) and create the
+/// root-relative `links` symlinks (P4.4 skills scenarios).
+fn apply_mutations(root: &Path, corpus: &Path, scenario: &Value) {
     if let Some(map) = scenario["write"].as_object() {
         for (rel, content) in map {
             let path = corpus.join(rel);
@@ -386,6 +405,11 @@ fn apply_mutations(corpus: &Path, scenario: &Value) {
     }
     for rel in scenario["delete"].as_array().map_or(&[][..], Vec::as_slice) {
         fs::remove_file(corpus.join(rel.as_str().unwrap())).unwrap();
+    }
+    for link in scenario["links"].as_array().map_or(&[][..], Vec::as_slice) {
+        let path = root.join(link["path"].as_str().unwrap());
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(link["target"].as_str().unwrap(), &path).unwrap();
     }
 }
 
@@ -403,6 +427,15 @@ fn state_problems(
     for st in scenario["state"].as_array().map_or(&[][..], Vec::as_slice) {
         let rel = st["path"].as_str().unwrap();
         let path = root.join(rel);
+        // A `link` entry pins the symlink target verbatim — it is a
+        // relative path (`.claude/skills/qmd` → `../../.agents/...`).
+        if let Some(want_link) = st["link"].as_str() {
+            match fs::read_link(&path) {
+                Ok(got) if got.to_string_lossy() == want_link => continue,
+                other => problems.push(format!("state {rel}: link {want_link:?}, got {other:?}")),
+            }
+            continue;
+        }
         if st["exists"].as_bool().unwrap() {
             let got = soft_normalize(&normalize(
                 &fs::read_to_string(&path).unwrap_or_else(|e| panic!("{id}: state {rel}: {e}")),
@@ -463,7 +496,7 @@ fn cli_golden_replay() {
                 continue;
             }
 
-            apply_mutations(&corpus, scenario);
+            apply_mutations(&root, &corpus, scenario);
 
             let env = scenario_env(&root, &home, &cwd, index_path, scenario);
             // `pre`: a preparatory command (e.g. `collection update-cmd`)
