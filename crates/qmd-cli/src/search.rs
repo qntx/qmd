@@ -140,7 +140,9 @@ pub(crate) fn run(
         // rows never carry a trace, so upstream's
         // `opts.explain && row.explain` can never fire anyway.
         explain: false,
-        intent: None,
+        // `{...opts}` carries the raw `--intent` into the snippet
+        // extractor on `search` too (qmd.ts:2888).
+        intent: args.intent.clone(),
     };
     output_results(&rows, &query, &opts, &render, io);
     Ok(())

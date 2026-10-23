@@ -182,10 +182,13 @@ pub(crate) fn query(
     // message text is identical, the Bun stack dump is not portable).
     let parsed = qmd::parse_query_document(&query)?;
     // `const intent = opts.intent || parsed?.intent` — the CLI flag
-    // wins over the document's `intent:` line (qmd.ts:2964).
+    // wins over the document's `intent:` line (qmd.ts:2964); `""` is
+    // falsy upstream so it falls through to the document intent.
     let intent = args
+        .search
         .intent
         .clone()
+        .filter(|s| !s.is_empty())
         .or_else(|| parsed.as_ref().and_then(|doc| doc.intent.clone()));
     let limit = pipeline_limit(&args.search, format);
 
@@ -205,7 +208,7 @@ pub(crate) fn query(
     let mut search_opts = SearchOptions::default();
     search_opts.input = input;
     search_opts.filter = filter;
-    // `intent` is consumed here — `output_rows` takes `args.intent`
+    // `intent` is consumed here — `output_rows` takes `args.search.intent`
     // (the raw flag), matching upstream's `{...opts}` spread.
     search_opts.intent = intent;
     search_opts.rerank = !args.no_rerank;
@@ -417,7 +420,7 @@ fn output_rows(
         line_numbers: args.search.line_numbers,
         full_path: args.search.full_path,
         explain: args.explain,
-        intent: args.intent.clone(),
+        intent: args.search.intent.clone(),
     };
     output_results(rows, query, &opts, &render, io);
 }

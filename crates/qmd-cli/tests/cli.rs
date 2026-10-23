@@ -286,3 +286,37 @@ fn filters_search_by_collection_name() {
     let out = env.run(&["search", "-c", "notes", "meeting"]);
     assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
 }
+
+// ── `--intent` on `search` ───────────────────────────────────────────
+
+#[test]
+fn search_intent_shifts_snippet_window() {
+    // Upstream carries `opts.intent` through `{...opts}` into
+    // `outputResults` → `extractSnippet` on `search` too
+    // (qmd.ts:2888, store.ts:5354-5370): every matching line gains
+    // +0.3 per contained intent term, so intent can move the picked
+    // window off the first query-term line.
+    let env = CliEnv::new();
+    env.write_file(
+        "doc.md",
+        "# Doc\n\nzebra appears on this early line.\n\nfiller line two.\nfiller line three.\nfiller line four.\n\nzebra again with orchard vineyard meadow keywords.\n",
+    );
+    env.write_config(
+        "index",
+        &collection_yaml("fixtures", &env.fixtures, "**/*.md"),
+    );
+    env.update();
+
+    let plain = env.run(&["search", "zebra"]);
+    assert_eq!(plain.exit_code, 0, "stderr: {}", plain.stderr);
+    assert!(plain.stdout.contains("zebra appears on this early line"));
+    assert!(!plain.stdout.contains("orchard vineyard meadow"));
+
+    let intent = env.run(&["search", "zebra", "--intent", "orchard vineyard meadow"]);
+    assert_eq!(intent.exit_code, 0, "stderr: {}", intent.stderr);
+    assert!(
+        intent
+            .stdout
+            .contains("zebra again with orchard vineyard meadow")
+    );
+}

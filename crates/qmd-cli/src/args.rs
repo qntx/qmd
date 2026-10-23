@@ -118,6 +118,13 @@ pub(crate) struct SearchArgs {
     /// `--filter <json>` — metadata filter AST (qmd.ts:3122).
     #[arg(long)]
     pub(crate) filter: Option<String>,
+    /// `--intent <text>` — rides `{...opts}` into `outputResults`'s
+    /// snippet extractor on all three retrieval commands
+    /// (qmd.ts:2436, 3126); `query` additionally merges it with the
+    /// document's `intent:` line for the search pipeline
+    /// (qmd.ts:2964).
+    #[arg(long)]
+    pub(crate) intent: Option<String>,
 }
 
 /// The format option bundle — shared by `search` and `multi-get`
@@ -153,8 +160,7 @@ pub(crate) struct FormatArgs {
 /// the shared `parseArgs` bucket, so both commands accept the full
 /// option surface even where a flag is unused — `vsearch` ignores
 /// `--candidate-limit`/`--no-rerank`/`--explain`/`--chunk-strategy`
-/// like upstream's `vectorSearch` does, while `--intent` still reaches
-/// the snippet extractor (qmd.ts:2915).
+/// like upstream's `vectorSearch` does.
 #[derive(Debug, Clone, clap::Args)]
 #[command(allow_negative_numbers = true)]
 #[allow(
@@ -164,7 +170,7 @@ pub(crate) struct FormatArgs {
 pub(crate) struct QueryArgs {
     /// Query terms plus the shared search-option bundle
     /// (`-n`/`--min-score`/`--all`/`--full`/`--full-path`/
-    /// `--line-numbers`/`--format`/`-c`/`--filter`).
+    /// `--line-numbers`/`--format`/`-c`/`--filter`/`--intent`).
     #[command(flatten)]
     pub(crate) search: SearchArgs,
     /// `-C`/`--candidate-limit <n>` — `parseInt` semantics; `0`/NaN
@@ -174,9 +180,6 @@ pub(crate) struct QueryArgs {
     /// `--no-rerank` — RRF scores only, no reranker load.
     #[arg(long = "no-rerank")]
     pub(crate) no_rerank: bool,
-    /// `--intent <text>` — disambiguation hint for reranking/snippets.
-    #[arg(long)]
-    pub(crate) intent: Option<String>,
     /// `--explain` — per-row retrieval score traces.
     #[arg(long)]
     pub(crate) explain: bool,

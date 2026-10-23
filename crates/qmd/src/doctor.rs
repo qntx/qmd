@@ -16,13 +16,12 @@
 //! `embed_fingerprint`/`total_chunks` columns, so the wrapper is a
 //! no-op here and the queries run directly.
 
-use crate::Qmd;
 use crate::chunk::{TokenChunkOptions, chunk_document_by_tokens};
 use crate::error::Result;
 use crate::llm::{Embedder, embedding_fingerprint, format_doc_for_embedding};
 use crate::store::documents::extract_title;
 use crate::store::status;
-use crate::{js, utf16_len};
+use crate::{Qmd, js, utf16_len};
 
 /// Upstream's cosine-distance match threshold (store.ts:2639,
 /// cli/qmd.ts:4024) — a stored vector this close to a fresh embed
