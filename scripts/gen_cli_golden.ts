@@ -32,6 +32,12 @@
  * the run as `{path, exists, content}` (`config/*.yml`, `.qmd/*`,
  * `trusted.json`) — `"trustedAt"` timestamps normalize to `<TS>`.
  *
+ * P4.4 additions: `links` creates root-relative symlinks before the run;
+ * `post_state` entries capture `link` targets when the path is a symlink
+ * (`exists:true, content:null`); scenario `env` substitutes `<ROOT>`
+ * in-place (e.g. `QMD_SKILLS_DIR` pointing at a fixture dir); the skills
+ * groups are `noSetup` — they never touch the index.
+ *
  * `check`: `exact` — stdout, stderr and exit code byte-identical;
  * `normalized` — like exact after replacing `\d+[smhd] ago` with `<AGO>`,
  * `Size:` values with `<SIZE>` and `trusted <ISO>` with `<TS>` (db bytes and
@@ -48,7 +54,8 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync,
-  realpathSync, rmSync, unlinkSync, utimesSync, writeFileSync,
+  readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, utimesSync,
+  writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -210,6 +217,9 @@ type Scenario = {
   pre?: string[];
   // Root-relative files captured after the run (config, trusted.json, .qmd/*).
   post_state?: string[];
+  // Root-relative symlinks to create before the invocation (P4.4 skills —
+  // e.g. `.claude/skills` already pointing at `.agents/skills`).
+  links?: { path: string; target: string }[];
 };
 
 const FORMATS = ["--json", "--csv", "--md", "--xml", "--files"];
@@ -509,6 +519,119 @@ const initScenarios: Scenario[] = [
   { name: "doctor local", argv: ["doctor"], cwd: "proj", check: "normalized" },
 ];
 
+// P4.4 — `skills`/`skill`/`--skill` (qmd.ts:3457-3633, 4920-4977). Pure
+// filesystem commands: `noSetup` skips the index, installs run with
+// cwd `root` so `.agents/skills/qmd` lands under post_state's reach.
+// `record` scenarios are the deliberate divergences: the port does not
+// ship `release` (P4-D7) so `list`/`--all` rows and `--full` bodies
+// differ, and `path` reports the versioned cache-materialized dir
+// instead of upstream's package tree.
+const skillsScenarios: Scenario[] = [
+  // `list`/`--json` are normalized — the generator folds upstream's
+  // `release` row out so the `qmd` row compares byte-exact.
+  { name: "skills list", argv: ["skills", "list"], check: "normalized" },
+  { name: "skills bare", argv: ["skills"], check: "normalized" },
+  { name: "skills list json", argv: ["skills", "list", "--json"], check: "normalized" },
+  { name: "skills get qmd", argv: ["skills", "get", "qmd"] },
+  { name: "skills get qmd full", argv: ["skills", "get", "qmd", "--full"] },
+  { name: "skills get qmd json", argv: ["skills", "get", "qmd", "--json"] },
+  { name: "skills get qmd json full", argv: ["skills", "get", "qmd", "--json", "--full"] },
+  { name: "skills get dup", argv: ["skills", "get", "qmd", "qmd"] },
+  { name: "skills get none", argv: ["skills", "get"] },
+  { name: "skills get missing", argv: ["skills", "get", "missing"] },
+  { name: "skills get missing json", argv: ["skills", "get", "missing", "--json"] },
+  { name: "skills bogus", argv: ["skills", "bogus"] },
+  { name: "skills bogus json", argv: ["skills", "bogus", "--json"] },
+  { name: "skills help", argv: ["skills", "help"] },
+  // Upstream `--help` short-circuits to the GENERAL help (P4-D2 record).
+  { name: "skills --help", argv: ["skills", "--help"], check: "record" },
+  { name: "skills get --all", argv: ["skills", "get", "--all"], check: "record" },
+  { name: "skills get --all full", argv: ["skills", "get", "--all", "--full"], check: "record" },
+  { name: "skills get --all json", argv: ["skills", "get", "--all", "--json"], check: "record" },
+  // `path` prints upstream's package dir; ours is the cache-materialized
+  // embedded dir — record both shapes, the missing-name error is exact.
+  { name: "skills path", argv: ["skills", "path"], check: "record" },
+  { name: "skills path qmd", argv: ["skills", "path", "qmd"], check: "record" },
+  { name: "skills path json", argv: ["skills", "path", "--json"], check: "record" },
+  { name: "skills path qmd json", argv: ["skills", "path", "qmd", "--json"], check: "record" },
+  { name: "skills path missing", argv: ["skills", "path", "missing"] },
+  { name: "skill bare", argv: ["skill"] },
+  { name: "skill help", argv: ["skill", "help"] },
+  { name: "skill --help", argv: ["skill", "--help"] },
+  { name: "skill bogus", argv: ["skill", "bogus"] },
+  { name: "skill show", argv: ["skill", "show"] },
+  { name: "--skill", argv: ["--skill"] },
+  { name: "--skill wins", argv: ["--skill", "search", "x"] },
+  // Install sequence — order matters, state persists across scenarios.
+  // `.claude/skills/qmd` starts as a regular file (extraFiles): the
+  // `--yes` install writes `.agents/...` then fails on the link path.
+  {
+    name: "skill install blocked", argv: ["skill", "install", "--yes"], cwd: "root",
+    check: "normalized",
+    post_state: [".agents/skills/qmd/SKILL.md", ".agents/skills/qmd/references/mcp-setup.md"],
+  },
+  { name: "skill install again", argv: ["skill", "install"], cwd: "root", check: "normalized" },
+  // Non-TTY stdin → the Tip line; the blocking file stays untouched
+  // because the Tip path never reaches ensureClaudeSymlink.
+  {
+    name: "skill install force tip", argv: ["skill", "install", "-f"], cwd: "root",
+    check: "normalized", post_state: [".claude/skills/qmd"],
+  },
+  // `-f` now replaces the blocking file with the relative symlink.
+  {
+    name: "skill install force yes", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
+    check: "normalized", post_state: [".claude/skills/qmd"],
+  },
+  // The existing correct link returns Linked again (idempotent, no force needed).
+  {
+    name: "skill install relink", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
+    check: "normalized", post_state: [".claude/skills/qmd"],
+  },
+  {
+    name: "skill install global", argv: ["skill", "install", "--global", "--yes"], cwd: "root",
+    check: "normalized", env: { HOME: "<ROOT>/ghome" },
+    post_state: ["ghome/.agents/skills/qmd/SKILL.md", "ghome/.claude/skills/qmd"],
+  },
+  // QMD_SKILLS_DIR scenarios — env replaces the search dirs wholesale:
+  // `list`/`--all` show `custom` only, `hidden` is gettable by name,
+  // `path` echoes the env value, and install copies the fixture `qmd`.
+  { name: "dir skills list", argv: ["skills", "list"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills list json", argv: ["skills", "list", "--json"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get custom", argv: ["skills", "get", "custom"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get custom full", argv: ["skills", "get", "custom", "--full"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get hidden", argv: ["skills", "get", "hidden"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get --all", argv: ["skills", "get", "--all"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills path", argv: ["skills", "path"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
+  { name: "dir skills path custom", argv: ["skills", "path", "custom"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
+  // The env value is echoed verbatim — relative stays relative.
+  { name: "dir skills path rel", argv: ["skills", "path"], cwd: "root", env: { QMD_SKILLS_DIR: "fskills" } },
+  // `skill show`/`install` with no `qmd` skill: upstream throws to an
+  // unhandled Bun dump — record; ours renders the message + hint.
+  { name: "dir skill show missing", argv: ["skill", "show"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills/custom" }, check: "record" },
+  // The override install copies the fixture `qmd` dir — stub SKILL.md
+  // plus `references/ext.md`, and the embedded `mcp-setup.md` is gone.
+  {
+    name: "dir skill install", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
+    check: "normalized", env: { QMD_SKILLS_DIR: "<ROOT>/fskills" },
+    post_state: [
+      ".agents/skills/qmd/SKILL.md",
+      ".agents/skills/qmd/references/ext.md",
+      ".agents/skills/qmd/references/mcp-setup.md",
+    ],
+  },
+];
+
+// `.claude/skills` itself is a symlink to `../.agents/skills` — the
+// already-visible loop guard prints `✓ Claude already sees...`.
+const skillsLinkScenarios: Scenario[] = [
+  {
+    name: "skill install sees link", argv: ["skill", "install", "--yes"], cwd: "root",
+    check: "normalized",
+    links: [{ path: ".claude/skills", target: "../.agents/skills" }],
+    post_state: [".agents/skills/qmd/SKILL.md", ".claude/skills"],
+  },
+];
+
 type Group = {
   name: string;
   configName: string;
@@ -556,6 +679,34 @@ const GROUPS: Group[] = [
     name: "init", configName: "unused.yml", config: () => "",
     indexPath: true, deleteAfterSetup: [], scenarios: initScenarios,
     projDir: true, noSetup: true,
+  },
+  {
+    name: "skills", configName: "unused.yml", config: () => "",
+    indexPath: true, deleteAfterSetup: [], scenarios: skillsScenarios,
+    noSetup: true,
+    extraFiles: {
+      // `.claude/skills/qmd` starts as a regular FILE so the first
+      // `--yes` install hits `Claude skill path already exists` — the
+      // later `-f` install proves force removes it and links.
+      ".claude/skills/qmd": "blocker\n",
+      // A `QMD_SKILLS_DIR` fixture tree: one listed skill (multiline
+      // frontmatter description), one `hidden:` skill (gettable by
+      // name, filtered from list/--all), and a custom `qmd` skill the
+      // `skill install` override path copies instead of the embedded one.
+      "fskills/custom/SKILL.md":
+        "---\nname: custom\ndescription: A fixture skill\n  spanning two lines.\n---\n\n# Custom\n\nCustom content.\n",
+      "fskills/custom/references/r.md": "# Reference\n\nCustom reference body.\n",
+      "fskills/hidden/SKILL.md":
+        "---\nname: hidden\ndescription: Not listed.\nhidden: true\n---\n\n# Hidden\n\n",
+      "fskills/qmd/SKILL.md":
+        "---\nname: qmd\ndescription: Fixture qmd skill.\n---\n\n# Fixture QMD\n\nFixture-specific instructions.\n",
+      "fskills/qmd/references/ext.md": "# Ext\n\nFixture reference body.\n",
+    },
+  },
+  {
+    name: "skills-link", configName: "unused.yml", config: () => "",
+    indexPath: true, deleteAfterSetup: [], scenarios: skillsLinkScenarios,
+    noSetup: true,
   },
 ];
 
@@ -641,6 +792,9 @@ try {
     // `better-sqlite3 package` line reads upstream's own package.json
     // (a `^13.x` dep) while the port has none to declare.
     const softNormalize = (s: string) => s
+      // `Index last updated N days ago` ages one per UTC day off the
+      // pinned corpus mtime — fold the count like the compact `<AGO>`s.
+      .replace(/Index last updated \d+ days ago/g, "Index last updated <AGO> days ago")
       .replace(/\d+[smhd] ago/g, "<AGO>")
       .replace(/(\n|^)(\s*)Size:.*(\n|$)/g, "$1$2Size: <SIZE>$3")
       .replace(/trusted \d{4}-\d{2}-\d{2}T[^\s)]*/g, "trusted <TS>")
@@ -651,10 +805,21 @@ try {
       .replace(/^Runtime:.*$/gm, "Runtime: <DRIVER>")
       .replace(/SQLite runtime:.*$/gm, "SQLite runtime: <VER>")
       .replace(/better-sqlite3 package:.*$/gm, "better-sqlite3 package: <PKG>")
-      .replace(/sqlite-vec:.*$/gm, "sqlite-vec: <VER>");
+      .replace(/sqlite-vec:.*$/gm, "sqlite-vec: <VER>")
+      // P4.4: the port does not ship upstream's `release` skill (P4-D7 — a
+      // maintainer-only release workflow). Fold it out of `skills list`
+      // output so the rows our `qmd` skill produces still compare.
+      .replace(/^  release  .*\n/gm, "")
+      .replace(/,\{"name":"release","description":"(?:[^"\\]|\\.)*"\}/g, "")
+      // ...and the `qmd` row's padding was sized for `release` — fold
+      // the gap so the port's tighter padding still compares.
+      .replace(/^  qmd {2,}/gm, "  qmd  ");
     const run = (argv: string[], cwd: string, extra?: Record<string, string>) => {
       const e = { ...env, PWD: cwd };
-      for (const [k, v] of Object.entries(extra ?? {})) e[k] = v === "<PROJ>" ? proj : v;
+      // `<PROJ>` substitutes whole-value; `<ROOT>` substitutes in-place so a
+      // value like `<ROOT>/fskills` stays single-token in the fixture.
+      for (const [k, v] of Object.entries(extra ?? {}))
+        e[k] = v === "<PROJ>" ? proj : v.split("<ROOT>").join(root);
       const r = spawnSync(BUN, [QMD_TS, ...argv], {
         cwd, env: e, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000,
       });
@@ -664,6 +829,11 @@ try {
     const postState = (paths: string[] | undefined) =>
       (paths ?? []).map(rel => {
         const p = join(root, rel);
+        // lstat: a symlink to a directory is `exists` but unreadable —
+        // capture the link target instead (P4.4 `.claude/skills/qmd`).
+        if (lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink()) {
+          return { path: rel, exists: true, content: null, link: readlinkSync(p) };
+        }
         const exists = existsSync(p);
         return {
           path: rel,
@@ -692,6 +862,11 @@ try {
       if (s.pre) run(s.pre, cwdOf(s.cwd));
       for (const [rel, body] of Object.entries(s.write ?? {})) writeFileSync(join(corpus, rel), body);
       for (const rel of s.delete ?? []) unlinkSync(join(corpus, rel));
+      for (const l of s.links ?? []) {
+        const p = join(root, l.path);
+        mkdirSync(dirname(p), { recursive: true });
+        symlinkSync(l.target, p);
+      }
       const result = run(s.argv, cwdOf(s.cwd), s.env);
       const norm = s.check === "normalized";
       return {
@@ -703,6 +878,7 @@ try {
         write: s.write,
         delete: s.delete,
         pre: s.pre,
+        links: s.links,
         stdout: norm ? softNormalize(result.stdout) : result.stdout,
         stderr: norm ? softNormalize(result.stderr) : result.stderr,
         exit_code: result.exit_code,

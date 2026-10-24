@@ -17,7 +17,9 @@
 //! P4.1 §5 note 4); `normalized` applies the generator's
 //! `softNormalize` to our captured output before comparing; `record` is
 //! skipped. `pre` runs a silent scenario first; `write`/`delete`
-//! mutate the corpus before the run; `state` asserts post-run files.
+//! mutate the corpus before the run; `links` creates root-relative
+//! symlinks; `state` asserts post-run files (`link` compares the
+//! symlink target when the entry is one).
 //!
 //! The `mutate`, `local` and `init` groups exercise the P4.2 commands
 //! (`update`, `collection`, `context`, `status`, `trust`, `init`,
@@ -119,11 +121,13 @@ fn scenario_env(
     if let Some(overrides) = scenario["env"].as_object() {
         let proj = root.join("proj");
         for (key, value) in overrides {
-            // The generator substitutes only whole-value `<PROJ>`.
-            let value = if value.as_str().unwrap() == "<PROJ>" {
+            // The generator substitutes whole-value `<PROJ>` and `<ROOT>`
+            // in-place (e.g. `QMD_SKILLS_DIR: "<ROOT>/fskills"`).
+            let value = value.as_str().unwrap();
+            let value = if value == "<PROJ>" {
                 proj.to_string_lossy().into_owned()
             } else {
-                value.as_str().unwrap().to_owned()
+                value.replace("<ROOT>", &root.to_string_lossy())
             };
             env.retain(|(k, _)| k != key);
             env.push((key.clone(), value));
@@ -222,9 +226,23 @@ fn soft_normalize(s: &str) -> String {
         .unwrap()
         .replace_all(&s, "sqlite-vec: <VER>");
     // The trust digest hashes absolute paths — `<ROOT>`-dependent.
-    Regex::new(r#""hooks": "[0-9a-f]{64}""#)
+    let s = Regex::new(r#""hooks": "[0-9a-f]{64}""#)
         .unwrap()
-        .replace_all(&s, "\"hooks\": \"<HOOKS>\"")
+        .replace_all(&s, "\"hooks\": \"<HOOKS>\"");
+    // P4.4: the port does not ship upstream's `release` skill (P4-D7 —
+    // maintainer-only). Fold its `skills list` row and `--json` data
+    // entry out like the generator does.
+    let s = Regex::new(r"(?m)^  release  .*\n")
+        .unwrap()
+        .replace_all(&s, "");
+    let s = Regex::new(r#",\{"name":"release","description":"(?:[^"\\]|\\.)*"\}"#)
+        .unwrap()
+        .replace_all(&s, "");
+    // Upstream's `qmd` row was `padEnd(7)` for `release`; ours pads to
+    // its own max — fold the gap like the generator.
+    Regex::new(r"(?m)^  qmd {2,}")
+        .unwrap()
+        .replace_all(&s, "  qmd  ")
         .into_owned()
 }
 
@@ -374,9 +392,10 @@ fn run_qmd(argv: &[String], cwd: &Path, env: &[(String, String)]) -> std::proces
         .unwrap()
 }
 
-/// Apply a scenario's `write`/`delete` corpus mutations — `write`
-/// contents are verbatim, both are corpus-relative.
-fn apply_mutations(corpus: &Path, scenario: &Value) {
+/// Apply a scenario's `write`/`delete` corpus mutations (`write`
+/// contents are verbatim, both are corpus-relative) and create the
+/// root-relative `links` symlinks (P4.4 skills scenarios).
+fn apply_mutations(root: &Path, corpus: &Path, scenario: &Value) {
     if let Some(map) = scenario["write"].as_object() {
         for (rel, content) in map {
             let path = corpus.join(rel);
@@ -386,6 +405,11 @@ fn apply_mutations(corpus: &Path, scenario: &Value) {
     }
     for rel in scenario["delete"].as_array().map_or(&[][..], Vec::as_slice) {
         fs::remove_file(corpus.join(rel.as_str().unwrap())).unwrap();
+    }
+    for link in scenario["links"].as_array().map_or(&[][..], Vec::as_slice) {
+        let path = root.join(link["path"].as_str().unwrap());
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(link["target"].as_str().unwrap(), &path).unwrap();
     }
 }
 
@@ -403,11 +427,20 @@ fn state_problems(
     for st in scenario["state"].as_array().map_or(&[][..], Vec::as_slice) {
         let rel = st["path"].as_str().unwrap();
         let path = root.join(rel);
+        // A `link` entry pins the symlink target verbatim — it is a
+        // relative path (`.claude/skills/qmd` → `../../.agents/...`).
+        if let Some(want_link) = st["link"].as_str() {
+            match fs::read_link(&path) {
+                Ok(got) if got.to_string_lossy() == want_link => continue,
+                other => problems.push(format!("state {rel}: link {want_link:?}, got {other:?}")),
+            }
+            continue;
+        }
         if st["exists"].as_bool().unwrap() {
             let got = soft_normalize(&normalize(
                 &fs::read_to_string(&path).unwrap_or_else(|e| panic!("{id}: state {rel}: {e}")),
             ));
-            let want = soft_normalize(st["content"].as_str().unwrap());
+            let want = soft_normalize(&normalize(st["content"].as_str().unwrap()));
             if got != want {
                 problems.push(diff(&format!("state {rel}"), &want, &got));
             }
@@ -432,6 +465,12 @@ fn cli_golden_replay() {
     let mut compared = 0usize;
     let mut mismatches: Vec<String> = Vec::new();
 
+    // `Index last updated N days ago` ages one per day off the pinned
+    // corpus mtime — a clock token the recorded side cannot keep
+    // byte-stable; fold it on both sides like the compact `<AGO>`
+    // forms in `soft_normalize`.
+    let days_ago = Regex::new(r"Index last updated \d+ days ago").unwrap();
+
     for group in fixture["groups"].as_array().unwrap() {
         let Group {
             root,
@@ -443,9 +482,14 @@ fn cli_golden_replay() {
         // back to upstream's name (`qmd.rs::init_local` documents it);
         // the recorded side keeps the literal `index.sqlite`.
         let normalize = |s: &str| -> String {
-            s.replace(&*root.to_string_lossy(), "<ROOT>")
-                .replace(&*home.to_string_lossy(), "<HOME>")
-                .replace("-rs.sqlite", ".sqlite")
+            days_ago
+                .replace_all(
+                    &s.replace(&*root.to_string_lossy(), "<ROOT>")
+                        .replace(&*home.to_string_lossy(), "<HOME>")
+                        .replace("-rs.sqlite", ".sqlite"),
+                    "Index last updated <AGO> days ago",
+                )
+                .into_owned()
         };
 
         for scenario in group["scenarios"].as_array().unwrap() {
@@ -463,7 +507,7 @@ fn cli_golden_replay() {
                 continue;
             }
 
-            apply_mutations(&corpus, scenario);
+            apply_mutations(&root, &corpus, scenario);
 
             let env = scenario_env(&root, &home, &cwd, index_path, scenario);
             // `pre`: a preparatory command (e.g. `collection update-cmd`)
@@ -491,8 +535,17 @@ fn cli_golden_replay() {
                 continue;
             }
 
-            let want_stdout = scenario["stdout"].as_str().unwrap();
-            let want_stderr = scenario["stderr"].as_str().unwrap();
+            // The want side gets the same `normalize` substitution —
+            // the recorded `<ROOT>`/`<HOME>` are already placeholders,
+            // but clock tokens (`days ago`) are stored verbatim and
+            // must fold here too. `normalized` adds `soft_normalize`.
+            let want_stdout = normalize(scenario["stdout"].as_str().unwrap());
+            let want_stderr = normalize(scenario["stderr"].as_str().unwrap());
+            let (want_stdout, want_stderr) = if check == "normalized" {
+                (soft_normalize(&want_stdout), soft_normalize(&want_stderr))
+            } else {
+                (want_stdout, want_stderr)
+            };
             let want_exit = i32::try_from(scenario["exit_code"].as_i64().unwrap()).unwrap();
             let id = format!(
                 "{}/{name} ({})",
@@ -502,7 +555,7 @@ fn cli_golden_replay() {
 
             let mut problems: Vec<String> = Vec::new();
             if stdout != want_stdout {
-                problems.push(diff("stdout", want_stdout, &stdout));
+                problems.push(diff("stdout", &want_stdout, &stdout));
             }
             let stderr_ok = if check == "stdout-exit" {
                 // The first line embeds JS-engine text that cannot match;
@@ -514,7 +567,7 @@ fn cli_golden_replay() {
                 stderr == want_stderr
             };
             if !stderr_ok {
-                problems.push(diff("stderr", want_stderr, &stderr));
+                problems.push(diff("stderr", &want_stderr, &stderr));
             }
             if exit_code != want_exit {
                 problems.push(format!("exit: want {want_exit}, got {exit_code}"));

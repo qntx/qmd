@@ -12,6 +12,10 @@ use clap::{Parser, Subcommand};
 
 /// Parsed command line, reduced to what the dispatcher consumes.
 #[derive(Debug)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "global upstream boolean flags mirror the parseArgs bucket 1:1"
+)]
 pub(crate) struct ParsedCli {
     /// Global `--index <name>` (normalized by [`crate::context`]).
     pub(crate) index: Option<String>,
@@ -21,6 +25,9 @@ pub(crate) struct ParsedCli {
     pub(crate) help: bool,
     /// Global `-v`/`--version`.
     pub(crate) version: bool,
+    /// Global `--skill` — `qmd skill show` alias (upstream
+    /// `cli.values.skill`, qmd.ts:3097 + 4379-4382).
+    pub(crate) skill: bool,
     /// Subcommand, or `None` (bare `qmd` → help + exit 1).
     pub(crate) command: Option<Command>,
 }
@@ -61,6 +68,10 @@ pub(crate) enum Command {
     Query(QueryArgs),
     /// `doctor` — config/index/model/device diagnostics.
     Doctor,
+    /// `skills` — list/print bundled runtime skills (P4.4).
+    Skills(SkillsArgs),
+    /// `skill` — print or install the QMD skill (P4.4).
+    Skill(SkillArgs),
     /// Any unregistered first positional (`help`, `version`, …) —
     /// upstream's `default:` branch.
     Unknown(UnknownArgs),
@@ -345,12 +356,64 @@ pub(crate) struct TrustArgs {
     pub(crate) args: Vec<String>,
 }
 
+/// Arguments for `qmd skills` (upstream `case "skills"`,
+/// qmd.ts:4920-4936 → `runSkillsCommand`, qmd.ts:3457-3546).
+/// `cli.args[0]` is the subcommand (`list`/`get`/`path`/`help`); the
+/// flags are also re-scanned in the positional args upstream
+/// (`args.includes("--full")`), which our `Vec` preserves for
+/// post-`--` spellings.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct SkillsArgs {
+    /// Subcommand plus positionals — upstream `cli.args`.
+    #[arg(num_args = 0..)]
+    pub(crate) args: Vec<String>,
+    /// `--json` — `cli.values.json`: structured output and the
+    /// `{success:false,error}` envelope.
+    #[arg(long)]
+    pub(crate) json: bool,
+    /// `--full` — `cli.values.full` for `get` (include
+    /// references/templates/scripts).
+    #[arg(long)]
+    pub(crate) full: bool,
+    /// `--all` — `cli.values.all` for `get` (every runtime skill).
+    #[arg(long)]
+    pub(crate) all: bool,
+}
+
+/// Arguments for `qmd skill` (upstream `case "skill"`,
+/// qmd.ts:4938-4977 → `installSkill`, qmd.ts:3617-3633).
+/// `cli.args[0]` is `show`/`install`/`help`; `--global`/`--yes`/`-f`
+/// are `cli.values.global`/`yes`/`force`.
+#[derive(Debug, Clone, clap::Args)]
+#[command(allow_negative_numbers = true)]
+pub(crate) struct SkillArgs {
+    /// Subcommand plus positionals — upstream `cli.args`.
+    #[arg(num_args = 0..)]
+    pub(crate) args: Vec<String>,
+    /// `--global` — install into `~/.agents/skills/qmd` instead of
+    /// `./.agents/skills/qmd`.
+    #[arg(long = "global")]
+    pub(crate) global: bool,
+    /// `--yes` — also create the `.claude/skills/qmd` symlink without
+    /// prompting.
+    #[arg(long)]
+    pub(crate) yes: bool,
+    /// `-f`/`--force` — replace an existing install or symlink.
+    #[arg(short = 'f', long)]
+    pub(crate) force: bool,
+}
+
 #[derive(Parser)]
 #[command(
     name = "qmd",
     disable_help_flag = true,
     disable_help_subcommand = true,
     disable_version_flag = true
+)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "global upstream boolean flags mirror the parseArgs bucket 1:1"
 )]
 struct RawCli {
     #[arg(long, global = true)]
@@ -361,6 +424,10 @@ struct RawCli {
     help: bool,
     #[arg(short = 'v', long = "version", global = true)]
     version: bool,
+    // Upstream's `skill` boolean (qmd.ts:3097) — `qmd skill show`
+    // alias; global so `qmd <anything> --skill` prints the skill.
+    #[arg(long, global = true)]
+    skill: bool,
     #[command(subcommand)]
     command: Option<RawCommand>,
 }
@@ -387,6 +454,8 @@ enum RawCommand {
     #[command(name = "query", alias = "deep-search")]
     Query(QueryArgs),
     Doctor,
+    Skills(SkillsArgs),
+    Skill(SkillArgs),
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -413,6 +482,8 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         RawCommand::Vsearch(vsearch) => Command::Vsearch(vsearch),
         RawCommand::Query(query) => Command::Query(query),
         RawCommand::Doctor => Command::Doctor,
+        RawCommand::Skills(skills) => Command::Skills(skills),
+        RawCommand::Skill(skill) => Command::Skill(skill),
         RawCommand::Other(words) => Command::Unknown(UnknownArgs(words)),
     });
     Ok(ParsedCli {
@@ -420,6 +491,7 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         no_gpu: raw.no_gpu,
         help: raw.help,
         version: raw.version,
+        skill: raw.skill,
         command,
     })
 }
