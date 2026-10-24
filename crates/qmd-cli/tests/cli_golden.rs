@@ -191,7 +191,7 @@ fn sanity_scenario_total(fixture: &Value) -> usize {
 fn soft_normalize(s: &str) -> String {
     let s = Regex::new(r"\d+[smhd] ago")
         .unwrap()
-        .replace_all(&s, "<AGO>");
+        .replace_all(s, "<AGO>");
     // `(\n|^)(\s*)Size:.*(\n|$)` — preserve the leading whitespace block.
     let s = Regex::new(r"(\n|^)(\s*)Size:.*(\n|$)")
         .unwrap()
