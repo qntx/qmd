@@ -191,7 +191,7 @@ fn sanity_scenario_total(fixture: &Value) -> usize {
 fn soft_normalize(s: &str) -> String {
     let s = Regex::new(r"\d+[smhd] ago")
         .unwrap()
-        .replace_all(s, "<AGO>");
+        .replace_all(&s, "<AGO>");
     // `(\n|^)(\s*)Size:.*(\n|$)` — preserve the leading whitespace block.
     let s = Regex::new(r"(\n|^)(\s*)Size:.*(\n|$)")
         .unwrap()
@@ -440,7 +440,7 @@ fn state_problems(
             let got = soft_normalize(&normalize(
                 &fs::read_to_string(&path).unwrap_or_else(|e| panic!("{id}: state {rel}: {e}")),
             ));
-            let want = soft_normalize(st["content"].as_str().unwrap());
+            let want = soft_normalize(&normalize(st["content"].as_str().unwrap()));
             if got != want {
                 problems.push(diff(&format!("state {rel}"), &want, &got));
             }
@@ -465,6 +465,12 @@ fn cli_golden_replay() {
     let mut compared = 0usize;
     let mut mismatches: Vec<String> = Vec::new();
 
+    // `Index last updated N days ago` ages one per day off the pinned
+    // corpus mtime — a clock token the recorded side cannot keep
+    // byte-stable; fold it on both sides like the compact `<AGO>`
+    // forms in `soft_normalize`.
+    let days_ago = Regex::new(r"Index last updated \d+ days ago").unwrap();
+
     for group in fixture["groups"].as_array().unwrap() {
         let Group {
             root,
@@ -476,9 +482,14 @@ fn cli_golden_replay() {
         // back to upstream's name (`qmd.rs::init_local` documents it);
         // the recorded side keeps the literal `index.sqlite`.
         let normalize = |s: &str| -> String {
-            s.replace(&*root.to_string_lossy(), "<ROOT>")
-                .replace(&*home.to_string_lossy(), "<HOME>")
-                .replace("-rs.sqlite", ".sqlite")
+            days_ago
+                .replace_all(
+                    &s.replace(&*root.to_string_lossy(), "<ROOT>")
+                        .replace(&*home.to_string_lossy(), "<HOME>")
+                        .replace("-rs.sqlite", ".sqlite"),
+                    "Index last updated <AGO> days ago",
+                )
+                .into_owned()
         };
 
         for scenario in group["scenarios"].as_array().unwrap() {
@@ -524,8 +535,17 @@ fn cli_golden_replay() {
                 continue;
             }
 
-            let want_stdout = scenario["stdout"].as_str().unwrap();
-            let want_stderr = scenario["stderr"].as_str().unwrap();
+            // The want side gets the same `normalize` substitution —
+            // the recorded `<ROOT>`/`<HOME>` are already placeholders,
+            // but clock tokens (`days ago`) are stored verbatim and
+            // must fold here too. `normalized` adds `soft_normalize`.
+            let want_stdout = normalize(scenario["stdout"].as_str().unwrap());
+            let want_stderr = normalize(scenario["stderr"].as_str().unwrap());
+            let (want_stdout, want_stderr) = if check == "normalized" {
+                (soft_normalize(&want_stdout), soft_normalize(&want_stderr))
+            } else {
+                (want_stdout, want_stderr)
+            };
             let want_exit = i32::try_from(scenario["exit_code"].as_i64().unwrap()).unwrap();
             let id = format!(
                 "{}/{name} ({})",
@@ -535,7 +555,7 @@ fn cli_golden_replay() {
 
             let mut problems: Vec<String> = Vec::new();
             if stdout != want_stdout {
-                problems.push(diff("stdout", want_stdout, &stdout));
+                problems.push(diff("stdout", &want_stdout, &stdout));
             }
             let stderr_ok = if check == "stdout-exit" {
                 // The first line embeds JS-engine text that cannot match;
@@ -547,7 +567,7 @@ fn cli_golden_replay() {
                 stderr == want_stderr
             };
             if !stderr_ok {
-                problems.push(diff("stderr", want_stderr, &stderr));
+                problems.push(diff("stderr", &want_stderr, &stderr));
             }
             if exit_code != want_exit {
                 problems.push(format!("exit: want {want_exit}, got {exit_code}"));

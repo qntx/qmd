@@ -792,6 +792,9 @@ try {
     // `better-sqlite3 package` line reads upstream's own package.json
     // (a `^13.x` dep) while the port has none to declare.
     const softNormalize = (s: string) => s
+      // `Index last updated N days ago` ages one per UTC day off the
+      // pinned corpus mtime — fold the count like the compact `<AGO>`s.
+      .replace(/Index last updated \d+ days ago/g, "Index last updated <AGO> days ago")
       .replace(/\d+[smhd] ago/g, "<AGO>")
       .replace(/(\n|^)(\s*)Size:.*(\n|$)/g, "$1$2Size: <SIZE>$3")
       .replace(/trusted \d{4}-\d{2}-\d{2}T[^\s)]*/g, "trusted <TS>")
