@@ -1,7 +1,7 @@
 //! Ports `mcp-stdio-lifecycle.test.ts`: stdin EOF shuts the server
 //! down cleanly — `serve` returns `Ok` promptly, and the response
-//! stream carries only JSON-RPC. The drain-timeout path is deferred to
-//! P5.2-B: stage A has no tool call that can block deterministically.
+//! stream carries only JSON-RPC. The drain-timeout and settled-within-
+//! drain paths need a gated blocking backend and live in `tools.rs`.
 
 #![allow(
     unused_crate_dependencies,
@@ -22,13 +22,16 @@ use std::time::Duration;
 
 use qmd::Qmd;
 use qmd_mcp::{StdioOptions, serve};
-use tokio::io::{AsyncWriteExt, duplex};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter, duplex};
 
-/// A store on a throwaway index with no collections.
-fn store() -> Arc<Qmd> {
+/// A store on a throwaway index with no collections; the `TempDir`
+/// guard must outlive the store.
+fn store() -> (tempfile::TempDir, Arc<Qmd>) {
     let dir = tempfile::tempdir().unwrap();
-    let db = dir.keep().join("index.sqlite");
-    Arc::new(Qmd::builder(db).build().unwrap())
+    let qmd = Qmd::builder(dir.path().join("index.sqlite"))
+        .build()
+        .unwrap();
+    (dir, Arc::new(qmd))
 }
 
 /// EOF before any request — upstream exits 0 promptly
@@ -39,9 +42,10 @@ async fn eof_without_requests_returns_ok() {
     let (server_r, client_w) = duplex(64);
     // Drop the client's writer end: stdin EOF with no in-flight call.
     drop(client_w);
+    let (_dir, qmd) = store();
     let result = tokio::time::timeout(
         Duration::from_secs(5),
-        serve(store(), server_r, client_r, StdioOptions::default()),
+        serve(qmd, server_r, client_r, StdioOptions::default()),
     )
     .await;
     assert!(result.is_ok(), "serve hung past EOF");
@@ -54,7 +58,7 @@ async fn eof_without_requests_returns_ok() {
 async fn serve_answers_then_clean_eof() {
     let (mut to_server, server_read) = duplex(4096);
     let (server_write, mut from_server) = duplex(4096);
-    let qmd = store();
+    let (_dir, qmd) = store();
     let task = tokio::spawn(async move {
         serve(qmd, server_read, server_write, StdioOptions::default()).await
     });
@@ -97,4 +101,63 @@ async fn serve_answers_then_clean_eof() {
         .expect("serve hung past EOF")
         .unwrap();
     result.unwrap();
+}
+
+/// F2 parity lock — `validate_inline_era` replicates rmcp's
+/// pre-dispatch validation for intercepted methods; it must produce
+/// identical errors to the delegated path, so an rmcp upgrade that
+/// changes validation fails here instead of silently diverging.
+#[tokio::test(flavor = "multi_thread")]
+async fn intercepted_and_delegated_methods_validate_identically() {
+    let (_dir, qmd) = store();
+    let (client_r, server_w) = duplex(65536);
+    let (server_r, client_w) = duplex(65536);
+    let server = tokio::spawn(serve(qmd, server_r, server_w, StdioOptions::default()));
+    let mut writer = BufWriter::new(client_w);
+    let mut reader = BufReader::new(client_r);
+    let mut buf = String::new();
+
+    // A 2026 request missing required `_meta` keys and one with an
+    // unsupported `_meta.protocolVersion` — sent to both an intercepted
+    // method (resources/read) and a delegated one
+    // (resources/templates/list). Errors must match byte-for-byte.
+    let cases = [
+        // Missing `_meta` entirely on a no-initialize session.
+        r#"{"jsonrpc":"2.0","id":1,"method":"{METHOD}","params":{PARAMS},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}"#,
+        // Unsupported declared version.
+        r#"{"jsonrpc":"2.0","id":2,"method":"{METHOD}","params":{PARAMS},"_meta":{"io.modelcontextprotocol/protocolVersion":"2099-01-01","io.modelcontextprotocol/clientCapabilities":{},"io.modelcontextprotocol/clientInfo":{"name":"t","version":"0"}}}"#,
+    ];
+    let intercepted = cases.map(|c| {
+        c.replace("{METHOD}", "resources/read")
+            .replace("{PARAMS}", r#"{"uri":"qmd://x.md"}"#)
+    });
+    let delegated = cases.map(|c| {
+        c.replace("{METHOD}", "resources/templates/list")
+            .replace("{PARAMS}", "{}")
+    });
+
+    for (i, (a, b)) in intercepted.iter().zip(delegated.iter()).enumerate() {
+        let mut errs = Vec::new();
+        let reqs = vec![a, b];
+        for req in &reqs {
+            writer.write_all(req.as_bytes()).await.unwrap();
+            writer.write_all(b"\n").await.unwrap();
+            writer.flush().await.unwrap();
+            buf.clear();
+            reader.read_line(&mut buf).await.unwrap();
+            errs.push(serde_json::from_str::<serde_json::Value>(buf.trim()).unwrap());
+        }
+        assert_eq!(
+            errs[0], errs[1],
+            "case {i}: intercepted vs delegated error differs"
+        );
+        assert!(
+            errs[0].get("error").is_some(),
+            "case {i}: expected an error response, got {}",
+            errs[0]
+        );
+    }
+
+    drop(writer);
+    server.await.unwrap().unwrap();
 }

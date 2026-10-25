@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: CLI command reference — retrieval, collections, indexing, models and diagnostics.
+description: CLI command reference — retrieval, collections, indexing, models, diagnostics, skills and the MCP server.
 ---
 
 All commands share the search/output options where applicable:
@@ -131,6 +131,27 @@ show`, then offers to create `.claude/skills/qmd` as a relative symlink:
 runs print a `Tip:` line instead. `-f/--force` replaces an existing
 install or link path; if `.claude/skills` already resolves to
 `.agents/skills`, the link is skipped as already visible.
+
+## MCP server
+
+`qmd mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio for agents and IDEs. It speaks both the 2025 protocol
+(initialize handshake) and 2026-07-28 (no handshake, `server/discover`),
+and exposes the same surface as upstream:
+
+| Tool / resource | Purpose |
+| --- | --- |
+| `query` | Hybrid search — plain `query` (auto expansion) or typed `searches` (`lex`/`vec`/`hyde`), with `intent`, `filter`, `collections`, `limit`, `minScore`, `candidateLimit`, `rerank` |
+| `get` | One document by path or `#docid`, optional `:from[:count]` suffix |
+| `multi_get` | Many documents by glob, comma list or docids, capped by `maxBytes` |
+| `status` | Index and collection summary |
+| `qmd://{+path}` | Read a document as a resource |
+
+stdout carries JSON-RPC only; logs go to stderr. When stdin closes the
+server prints `Shutting down (stdin closed)...`, waits up to 5 s for
+in-flight calls and exits 0. `qmd mcp <anything>` is rejected with exit
+1 (upstream would start a server). The HTTP transport, `--daemon` and
+`qmd mcp stop` are not ported yet.
 
 ## CI behavior
 

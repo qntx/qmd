@@ -13,7 +13,7 @@ mod server;
 mod stdio;
 mod tools;
 
-pub use server::{QmdMcpServer, QmdMcpService};
+pub use server::QmdMcpService;
 pub use stdio::{StdioOptions, serve, serve_stdio};
 
 /// MCP server error — a shutdown-step failure surfaces as `Err` so the

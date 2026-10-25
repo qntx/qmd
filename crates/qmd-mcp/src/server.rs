@@ -7,14 +7,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use qmd::Qmd;
 use rmcp::model::{
-    CacheScope, CallToolRequestParams, CallToolResponse, ClientRequest, CustomResult,
-    DiscoverResult, Implementation, ListResourceTemplatesResult, ListResourcesResult,
-    ListToolsResult, PaginatedRequestParams, ProtocolVersion, ServerCapabilities, ServerConfig,
-    ServerResult, Tool,
+    CacheScope, CallToolRequestParams, ClientRequest, CustomResult, DiscoverResult, Implementation,
+    ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
+    ProtocolVersion, ReadResourceRequestParams, ServerCapabilities, ServerConfig, ServerResult,
+    Tool,
 };
 use rmcp::service::{NotificationContext, RequestContext, Service};
 use rmcp::{ErrorData, RoleServer, ServerHandler};
-use serde_json::json;
+use serde_json::{Value, json};
 use tokio::sync::Notify;
 
 use crate::{Error, instructions, resource, schema, tools};
@@ -119,7 +119,7 @@ impl std::fmt::Debug for QmdMcpServer {
 }
 
 /// MCP server over one shared `Arc<Qmd>`.
-pub struct QmdMcpServer {
+pub(crate) struct QmdMcpServer {
     qmd: Arc<Qmd>,
     info: ServerConfig,
     tools: Vec<Tool>,
@@ -133,7 +133,7 @@ impl QmdMcpServer {
     /// # Errors
     /// [`Error::Store`] on status/context read failure;
     /// [`Error::Serve`] if the pinned JSON stops deserializing.
-    pub fn new(qmd: Arc<Qmd>) -> Result<Self, Error> {
+    pub(crate) fn new(qmd: Arc<Qmd>) -> Result<Self, Error> {
         let mut info = ServerConfig::new(capabilities());
         info.instructions = Some(instructions::build_instructions(&qmd)?);
         info.server_info = Implementation::new("qmd", env!("CARGO_PKG_VERSION"));
@@ -199,37 +199,6 @@ impl ServerHandler for QmdMcpServer {
         std::future::ready(Ok(r))
     }
 
-    async fn call_tool(
-        &self,
-        request: CallToolRequestParams,
-        ctx: RequestContext<RoleServer>,
-    ) -> Result<CallToolResponse, ErrorData> {
-        // Upstream stamps `_meta.serverInfo` on every 2026-era result,
-        // tool calls included (transcript-2026-spec.txt).
-        let meta = envelope_2026(&ctx, 0).map(|e| e.meta);
-        match &*request.name {
-            "status" => {
-                let qmd = Arc::clone(&self.qmd);
-                // The guard lives inside the blocking task — if the
-                // async side is cancelled, the count still tracks the
-                // running store call.
-                let inflight = Arc::clone(&self.inflight);
-                tokio::task::spawn_blocking(move || {
-                    let _g = inflight.enter();
-                    let mut r = tools::status(&qmd)?;
-                    r.meta = meta;
-                    Ok::<_, qmd::Error>(r)
-                })
-                .await
-                .map_err(|e| ErrorData::internal_error(e.to_string(), None))?
-                .map(CallToolResponse::from)
-                .map_err(|e: qmd::Error| ErrorData::internal_error(e.to_string(), None))
-            }
-            // query/get/multi_get land in stage B (P5.2 second half).
-            _ => Err(ErrorData::invalid_params("tool not found", None)),
-        }
-    }
-
     /// Upstream's template has `list: undefined` — `resources/list`
     /// answers empty (transcript-2025.txt id 4).
     fn list_resources(
@@ -275,7 +244,7 @@ impl ServerHandler for QmdMcpServer {
 // `Service` wrapper — raw-JSON interception
 // ---------------------------------------------------------------------------
 
-/// `Service<RoleServer>` implementation wrapping [`QmdMcpServer`].
+/// `Service<RoleServer>` implementation wrapping `QmdMcpServer`.
 ///
 /// rmcp's typed `ResourceContents` cannot carry the `name`/`title`
 /// fields upstream emits on `resources/read` contents (server.ts:
@@ -300,7 +269,7 @@ impl QmdMcpService {
     /// Build the service over one shared `Arc<Qmd>`.
     ///
     /// # Errors
-    /// Same as [`QmdMcpServer::new`].
+    /// Same as `QmdMcpServer::new`.
     pub fn new(qmd: Arc<Qmd>) -> Result<Self, Error> {
         let inner = QmdMcpServer::new(qmd)?;
         Ok(Self {
@@ -357,23 +326,55 @@ fn validate_inline_era(
 }
 
 impl QmdMcpServer {
+    /// `tools/call` as raw JSON — same `CustomResult` bypass as
+    /// `resources/read` (upstream's `resource` content blocks and the
+    /// `name`/`title` fields are beyond rmcp's typed result).
+    async fn call_tool_custom(
+        &self,
+        params: &CallToolRequestParams,
+        ctx: &RequestContext<RoleServer>,
+    ) -> Result<ServerResult, ErrorData> {
+        let qmd = Arc::clone(&self.qmd);
+        let name = params.name.to_string();
+        let args = serde_json::to_value(&params.arguments).unwrap_or(Value::Null);
+        // F4: the guard is created before `spawn_blocking` and moved in —
+        // the drain gate must count the call between dispatch and start.
+        let guard = self.inflight.enter();
+        let mut value = tokio::task::spawn_blocking(move || {
+            let _g = guard;
+            tools::call(&qmd, &name, &args)
+        })
+        .await
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))??;
+        // Upstream stamps resultType + `_meta.serverInfo` on 2026-era
+        // tools/call results (transcript-2026-spec.txt).
+        if let Some(env) = envelope_2026(ctx, 0)
+            && let Some(o) = value.as_object_mut()
+        {
+            o.insert("resultType".to_owned(), json!("complete"));
+            o.insert(
+                "_meta".to_owned(),
+                serde_json::to_value(env.meta.0)
+                    .map_err(|e| ErrorData::internal_error(e.to_string(), None))?,
+            );
+        }
+        Ok(ServerResult::CustomResult(CustomResult(value)))
+    }
+
     /// `resources/read` as raw JSON: upstream's contents item carries
     /// `{uri, name, title, mimeType, text}` — beyond the typed
     /// `ResourceContents`. The 2026 envelope keys are added by the
     /// caller's era check, matching upstream's per-request envelope.
     async fn read_resource_custom(
         &self,
-        request: &ClientRequest,
+        params: &ReadResourceRequestParams,
         ctx: &RequestContext<RoleServer>,
     ) -> Result<ServerResult, ErrorData> {
-        let ClientRequest::ReadResourceRequest(req) = request else {
-            unreachable!("caller filters on the method");
-        };
-        let inflight = Arc::clone(&self.inflight);
         let qmd = Arc::clone(&self.qmd);
-        let uri = req.params.uri.clone();
+        let uri = params.uri.clone();
+        let guard = self.inflight.enter();
         let mut value = tokio::task::spawn_blocking(move || {
-            let _g = inflight.enter();
+            let _g = guard;
             resource::read(&qmd, &uri)
         })
         .await
@@ -401,9 +402,16 @@ impl Service<RoleServer> for QmdMcpService {
         request: ClientRequest,
         context: RequestContext<RoleServer>,
     ) -> Result<ServerResult, ErrorData> {
-        if matches!(request, ClientRequest::ReadResourceRequest(_)) {
-            validate_inline_era(&self.inner, &request, &context)?;
-            return self.inner.read_resource_custom(&request, &context).await;
+        match &request {
+            ClientRequest::CallToolRequest(req) => {
+                validate_inline_era(&self.inner, &request, &context)?;
+                return self.inner.call_tool_custom(&req.params, &context).await;
+            }
+            ClientRequest::ReadResourceRequest(req) => {
+                validate_inline_era(&self.inner, &request, &context)?;
+                return self.inner.read_resource_custom(&req.params, &context).await;
+            }
+            _ => {}
         }
         Service::handle_request(&self.inner, request, context).await
     }

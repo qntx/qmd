@@ -1,4 +1,6 @@
 //! Golden replay of upstream `qmd mcp` stdio sessions (P5.2).
+//! Plain auto-expand `query` needs the generator model and is covered
+//! only by the `#[ignore]` real-model test at the bottom of this file.
 //! `fixtures/mcp_golden.json` is recorded by `scripts/gen_mcp_golden.ts`
 //! against `tobi/qmd` v2.8.3; responses are matched to requests by JSON
 //!-RPC id (dispatch is concurrent, order may differ) and compared as
@@ -81,7 +83,7 @@ fn normalize(v: &mut Value, our_root: &str) {
     }
 }
 
-/// Deviation 75: on a 2025-negotiated session a request with 2026
+/// Deviation 74: on a 2025-negotiated session a request with 2026
 /// `_meta` gets the 2026 envelope from rmcp (it honors the request's
 /// declared version; its resultType fill cannot be vetoed) — upstream
 /// keys off the session version and emits a legacy result. Strip our
@@ -178,4 +180,108 @@ fn mcp_positional_is_unknown_subcommand() {
     assert_eq!(out.exit_code, 1);
     assert!(out.stderr.contains("Unknown subcommand: status"));
     assert!(out.stderr.contains("qmd doctor"));
+}
+
+/// Real-model smoke test: auto-expand `query` (generator + embedder +
+/// reranker) through `qmd mcp` on an isolated, embedded copy of the
+/// upstream `cli.test.ts` corpus. The models are the user's cached
+/// default GGUF files, passed as local paths through `QMD_*_MODEL` so
+/// no network is touched. Stdin stays open until the query answers —
+/// closing it early would hand the cold model load to the 5 s EOF
+/// drain. Every stdout line must be JSON-RPC: native llama.cpp logging
+/// must never reach stdout.
+#[test]
+#[ignore = "requires cached GGUF models"]
+fn mcp_query_real_models_emits_jsonrpc_only() {
+    use std::io::{BufRead as _, Read as _, Write as _};
+
+    let env = CliEnv::new();
+    common::fixtures_corpus(&env);
+    env.write_config(
+        "index",
+        &common::collection_yaml("fixtures", &env.fixtures, "**/*.md"),
+    );
+    env.update();
+    let cache = qmd::llm::download::model_cache_dir(&qmd::Environment::from_process());
+    let models: Vec<(&str, String)> = [
+        (
+            "QMD_EMBED_MODEL",
+            "hf_ggml-org_embeddinggemma-300M-Q8_0.gguf",
+        ),
+        (
+            "QMD_GENERATE_MODEL",
+            "hf_tobil_qmd-query-expansion-1.7B-q4_k_m.gguf",
+        ),
+        (
+            "QMD_RERANK_MODEL",
+            "hf_ggml-org_qwen3-reranker-0.6b-q8_0.gguf",
+        ),
+    ]
+    .into_iter()
+    .map(|(key, file)| (key, cache.join(file).to_string_lossy().into_owned()))
+    .collect();
+    let model_env: Vec<(&str, &str)> = models.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    let embed = env.run_opts(&["embed"], &env.fixtures, true, &model_env);
+    assert_eq!(embed.exit_code, 0, "embed failed: {}", embed.stderr);
+
+    let mut cmd = env.mcp_command();
+    cmd.envs(model_env.iter().copied());
+    let mut child = cmd.spawn().expect("spawn qmd mcp");
+    let mut stderr = child.stderr.take().unwrap();
+    let stderr_reader = std::thread::spawn(move || {
+        let mut s = String::new();
+        stderr.read_to_string(&mut s).unwrap();
+        s
+    });
+    let mut stdin = child.stdin.take().unwrap();
+    for req in [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}"#,
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"query","arguments":{"query":"who fixes the authentication bug"}}}"#,
+    ] {
+        writeln!(stdin, "{req}").unwrap();
+    }
+    let mut stdout = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut lines = Vec::new();
+    let query = loop {
+        let mut line = String::new();
+        assert_ne!(
+            stdout.read_line(&mut line).unwrap(),
+            0,
+            "stdout closed before the query answered: {lines:?}"
+        );
+        let v: Value =
+            serde_json::from_str(&line).unwrap_or_else(|_| panic!("not JSON-RPC: {line:?}"));
+        assert_eq!(v["jsonrpc"], "2.0", "bad line: {line}");
+        lines.push(line);
+        if v["id"] == 2 {
+            break v;
+        }
+    };
+    drop(stdin);
+    let mut rest = String::new();
+    stdout.read_to_string(&mut rest).unwrap();
+    assert!(rest.is_empty(), "stdout after the last response: {rest:?}");
+    let status = child.wait().unwrap();
+    let err_text = stderr_reader.join().unwrap();
+    assert!(
+        status.success(),
+        "mcp exited {status:?}; stderr: {err_text}"
+    );
+    assert!(
+        err_text.contains("Shutting down (stdin closed)..."),
+        "{err_text}"
+    );
+
+    assert!(query.pointer("/result/isError").is_none(), "{query}");
+    let results = query
+        .pointer("/result/structuredContent/results")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| panic!("no results array: {query}"));
+    assert!(
+        results
+            .first()
+            .is_some_and(|r| r["file"] == "fixtures/notes/meeting.md"),
+        "meeting notes should rank first: {query}"
+    );
 }

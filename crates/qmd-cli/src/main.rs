@@ -27,9 +27,12 @@ fn main() -> ExitCode {
     // other threads exist; the offset is captured here for the whole
     // process (upstream reads the system timezone lazily everywhere).
     let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
-    // MCP stdio gets no signal watcher: upstream bin/qmd:27 checks
-    // `argv[2] === "mcp"` for the same reason — the process exits via
-    // stdin EOF, and stdout must stay JSON-RPC only.
+    // Deliberate deviation (parity-matrix deviation 76): upstream keeps
+    // its cursor-restore `process.exit` handler under `mcp` too. The
+    // server is long-lived with models resident, and exiting with a live
+    // llama.cpp context risks the Metal teardown abort (deviation 47);
+    // the default signal action ends the process without exit handlers.
+    // `qmd --index <n> mcp` still gets the watcher (upstream behaviour).
     if std::env::args().nth(1).as_deref() != Some("mcp") {
         install_signal_handlers();
     }

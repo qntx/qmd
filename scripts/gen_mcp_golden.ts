@@ -18,7 +18,7 @@
  *
  * Usage: QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_mcp_golden.ts
  */
-import { spawnSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -90,6 +90,11 @@ const tc26 = (id: number, name: string, args: unknown) =>
 const m26 = (id: number, method: string, params: unknown = {}) =>
   ({ jsonrpc: "2.0", id, method, params: { ...params as object, _meta: META26 } });
 
+// Learn docs/readme.md's docid from upstream `qmd get` (docids are
+// content-hash deterministic, so ours matches byte-for-byte).
+const getOut = spawnSync(process.execPath, [QMD_TS, "get", "docs/readme.md"], { env, cwd: corpus, encoding: "utf8" });
+const docid = (getOut.stdout || "").match(/#[0-9a-f]{6}/)?.[0] || "#000000";
+
 const sessions = [
   { name: "2025-06-18", requests: [
       init25("2025-06-18"), initd,
@@ -100,6 +105,28 @@ const sessions = [
       { jsonrpc: "2.0", id: 6, method: "resources/read", params: { uri: "qmd://docs/readme.md" } },
       { jsonrpc: "2.0", id: 7, method: "resources/read", params: { uri: "qmd://docs/nope.md" } },
       { jsonrpc: "2.0", id: 8, method: "no/such.method" },
+      tc(9, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }),
+      tc(10, "query", { searches: [{ type: "lex", query: "install" }], rerank: false, collections: ["docs"] }),
+      tc(11, "query", {}),
+      tc(12, "query", { query: "index", searches: [{ type: "lex", query: "x" }] }),
+      tc(13, "query", { searches: Array.from({ length: 11 }, () => ({ type: "lex", query: "x" })) }),
+      tc(14, "query", { searches: [{ type: "bogus", query: "x" }] }),
+      tc(16, "get", { file: "docs/readme.md" }),
+      tc(17, "get", { file: "docs/readme.md:2" }),
+      tc(18, "get", { file: "docs/readme.md:1:2" }),
+      tc(19, "get", { file: "docs/readme.md", fromLine: 2, maxLines: 1 }),
+      tc(20, "get", { file: "docs/nope.md" }),
+      tc(21, "get", { file: 5 }),
+      tc(22, "get", {}),
+      tc(23, "multi_get", { pattern: "docs/*.md" }),
+      tc(24, "multi_get", { pattern: "docs/*.md", maxLines: 1 }),
+      tc(25, "multi_get", { pattern: "docs/readme.md,notes/meeting.md" }),
+      tc(26, "multi_get", { pattern: "nope/*.md" }),
+      tc(27, "get", { file: docid }),
+      tc(28, "get", { file: docid.slice(1) }),
+      tc(29, "get", { file: 1, maxLines: "x" }),
+      tc(30, "query", { searches: [{ type: "bad", query: 1 }], limit: "x" }),
+      tc(31, "multi_get", { pattern: 5, maxBytes: "x" }),
   ]},
   { name: "2025-11-25", requests: [init25("2025-11-25"), initd, tc(2, "status", {})] },
   { name: "2026-07-28", requests: [
@@ -107,6 +134,9 @@ const sessions = [
       m26(4, "resources/templates/list"),
       m26(5, "resources/read", { uri: "qmd://docs/readme.md" }),
       m26(6, "no/such.method"),
+      tc26(7, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }),
+      tc26(8, "get", { file: "docs/readme.md" }),
+      tc26(9, "multi_get", { pattern: "docs/*.md" }),
   ]},
   { name: "mixed-era", requests: [
       init25("2025-06-18"), initd,

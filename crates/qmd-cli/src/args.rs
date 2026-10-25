@@ -72,10 +72,11 @@ pub(crate) enum Command {
     Skills(SkillsArgs),
     /// `skill` — print or install the QMD skill (P4.4).
     Skill(SkillArgs),
-    /// Any unregistered first positional (`help`, `version`, …) —
-    /// upstream's `default:` branch.
+    /// `mcp` — stdio MCP server (P5.2).
     #[cfg(feature = "mcp")]
     Mcp(McpArgs),
+    /// Any unregistered first positional (`help`, `version`, …) —
+    /// upstream's `default:` branch.
     Unknown(UnknownArgs),
 }
 
@@ -83,7 +84,7 @@ pub(crate) enum Command {
 #[derive(Debug)]
 pub(crate) struct UnknownArgs(pub(crate) Vec<String>);
 
-/// `qmd mcp [args]` — stage A takes no positional; any positional is
+/// `qmd mcp [args]` — takes no positional yet; any positional is
 /// rejected (`Unknown subcommand:`) until P5.4 adds `stop`.
 #[derive(Debug, clap::Args)]
 #[cfg(feature = "mcp")]

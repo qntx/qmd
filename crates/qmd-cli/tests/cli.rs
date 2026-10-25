@@ -8,15 +8,12 @@
 //!
 //! Upstream relies on `collection add`/`update` (P4.2 commands here);
 //! state is set up through the library (`common::CliEnv`) instead.
-//! Deferred upstream assertions, noted at each port:
-//! `CLI Help` also asserts `qmd collection add` and `qmd skill
-//! show/install` lines — both commands land in P4.2/P4.4, so our help
-//! lists implemented commands only.
 //!
-//! `CLI Skills`, `CLI Embed`, `CLI Skill Commands`, `CLI
-//! Status`/`doctor` (beyond the two status assertions in
-//! `cli_maintenance.rs`), `mcp http daemon` and `mcp stdio launcher`
-//! remain out of scope. The mutation describes live in
+//! Other describes live elsewhere: `CLI Skills`/`CLI Skill Commands`
+//! in `cli_skills.rs`, `CLI Embed` in `cli_embed_pull.rs`, `CLI
+//! Status`/`doctor` in `cli_maintenance.rs`/`cli_doctor.rs`, `mcp stdio
+//! launcher` in `mcp_golden.rs`; `mcp http daemon` waits for P5.4. The
+//! mutation describes live in
 //! `cli_collections.rs` (`CLI Add`, `CLI Collection Commands`,
 //! `collection ignore patterns`), `cli_contexts.rs` (`CLI Add-Context`,
 //! `CLI Context Management`), `cli_maintenance.rs` (`CLI Init`,
@@ -63,11 +60,19 @@ fn shows_help_with_help_flag() {
     let out = env.run(&["--help"]);
     assert_eq!(out.exit_code, 0);
     assert!(out.stdout.contains("Usage:"));
+    assert!(out.stdout.contains("qmd collection add"));
     assert!(out.stdout.contains("qmd search"));
     assert!(out.stdout.contains("--no-gpu"));
-    // Deferred: upstream also asserts `qmd collection add` and
-    // `qmd skill show/install` — those commands are P4.2/P4.4 and our
-    // help lists implemented commands only (P4-D2).
+    assert!(out.stdout.contains("qmd skill show/install"));
+    // Not upstream-asserted: the `mcp` lines appear with the feature and
+    // the not-yet-ported `bench`/`--http` lines stay out (P4-D8).
+    assert!(
+        out.stdout
+            .contains("qmd mcp                       - Start the MCP server")
+    );
+    assert!(out.stdout.contains("AI agents & integrations:"));
+    assert!(!out.stdout.contains("qmd bench"));
+    assert!(!out.stdout.contains("--http"));
 }
 
 #[test]

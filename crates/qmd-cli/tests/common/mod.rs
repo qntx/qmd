@@ -166,8 +166,26 @@ impl CliEnv {
     /// process exits on stdin EOF.
     pub(crate) fn run_mcp(&self, input: &str) -> Out {
         use std::io::Write as _;
-        let mut child = Command::new(BIN)
-            .arg("mcp")
+        let mut child = self.mcp_command().spawn().unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        Out {
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            exit_code: output.status.code().unwrap_or(-1),
+        }
+    }
+
+    /// `qmd mcp` with the isolated env, cwd = `fixtures/` and all three
+    /// stdio streams piped — for tests that drive the session live.
+    pub(crate) fn mcp_command(&self) -> Command {
+        let mut cmd = Command::new(BIN);
+        cmd.arg("mcp")
             .current_dir(&self.fixtures)
             .env_clear()
             .env("PATH", "/usr/bin:/bin")
@@ -181,21 +199,8 @@ impl CliEnv {
             .env("TMPDIR", self.root.join("tmp"))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(input.as_bytes())
-            .unwrap();
-        let output = child.wait_with_output().unwrap();
-        Out {
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-            exit_code: output.status.code().unwrap_or(-1),
-        }
+            .stderr(Stdio::piped());
+        cmd
     }
 
     /// The `Environment` matching the subprocess env (same dirs).
