@@ -114,30 +114,22 @@ pub fn build_virtual_path(collection_name: &str, path: &str, index_name: Option<
     let base = format!("qmd://{collection_name}/{path}");
     match index_name {
         Some(index) => {
-            // `encodeURIComponent` leaves unescaped:
-            // `A-Z a-z 0-9 - _ . ! ~ * ' ( )`
-            const HEX: &[u8; 16] = b"0123456789ABCDEF";
-            let mut encoded = String::new();
-            for b in index.bytes() {
-                if b.is_ascii_alphanumeric()
-                    || matches!(
-                        b,
-                        b'-' | b'_' | b'.' | b'!' | b'~' | b'*' | b'\'' | b'(' | b')'
-                    )
-                {
-                    encoded.push(char::from(b));
-                } else {
-                    let hi = HEX.get(usize::from(b >> 4)).copied().unwrap_or(b'0');
-                    let lo = HEX.get(usize::from(b & 0x0F)).copied().unwrap_or(b'0');
-                    encoded.push('%');
-                    encoded.push(char::from(hi));
-                    encoded.push(char::from(lo));
-                }
-            }
+            let encoded = crate::js::encode_uri_component(index);
             format!("{base}?index={encoded}")
         }
         None => base,
     }
+}
+
+/// Upstream `encodeQmdPath` (mcp/server.ts:85-88): `encodeURIComponent`
+/// per path segment so `/` separators survive — `qmd://` URIs for MCP
+/// tool results and resources.
+#[must_use]
+pub fn encode_qmd_path(path: &str) -> String {
+    path.split('/')
+        .map(crate::js::encode_uri_component)
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// The path part of a `file.md:10:20` argument plus the parsed line
@@ -201,4 +193,37 @@ pub fn parse_line_suffix(input: &str) -> LineSuffix {
 /// line window (`slice` clamping makes them equivalent).
 fn js_digits(digits: &str) -> u64 {
     digits.parse().unwrap_or(u64::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    //! `encode_qmd_path` / `build_virtual_path` URI-encoding cases.
+    use super::*;
+
+    #[test]
+    fn encode_qmd_path_segments() {
+        assert_eq!(
+            encode_qmd_path("日本/a b.md"),
+            "%E6%97%A5%E6%9C%AC/a%20b.md"
+        );
+        assert_eq!(encode_qmd_path("a#b?c%d.md"), "a%23b%3Fc%25d.md");
+        // Empty segments and edge slashes are preserved as separators.
+        assert_eq!(encode_qmd_path("a//b"), "a//b");
+        assert_eq!(encode_qmd_path("/a/"), "/a/");
+        assert_eq!(encode_qmd_path(""), "");
+        // Unreserved set is untouched.
+        assert_eq!(
+            encode_qmd_path("a-b_c.d!e~f*g'h(i)j/09"),
+            "a-b_c.d!e~f*g'h(i)j/09"
+        );
+    }
+
+    #[test]
+    fn build_virtual_path_still_encodes_index() {
+        assert_eq!(
+            build_virtual_path("c", "p.md", Some("my idx")),
+            "qmd://c/p.md?index=my%20idx"
+        );
+        assert_eq!(build_virtual_path("c", "p.md", None), "qmd://c/p.md");
+    }
 }

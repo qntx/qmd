@@ -119,6 +119,6 @@ pub use store::search::{SearchResult, SearchSource};
 #[cfg(feature = "testing")]
 pub use testing::{FakeEmbedder, FakeGenerator, FakeReranker};
 pub use vpath::{
-    LineSuffix, VirtualPath, build_virtual_path, is_virtual_path, normalize_virtual_path,
-    parse_line_suffix, parse_virtual_path,
+    LineSuffix, VirtualPath, build_virtual_path, encode_qmd_path, is_virtual_path,
+    normalize_virtual_path, parse_line_suffix, parse_virtual_path,
 };

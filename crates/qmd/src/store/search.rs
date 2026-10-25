@@ -440,7 +440,35 @@ fn ann_vec_scan(conn: &Connection, embedding: &[f32], k: usize) -> Result<Vec<(S
     Ok(rows)
 }
 
-/// Upstream `searchVec` (store.ts:4236-4384).
+/// Query embedding for `searchVec` — upstream
+/// `getEmbedding(query, model, isQuery=true)` (store.ts:4249-4257).
+/// `Ok(None)` is the upstream null: callers return/skip results.
+///
+/// Upstream `llm.embed`/`embedBatch` catch every error and return
+/// null (llm.ts:1473-1495, 1502-1566), so upstream degrades to "no
+/// vector results"; we deliberately propagate backend errors instead
+/// (registered deviation). An empty/absent slot remains the `null`
+/// analogue.
+///
+/// Called WITHOUT the connection lock — the caller checks
+/// `has_vectors_vec` first, then releases the guard before embedding.
+pub(crate) fn embed_query(
+    embedder: &dyn crate::llm::Embedder,
+    query: &str,
+) -> Result<Option<Vec<f32>>> {
+    let text = crate::llm::format_query_for_embedding(query, Some(embedder.model_id()));
+    embedder
+        .embed(&[&text])
+        .map_err(crate::Error::from)
+        .map(|v| v.into_iter().next().filter(|v| !v.is_empty()))
+}
+
+/// Upstream `searchVec` (store.ts:4236-4384) with a precomputed query
+/// embedding (upstream's `precomputedEmbedding` parameter, store.ts:4263,
+/// 5641-5644, 6048-6051). Every caller embeds first, outside the
+/// connection lock — the hybrid and structured pipelines batch all vec
+/// queries in one call; `search_vector`/`vector_query` use
+/// [`embed_query`].
 ///
 /// Two-step shape is load-bearing: sqlite-vec virtual tables hang on a
 /// `JOIN` in the same query (upstream PR #23) — the vec step never
@@ -452,41 +480,6 @@ fn ann_vec_scan(conn: &Connection, embedding: &[f32], k: usize) -> Result<Vec<(S
 /// is re-applied at the document join because vectors are content-scoped
 /// — one hash can back both matching and non-matching documents
 /// (store.ts:4339-4345).
-pub(crate) fn search_vec(
-    conn: &Connection,
-    embedder: &dyn crate::llm::Embedder,
-    query: &str,
-    limit: usize,
-    collection_scope: Option<Vec<String>>,
-    filter: Option<&MetadataFilter>,
-) -> Result<Vec<SearchResult>> {
-    if !super::status::has_vectors_vec(conn)? {
-        return Ok(Vec::new());
-    }
-
-    // Upstream `getEmbedding(query, model, isQuery=true)` — null
-    // embedding returns []. Upstream `llm.embed`/`embedBatch` catch
-    // every error and return null (llm.ts:1473-1495, 1502-1566), so
-    // upstream degrades to "no vector results"; we deliberately
-    // propagate backend errors instead (registered deviation). An
-    // empty/absent slot remains the `null` analogue.
-    let text = crate::llm::format_query_for_embedding(query, Some(embedder.model_id()));
-    let embedding = embedder
-        .embed(&[&text])
-        .map_err(crate::Error::from)?
-        .into_iter()
-        .next()
-        .filter(|v| !v.is_empty());
-    let Some(embedding) = embedding else {
-        return Ok(Vec::new());
-    };
-    search_vec_with_embedding(conn, &embedding, limit, collection_scope, filter)
-}
-
-/// `searchVec` with a precomputed query embedding — the hybrid and
-/// structured pipelines embed all vec queries in one batch call, then
-/// run this per query (upstream `searchVec`'s `precomputedEmbedding`
-/// parameter, store.ts:4263, 5641-5644, 6048-6051).
 pub(crate) fn search_vec_with_embedding(
     conn: &Connection,
     embedding: &[f32],

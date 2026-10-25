@@ -17,3 +17,8 @@ Following the conventions in `qntx/r402`:
 - Porting-specific rule: where behavior intentionally mirrors upstream `tobi/qmd`, the comment names the upstream file (and lines when useful), e.g. `mirrors upstream db.ts:84-95`. Where we deliberately deviate from upstream (bug fixes, dropped legacy paths), say so in the module or item doc and state the reason.
 - `unsafe` is forbidden except inside `src/store/vec.rs` (sqlite-vec registration); every unsafe block needs a `// SAFETY:` comment.
 - Test files carry the standard header allows (`unused_crate_dependencies`, test-code patterns) each with a `reason`, followed by a `//!` doc naming the upstream test files they port.
+
+## Verification
+
+- Run the full `just all` before every commit, and never pipe gate commands through `tail`/`head` — the pipe masks the exit code (a P4.4 CI failure slipped through this way).
+- Golden fixtures must not keep clock-relative values (e.g. `N days ago`): fold them on both the recorded and the replayed side, otherwise the fixture breaks at the next UTC midnight.
