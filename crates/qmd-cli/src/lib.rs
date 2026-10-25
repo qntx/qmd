@@ -56,6 +56,8 @@ mod help;
 mod json;
 mod ls;
 mod maintenance;
+#[cfg(feature = "mcp")]
+mod mcp;
 mod multi_get;
 mod output;
 mod progress;
@@ -168,6 +170,8 @@ pub fn run(
         args::Command::Doctor => doctor::doctor(&env, &ctx, io),
         args::Command::Skills(skills_args) => skills::run_skills(&env, &ctx, &skills_args, io),
         args::Command::Skill(skill_args) => skills::run_skill(&env, &ctx, &skill_args, io),
+        #[cfg(feature = "mcp")]
+        args::Command::Mcp(mcp_args) => mcp::run(&env, &ctx, &mcp_args, io),
         args::Command::Unknown(unknown) => {
             let _ = writeln!(io.err, "Unknown command: {}", unknown.command());
             let _ = writeln!(io.err, "Run 'qmd --help' for usage.");

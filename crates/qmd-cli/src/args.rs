@@ -74,12 +74,23 @@ pub(crate) enum Command {
     Skill(SkillArgs),
     /// Any unregistered first positional (`help`, `version`, …) —
     /// upstream's `default:` branch.
+    #[cfg(feature = "mcp")]
+    Mcp(McpArgs),
     Unknown(UnknownArgs),
 }
 
 /// The words of an unrecognized command; `command()` is the first one.
 #[derive(Debug)]
 pub(crate) struct UnknownArgs(pub(crate) Vec<String>);
+
+/// `qmd mcp [args]` — stage A takes no positional; any positional is
+/// rejected (`Unknown subcommand:`) until P5.4 adds `stop`.
+#[derive(Debug, clap::Args)]
+#[cfg(feature = "mcp")]
+pub(crate) struct McpArgs {
+    /// Positional words after `mcp`.
+    pub(crate) args: Vec<String>,
+}
 
 impl UnknownArgs {
     /// Command name as typed (first positional).
@@ -456,6 +467,11 @@ enum RawCommand {
     Doctor,
     Skills(SkillsArgs),
     Skill(SkillArgs),
+    /// `mcp` — MCP server (upstream qmd.ts:4811+ `case "mcp"`); the
+    /// bare command serves stdio, positionals are rejected for now.
+    #[cfg(feature = "mcp")]
+    #[command(name = "mcp")]
+    Mcp(McpArgs),
     #[command(external_subcommand)]
     Other(Vec<String>),
 }
@@ -484,6 +500,8 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         RawCommand::Doctor => Command::Doctor,
         RawCommand::Skills(skills) => Command::Skills(skills),
         RawCommand::Skill(skill) => Command::Skill(skill),
+        #[cfg(feature = "mcp")]
+        RawCommand::Mcp(mcp) => Command::Mcp(mcp),
         RawCommand::Other(words) => Command::Unknown(UnknownArgs(words)),
     });
     Ok(ParsedCli {

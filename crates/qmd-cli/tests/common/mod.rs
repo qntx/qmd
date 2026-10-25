@@ -161,6 +161,43 @@ impl CliEnv {
         }
     }
 
+    /// Run `qmd mcp` over stdio: `input` (raw JSON-RPC lines) is
+    /// written to stdin and closed; output is captured after the
+    /// process exits on stdin EOF.
+    pub(crate) fn run_mcp(&self, input: &str) -> Out {
+        use std::io::Write as _;
+        let mut child = Command::new(BIN)
+            .arg("mcp")
+            .current_dir(&self.fixtures)
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", &self.home)
+            .env("XDG_CONFIG_HOME", self.root.join("xdg-config"))
+            .env("XDG_CACHE_HOME", self.root.join("xdg-cache"))
+            .env("QMD_CONFIG_DIR", &self.config_dir)
+            .env("INDEX_PATH", &self.db_path)
+            .env("TZ", "UTC")
+            .env("NO_COLOR", "1")
+            .env("TMPDIR", self.root.join("tmp"))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        Out {
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+            exit_code: output.status.code().unwrap_or(-1),
+        }
+    }
+
     /// The `Environment` matching the subprocess env (same dirs).
     fn library_env(&self, index_path: bool) -> Environment {
         let mut env = Environment::default();

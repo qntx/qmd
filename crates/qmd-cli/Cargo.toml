@@ -21,7 +21,13 @@ doc  = false   # bin `qmd` and lib `qmd` would collide under target/doc/
 [lints]
 workspace = true
 
+[features]
+default = ["mcp"]
+mcp = ["dep:qmd-mcp", "dep:tokio"]
+
 [dependencies]
+qmd-mcp = { path = "../qmd-mcp", optional = true }
+tokio   = { version = "1.53.1", features = ["rt-multi-thread"], optional = true }
 clap = { version = "4.6.7", features = ["derive"] }
 qmd = { version = "0.6.0", path = "../qmd" }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }

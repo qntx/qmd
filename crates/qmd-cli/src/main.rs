@@ -10,6 +10,8 @@ use std::process::ExitCode;
 
 // The bin uses only `qmd_cli::run`; these are lib-facing dependencies.
 use clap as _;
+#[cfg(feature = "mcp")]
+use qmd_mcp as _;
 #[cfg(test)]
 use regex as _;
 #[cfg(test)]
@@ -17,13 +19,20 @@ use rusqlite as _;
 use serde_json as _;
 #[cfg(test)]
 use tempfile as _;
+#[cfg(feature = "mcp")]
+use tokio as _;
 
 fn main() -> ExitCode {
     // `local-offset` queries the system zoneinfo and is not safe once
     // other threads exist; the offset is captured here for the whole
     // process (upstream reads the system timezone lazily everywhere).
     let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
-    install_signal_handlers();
+    // MCP stdio gets no signal watcher: upstream bin/qmd:27 checks
+    // `argv[2] === "mcp"` for the same reason — the process exits via
+    // stdin EOF, and stdout must stay JSON-RPC only.
+    if std::env::args().nth(1).as_deref() != Some("mcp") {
+        install_signal_handlers();
+    }
     let env = qmd::Environment::from_process();
     let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let stdout_tty = std::io::stdout().is_terminal();

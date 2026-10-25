@@ -1,0 +1,1167 @@
+{
+  "generated": "2026-10-25T16:14:42.257Z",
+  "upstream": "tobi/qmd v2.8.3 @ 04e4dbd8",
+  "corpus": {
+    "files": [
+      {
+        "path": "docs/readme.md",
+        "content": "# Readme\n\nindex search content\n",
+        "mtime": 1700000000
+      },
+      {
+        "path": "docs/install.md",
+        "content": "# Install\n\ninstall the binary then search\n",
+        "mtime": 1700000010
+      },
+      {
+        "path": "notes/meeting.md",
+        "content": "# Meeting\n\nweekly sync notes\n",
+        "mtime": 1700000060
+      }
+    ],
+    "config_yaml": "global_context: Spike corpus\ncollections:\n  docs:\n    path: <ROOT>/docs\n    pattern: \"**/*.md\"\n    context:\n      /: Documentation files\n  notes:\n    path: <ROOT>/notes\n    pattern: \"**/*.md\"\n"
+  },
+  "sessions": [
+    {
+      "name": "2025-06-18",
+      "requests": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "spike",
+              "version": "0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "method": "notifications/initialized"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/list"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 3,
+          "method": "resources/templates/list"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 4,
+          "method": "resources/list"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 5,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 6,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs/readme.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs/nope.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 8,
+          "method": "no/such.method"
+        }
+      ],
+      "responses": {
+        "1": {
+          "result": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {
+              "resources": {
+                "listChanged": true
+              },
+              "tools": {
+                "listChanged": true
+              }
+            },
+            "serverInfo": {
+              "name": "qmd",
+              "version": "2.8.3"
+            },
+            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+          },
+          "jsonrpc": "2.0",
+          "id": 1
+        },
+        "2": {
+          "result": {
+            "tools": [
+              {
+                "name": "query",
+                "title": "Query",
+                "description": "Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\n\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\n\n## Query Types\n\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\nFull lex syntax:\n- `term` — prefix match (\"perf\" matches \"performance\")\n- `\"exact phrase\"` — phrase must appear verbatim\n- `-term` or `-\"phrase\"` — exclude documents containing this\n\nGood lex examples:\n- `\"connection pool\" timeout -redis`\n- `\"machine learning\" -sports -athlete`\n- `handleError async typescript`\n\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\n- `how does the rate limiter handle burst traffic?`\n- `what is the tradeoff between consistency and availability?`\n\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\n\n## Strategy\n\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\n\n| Goal | Approach |\n|------|----------|\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\n| Know exact term/name | `lex` only |\n| Concept search | `vec` only |\n| Best recall | `lex` + `vec` |\n| Complex/nuanced | `lex` + `vec` + `hyde` |\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\n\n## Examples\n\nSimple lookup:\n```json\n[{ \"type\": \"lex\", \"query\": \"CAP theorem\" }]\n```\n\nBest recall on a technical topic:\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"connection pool\\\" timeout -redis\" },\n  { \"type\": \"vec\", \"query\": \"why do database connections time out under load\" },\n  { \"type\": \"hyde\", \"query\": \"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\" }\n]\n```\n\nIntent-aware lex (C++ performance, not sports):\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"C++ performance\\\" optimization -sports -athlete\" },\n  { \"type\": \"vec\", \"query\": \"how to optimize C++ program performance\" }\n]\n```",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "query": {
+                      "description": "Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.",
+                      "type": "string"
+                    },
+                    "searches": {
+                      "description": "Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.",
+                      "maxItems": 10,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "description": "lex = BM25 keywords (supports \"phrase\" and -negation); vec = semantic question; hyde = hypothetical answer passage",
+                            "type": "string",
+                            "enum": [
+                              "lex",
+                              "vec",
+                              "hyde"
+                            ]
+                          },
+                          "query": {
+                            "description": "The query text. For lex: use keywords, \"quoted phrases\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "query"
+                        ]
+                      }
+                    },
+                    "limit": {
+                      "description": "Max results (default: 10)",
+                      "default": 10,
+                      "type": "number"
+                    },
+                    "minScore": {
+                      "description": "Min relevance 0-1 (default: 0)",
+                      "default": 0,
+                      "type": "number"
+                    },
+                    "candidateLimit": {
+                      "description": "Maximum candidates to rerank (default: 40, lower = faster but may miss results)",
+                      "type": "number"
+                    },
+                    "collections": {
+                      "description": "Filter to collections (OR match)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "filter": {
+                      "description": "Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\"operator\":\"and\",\"operands\":[{\"key\":\"topics\",\"operator\":\"all\",\"value\":[\"typescript\"]},{\"key\":\"status\",\"operator\":\"ne\",\"value\":\"draft\"}]}",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "intent": {
+                      "description": "Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.",
+                      "type": "string"
+                    },
+                    "rerank": {
+                      "description": "Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "get",
+                "title": "Get Document",
+                "description": "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "file": {
+                      "description": "File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.",
+                      "type": "string"
+                    },
+                    "fromLine": {
+                      "description": "Start from this line number (1-indexed)",
+                      "type": "number"
+                    },
+                    "maxLines": {
+                      "description": "Maximum number of lines to return",
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "file"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "multi_get",
+                "title": "Multi-Get Documents",
+                "description": "Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "pattern": {
+                      "description": "Glob pattern, docid, or comma-separated list of file paths/docids",
+                      "type": "string"
+                    },
+                    "maxLines": {
+                      "description": "Maximum lines per file",
+                      "type": "number"
+                    },
+                    "maxBytes": {
+                      "description": "Skip files larger than this (default: 65536 = 64KB)",
+                      "default": 65536,
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "status",
+                "title": "Index Status",
+                "description": "Show the status of the QMD index: collections, document counts, and health information.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {}
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 2
+        },
+        "3": {
+          "result": {
+            "resourceTemplates": [
+              {
+                "name": "document",
+                "uriTemplate": "qmd://{+path}",
+                "title": "QMD Document",
+                "description": "A markdown document from your QMD knowledge base. Use search tools to discover documents.",
+                "mimeType": "text/markdown"
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 3
+        },
+        "4": {
+          "result": {
+            "resources": []
+          },
+          "jsonrpc": "2.0",
+          "id": 4
+        },
+        "5": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+              }
+            ],
+            "structuredContent": {
+              "totalDocuments": 3,
+              "needsEmbedding": 3,
+              "hasVectorIndex": false,
+              "pendingMetadata": 0,
+              "collections": [
+                {
+                  "name": "notes",
+                  "path": "<ROOT>/corpus/notes",
+                  "pattern": "**/*.md",
+                  "documents": 1,
+                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                },
+                {
+                  "name": "docs",
+                  "path": "<ROOT>/corpus/docs",
+                  "pattern": "**/*.md",
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:13:30.000Z"
+                }
+              ]
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 5
+        },
+        "6": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://docs/readme.md",
+                "name": "docs/readme.md",
+                "title": "Readme",
+                "mimeType": "text/markdown",
+                "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 6
+        },
+        "7": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://docs/nope.md",
+                "text": "Document not found: docs/nope.md"
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 7
+        },
+        "8": {
+          "jsonrpc": "2.0",
+          "id": 8,
+          "error": {
+            "code": -32601,
+            "message": "Method not found"
+          }
+        }
+      },
+      "stderr": "Shutting down (stdin closed)...\n",
+      "exit_code": 0
+    },
+    {
+      "name": "2025-11-25",
+      "requests": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "spike",
+              "version": "0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "method": "notifications/initialized"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        }
+      ],
+      "responses": {
+        "1": {
+          "result": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {
+              "resources": {
+                "listChanged": true
+              },
+              "tools": {
+                "listChanged": true
+              }
+            },
+            "serverInfo": {
+              "name": "qmd",
+              "version": "2.8.3"
+            },
+            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+          },
+          "jsonrpc": "2.0",
+          "id": 1
+        },
+        "2": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+              }
+            ],
+            "structuredContent": {
+              "totalDocuments": 3,
+              "needsEmbedding": 3,
+              "hasVectorIndex": false,
+              "pendingMetadata": 0,
+              "collections": [
+                {
+                  "name": "notes",
+                  "path": "<ROOT>/corpus/notes",
+                  "pattern": "**/*.md",
+                  "documents": 1,
+                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                },
+                {
+                  "name": "docs",
+                  "path": "<ROOT>/corpus/docs",
+                  "pattern": "**/*.md",
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:13:30.000Z"
+                }
+              ]
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 2
+        }
+      },
+      "stderr": "Shutting down (stdin closed)...\n",
+      "exit_code": 0
+    },
+    {
+      "name": "2026-07-28",
+      "requests": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "server/discover",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 3,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {},
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 4,
+          "method": "resources/templates/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 5,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs/readme.md",
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 6,
+          "method": "no/such.method",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        }
+      ],
+      "responses": {
+        "1": {
+          "result": {
+            "supportedVersions": [
+              "2026-07-28"
+            ],
+            "capabilities": {
+              "resources": {
+                "listChanged": true
+              },
+              "tools": {
+                "listChanged": true
+              }
+            },
+            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type.",
+            "resultType": "complete",
+            "ttlMs": 60000,
+            "cacheScope": "private",
+            "_meta": {
+              "io.modelcontextprotocol/serverInfo": {
+                "name": "qmd",
+                "version": "2.8.3"
+              }
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 1
+        },
+        "2": {
+          "result": {
+            "tools": [
+              {
+                "name": "query",
+                "title": "Query",
+                "description": "Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\n\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\n\n## Query Types\n\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\nFull lex syntax:\n- `term` — prefix match (\"perf\" matches \"performance\")\n- `\"exact phrase\"` — phrase must appear verbatim\n- `-term` or `-\"phrase\"` — exclude documents containing this\n\nGood lex examples:\n- `\"connection pool\" timeout -redis`\n- `\"machine learning\" -sports -athlete`\n- `handleError async typescript`\n\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\n- `how does the rate limiter handle burst traffic?`\n- `what is the tradeoff between consistency and availability?`\n\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\n\n## Strategy\n\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\n\n| Goal | Approach |\n|------|----------|\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\n| Know exact term/name | `lex` only |\n| Concept search | `vec` only |\n| Best recall | `lex` + `vec` |\n| Complex/nuanced | `lex` + `vec` + `hyde` |\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\n\n## Examples\n\nSimple lookup:\n```json\n[{ \"type\": \"lex\", \"query\": \"CAP theorem\" }]\n```\n\nBest recall on a technical topic:\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"connection pool\\\" timeout -redis\" },\n  { \"type\": \"vec\", \"query\": \"why do database connections time out under load\" },\n  { \"type\": \"hyde\", \"query\": \"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\" }\n]\n```\n\nIntent-aware lex (C++ performance, not sports):\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"C++ performance\\\" optimization -sports -athlete\" },\n  { \"type\": \"vec\", \"query\": \"how to optimize C++ program performance\" }\n]\n```",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "query": {
+                      "description": "Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.",
+                      "type": "string"
+                    },
+                    "searches": {
+                      "description": "Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.",
+                      "maxItems": 10,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "description": "lex = BM25 keywords (supports \"phrase\" and -negation); vec = semantic question; hyde = hypothetical answer passage",
+                            "type": "string",
+                            "enum": [
+                              "lex",
+                              "vec",
+                              "hyde"
+                            ]
+                          },
+                          "query": {
+                            "description": "The query text. For lex: use keywords, \"quoted phrases\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "query"
+                        ]
+                      }
+                    },
+                    "limit": {
+                      "description": "Max results (default: 10)",
+                      "default": 10,
+                      "type": "number"
+                    },
+                    "minScore": {
+                      "description": "Min relevance 0-1 (default: 0)",
+                      "default": 0,
+                      "type": "number"
+                    },
+                    "candidateLimit": {
+                      "description": "Maximum candidates to rerank (default: 40, lower = faster but may miss results)",
+                      "type": "number"
+                    },
+                    "collections": {
+                      "description": "Filter to collections (OR match)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "filter": {
+                      "description": "Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\"operator\":\"and\",\"operands\":[{\"key\":\"topics\",\"operator\":\"all\",\"value\":[\"typescript\"]},{\"key\":\"status\",\"operator\":\"ne\",\"value\":\"draft\"}]}",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "intent": {
+                      "description": "Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.",
+                      "type": "string"
+                    },
+                    "rerank": {
+                      "description": "Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "get",
+                "title": "Get Document",
+                "description": "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "file": {
+                      "description": "File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.",
+                      "type": "string"
+                    },
+                    "fromLine": {
+                      "description": "Start from this line number (1-indexed)",
+                      "type": "number"
+                    },
+                    "maxLines": {
+                      "description": "Maximum number of lines to return",
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "file"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "multi_get",
+                "title": "Multi-Get Documents",
+                "description": "Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "pattern": {
+                      "description": "Glob pattern, docid, or comma-separated list of file paths/docids",
+                      "type": "string"
+                    },
+                    "maxLines": {
+                      "description": "Maximum lines per file",
+                      "type": "number"
+                    },
+                    "maxBytes": {
+                      "description": "Skip files larger than this (default: 65536 = 64KB)",
+                      "default": 65536,
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "status",
+                "title": "Index Status",
+                "description": "Show the status of the QMD index: collections, document counts, and health information.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {}
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              }
+            ],
+            "resultType": "complete",
+            "ttlMs": 60000,
+            "cacheScope": "private",
+            "_meta": {
+              "io.modelcontextprotocol/serverInfo": {
+                "name": "qmd",
+                "version": "2.8.3"
+              }
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 2
+        },
+        "3": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+              }
+            ],
+            "structuredContent": {
+              "totalDocuments": 3,
+              "needsEmbedding": 3,
+              "hasVectorIndex": false,
+              "pendingMetadata": 0,
+              "collections": [
+                {
+                  "name": "notes",
+                  "path": "<ROOT>/corpus/notes",
+                  "pattern": "**/*.md",
+                  "documents": 1,
+                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                },
+                {
+                  "name": "docs",
+                  "path": "<ROOT>/corpus/docs",
+                  "pattern": "**/*.md",
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:13:30.000Z"
+                }
+              ]
+            },
+            "resultType": "complete",
+            "_meta": {
+              "io.modelcontextprotocol/serverInfo": {
+                "name": "qmd",
+                "version": "2.8.3"
+              }
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 3
+        },
+        "4": {
+          "result": {
+            "resourceTemplates": [
+              {
+                "name": "document",
+                "uriTemplate": "qmd://{+path}",
+                "title": "QMD Document",
+                "description": "A markdown document from your QMD knowledge base. Use search tools to discover documents.",
+                "mimeType": "text/markdown"
+              }
+            ],
+            "resultType": "complete",
+            "ttlMs": 0,
+            "cacheScope": "private",
+            "_meta": {
+              "io.modelcontextprotocol/serverInfo": {
+                "name": "qmd",
+                "version": "2.8.3"
+              }
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 4
+        },
+        "5": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://docs/readme.md",
+                "name": "docs/readme.md",
+                "title": "Readme",
+                "mimeType": "text/markdown",
+                "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+              }
+            ],
+            "resultType": "complete",
+            "ttlMs": 0,
+            "cacheScope": "private",
+            "_meta": {
+              "io.modelcontextprotocol/serverInfo": {
+                "name": "qmd",
+                "version": "2.8.3"
+              }
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 5
+        },
+        "6": {
+          "jsonrpc": "2.0",
+          "id": 6,
+          "error": {
+            "code": -32601,
+            "message": "Method not found"
+          }
+        }
+      },
+      "stderr": "Shutting down (stdin closed)...\n",
+      "exit_code": 0
+    },
+    {
+      "name": "mixed-era",
+      "requests": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "spike",
+              "version": "0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "method": "notifications/initialized"
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 3,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        }
+      ],
+      "responses": {
+        "1": {
+          "result": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {
+              "resources": {
+                "listChanged": true
+              },
+              "tools": {
+                "listChanged": true
+              }
+            },
+            "serverInfo": {
+              "name": "qmd",
+              "version": "2.8.3"
+            },
+            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+          },
+          "jsonrpc": "2.0",
+          "id": 1
+        },
+        "2": {
+          "result": {
+            "tools": [
+              {
+                "name": "query",
+                "title": "Query",
+                "description": "Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\n\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\n\n## Query Types\n\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\nFull lex syntax:\n- `term` — prefix match (\"perf\" matches \"performance\")\n- `\"exact phrase\"` — phrase must appear verbatim\n- `-term` or `-\"phrase\"` — exclude documents containing this\n\nGood lex examples:\n- `\"connection pool\" timeout -redis`\n- `\"machine learning\" -sports -athlete`\n- `handleError async typescript`\n\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\n- `how does the rate limiter handle burst traffic?`\n- `what is the tradeoff between consistency and availability?`\n\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\n\n## Strategy\n\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\n\n| Goal | Approach |\n|------|----------|\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\n| Know exact term/name | `lex` only |\n| Concept search | `vec` only |\n| Best recall | `lex` + `vec` |\n| Complex/nuanced | `lex` + `vec` + `hyde` |\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\n\n## Examples\n\nSimple lookup:\n```json\n[{ \"type\": \"lex\", \"query\": \"CAP theorem\" }]\n```\n\nBest recall on a technical topic:\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"connection pool\\\" timeout -redis\" },\n  { \"type\": \"vec\", \"query\": \"why do database connections time out under load\" },\n  { \"type\": \"hyde\", \"query\": \"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\" }\n]\n```\n\nIntent-aware lex (C++ performance, not sports):\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"C++ performance\\\" optimization -sports -athlete\" },\n  { \"type\": \"vec\", \"query\": \"how to optimize C++ program performance\" }\n]\n```",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "query": {
+                      "description": "Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.",
+                      "type": "string"
+                    },
+                    "searches": {
+                      "description": "Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.",
+                      "maxItems": 10,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "description": "lex = BM25 keywords (supports \"phrase\" and -negation); vec = semantic question; hyde = hypothetical answer passage",
+                            "type": "string",
+                            "enum": [
+                              "lex",
+                              "vec",
+                              "hyde"
+                            ]
+                          },
+                          "query": {
+                            "description": "The query text. For lex: use keywords, \"quoted phrases\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "query"
+                        ]
+                      }
+                    },
+                    "limit": {
+                      "description": "Max results (default: 10)",
+                      "default": 10,
+                      "type": "number"
+                    },
+                    "minScore": {
+                      "description": "Min relevance 0-1 (default: 0)",
+                      "default": 0,
+                      "type": "number"
+                    },
+                    "candidateLimit": {
+                      "description": "Maximum candidates to rerank (default: 40, lower = faster but may miss results)",
+                      "type": "number"
+                    },
+                    "collections": {
+                      "description": "Filter to collections (OR match)",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "filter": {
+                      "description": "Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\"operator\":\"and\",\"operands\":[{\"key\":\"topics\",\"operator\":\"all\",\"value\":[\"typescript\"]},{\"key\":\"status\",\"operator\":\"ne\",\"value\":\"draft\"}]}",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "intent": {
+                      "description": "Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.",
+                      "type": "string"
+                    },
+                    "rerank": {
+                      "description": "Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "get",
+                "title": "Get Document",
+                "description": "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "file": {
+                      "description": "File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.",
+                      "type": "string"
+                    },
+                    "fromLine": {
+                      "description": "Start from this line number (1-indexed)",
+                      "type": "number"
+                    },
+                    "maxLines": {
+                      "description": "Maximum number of lines to return",
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "file"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "multi_get",
+                "title": "Multi-Get Documents",
+                "description": "Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {
+                    "pattern": {
+                      "description": "Glob pattern, docid, or comma-separated list of file paths/docids",
+                      "type": "string"
+                    },
+                    "maxLines": {
+                      "description": "Maximum lines per file",
+                      "type": "number"
+                    },
+                    "maxBytes": {
+                      "description": "Skip files larger than this (default: 65536 = 64KB)",
+                      "default": 65536,
+                      "type": "number"
+                    },
+                    "lineNumbers": {
+                      "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                      "default": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "pattern"
+                  ]
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              },
+              {
+                "name": "status",
+                "title": "Index Status",
+                "description": "Show the status of the QMD index: collections, document counts, and health information.",
+                "inputSchema": {
+                  "type": "object",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "properties": {}
+                },
+                "annotations": {
+                  "readOnlyHint": true,
+                  "openWorldHint": false
+                }
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 2
+        },
+        "3": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+              }
+            ],
+            "structuredContent": {
+              "totalDocuments": 3,
+              "needsEmbedding": 3,
+              "hasVectorIndex": false,
+              "pendingMetadata": 0,
+              "collections": [
+                {
+                  "name": "notes",
+                  "path": "<ROOT>/corpus/notes",
+                  "pattern": "**/*.md",
+                  "documents": 1,
+                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                },
+                {
+                  "name": "docs",
+                  "path": "<ROOT>/corpus/docs",
+                  "pattern": "**/*.md",
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:13:30.000Z"
+                }
+              ]
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 3
+        }
+      },
+      "stderr": "Shutting down (stdin closed)...\n",
+      "exit_code": 0
+    }
+  ]
+}
