@@ -7,8 +7,8 @@
 //! time (weights, per-collection lists, strong-signal bypass + dud
 //! eviction, rerank query choice, hook timing).
 
-use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use indexmap::IndexMap;
@@ -74,15 +74,30 @@ pub(crate) struct Backends<'a> {
 }
 
 /// Shared inputs for one orchestrated search.
+///
+/// `conn` is the shared connection mutex — [`SearchCtx::db`] locks it
+/// per statement so an [`Embedder`]/[`Reranker`]/[`Generator`] call
+/// never holds it (parity-matrix deviation 43). Upstream's
+/// single-threaded store interleaves concurrent requests at each
+/// `await`, so holding the lock across inference would serialize what
+/// upstream does not.
 pub(crate) struct SearchCtx<'a> {
-    /// Index connection.
-    pub conn: &'a Connection,
+    /// Index connection mutex.
+    pub conn: &'a Mutex<Connection>,
     /// Cache-write counter for the deterministic prune (T5).
     pub cache_writes: &'a AtomicUsize,
     /// Backend resolvers.
     pub backends: Backends<'a>,
     /// Progress hooks.
     pub hooks: &'a dyn SearchHooks,
+}
+
+impl SearchCtx<'_> {
+    /// Lock the connection for a single call — never held across
+    /// inference. Poison-tolerant, same as [`crate::qmd`]'s lock.
+    fn db(&self) -> MutexGuard<'_, Connection> {
+        crate::qmd::lock(self.conn)
+    }
 }
 
 fn search_result_to_ranked(r: &SearchResult) -> RankedResult {
@@ -155,7 +170,8 @@ pub(crate) fn expand_query(
             chunk: None,
         },
     );
-    if let Some(cached) = get_cached_result(ctx.conn, &key)? {
+    let cached = get_cached_result(&ctx.db(), &key)?;
+    if let Some(cached) = cached {
         // Upstream JSON.parse + `Array.isArray` + rows[0].query check:
         // valid non-array JSON returns `[]`; anything else re-expands.
         // The legacy `{type, text}` migration is not ported (D2).
@@ -214,7 +230,7 @@ pub(crate) fn expand_query(
                 .collect::<Vec<_>>(),
         )
         .expect("infallible: only &str fields");
-        set_cached_result(ctx.conn, &key, &body, ctx.cache_writes)?;
+        set_cached_result(&ctx.db(), &key, &body, ctx.cache_writes)?;
     }
     Ok((expanded, model))
 }
@@ -247,7 +263,8 @@ pub(crate) fn rerank(
                 chunk: Some(text),
             },
         );
-        if let Some(cached) = get_cached_result(ctx.conn, &key)? {
+        let cached = get_cached_result(&ctx.db(), &key)?;
+        if let Some(cached) = cached {
             // JS `parseFloat` — a corrupt entry becomes NaN, which the
             // caller's `|| 0` turns into a 0 score.
             cached_scores.insert(text.clone(), cached.parse::<f64>().unwrap_or(f64::NAN));
@@ -272,7 +289,7 @@ pub(crate) fn rerank(
                 },
             );
             // JS `score.toString()` — shortest-roundtrip decimal.
-            set_cached_result(ctx.conn, &key, &score.to_string(), ctx.cache_writes)?;
+            set_cached_result(&ctx.db(), &key, &score.to_string(), ctx.cache_writes)?;
             cached_scores.insert(text.clone(), score);
         }
     }
@@ -721,7 +738,7 @@ fn gather_hybrid_lists(
     // Step 1: BM25 probe — strong signal skips expensive LLM expansion.
     // Intent disables the bypass (upstream comment store.ts:5561-5563).
     let initial_fts = search_fts(
-        ctx.conn,
+        &ctx.db(),
         query,
         SUBQUERY_LIMIT,
         opts.collections.clone(),
@@ -758,7 +775,7 @@ fn gather_hybrid_lists(
     for q in &expanded {
         if q.kind == QueryKind::Lex {
             let hits = search_fts(
-                ctx.conn,
+                &ctx.db(),
                 &q.query,
                 SUBQUERY_LIMIT,
                 opts.collections.clone(),
@@ -794,7 +811,7 @@ fn gather_hybrid_lists(
                 continue;
             };
             let hits = super::search::search_vec_with_embedding(
-                ctx.conn,
+                &ctx.db(),
                 embedding,
                 SUBQUERY_LIMIT,
                 opts.collections.clone(),
@@ -823,7 +840,7 @@ fn gather_hybrid_lists(
             .iter()
             .any(|m| m.query_type != QueryKind::Original);
         if runnable > 0 && !contributed {
-            delete_expansion_cache_entry(ctx.conn, query, &expand_model)?;
+            delete_expansion_cache_entry(&ctx.db(), query, &expand_model)?;
         }
     }
 
@@ -835,7 +852,7 @@ pub(crate) fn hybrid_query(
     query: &str,
     opts: &HybridQueryOpts<'_>,
 ) -> Result<Vec<HybridResult>> {
-    let has_vectors = has_vectors_vec(ctx.conn)?;
+    let has_vectors = has_vectors_vec(&ctx.db())?;
     let (ranked_lists, ranked_meta) = gather_hybrid_lists(ctx, query, opts, has_vectors)?;
 
     // Step 4: RRF fusion.
@@ -864,7 +881,7 @@ pub(crate) fn hybrid_query(
             trace,
         },
     )?;
-    attach_result_metadata(ctx.conn, &mut results)?;
+    attach_result_metadata(&ctx.db(), &mut results)?;
     Ok(results)
 }
 
@@ -914,7 +931,7 @@ fn push_lex_lists(
     for search in searches.iter().filter(|s| s.kind == QueryKind::Lex) {
         for coll in collection_list {
             let scope = coll.clone().map(|c| vec![c]);
-            let hits = search_fts(ctx.conn, &search.query, SUBQUERY_LIMIT, scope, filter)?;
+            let hits = search_fts(&ctx.db(), &search.query, SUBQUERY_LIMIT, scope, filter)?;
             if hits.is_empty() {
                 continue;
             }
@@ -946,8 +963,13 @@ fn push_structured_vec_lists(
             continue;
         };
         for coll in collection_list {
-            let hits =
-                search_vec_multi(ctx.conn, embedding, SUBQUERY_LIMIT, coll.as_deref(), filter)?;
+            let hits = search_vec_multi(
+                &ctx.db(),
+                embedding,
+                SUBQUERY_LIMIT,
+                coll.as_deref(),
+                filter,
+            )?;
             if hits.is_empty() {
                 continue;
             }
@@ -1011,7 +1033,7 @@ pub(crate) fn structured_search(
 
     let mut ranked_lists: Vec<Vec<RankedResult>> = Vec::new();
     let mut ranked_meta: Vec<RankedListMeta> = Vec::new();
-    let has_vectors = has_vectors_vec(ctx.conn)?;
+    let has_vectors = has_vectors_vec(&ctx.db())?;
 
     // Upstream `collections ?? [undefined]` (store.ts:5999) — `None`
     // maps to a single unscoped sub-list. `Qmd::search` normalizes
@@ -1105,7 +1127,7 @@ pub(crate) fn structured_search(
             trace,
         },
     )?;
-    attach_result_metadata(ctx.conn, &mut results)?;
+    attach_result_metadata(&ctx.db(), &mut results)?;
     Ok(results)
 }
 
@@ -1155,7 +1177,8 @@ pub(crate) fn vector_query(
     query: &str,
     opts: &VectorQueryOpts<'_>,
 ) -> Result<Vec<VectorQueryResult>> {
-    if !has_vectors_vec(ctx.conn)? {
+    let has_vectors = has_vectors_vec(&ctx.db())?;
+    if !has_vectors {
         return Ok(Vec::new());
     }
 
@@ -1177,10 +1200,15 @@ pub(crate) fn vector_query(
     // (store.ts:5890); sequential is our only mode anyway.
     let mut all_results: IndexMap<String, VectorQueryResult> = IndexMap::new();
     for q in &query_texts {
-        let hits = super::search::search_vec(
-            ctx.conn,
-            embedder.as_ref(),
-            q,
+        // Embed unlocked — upstream `searchVec` order:
+        // vectors exist (checked above), embed, then search.
+        // `if (!embedding) continue` — store.ts:5893-5894.
+        let Some(embedding) = super::search::embed_query(embedder.as_ref(), q)? else {
+            continue;
+        };
+        let hits = super::search::search_vec_with_embedding(
+            &ctx.db(),
+            &embedding,
             opts.limit,
             opts.collections.clone(),
             opts.filter,

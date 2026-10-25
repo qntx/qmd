@@ -527,7 +527,7 @@ impl std::fmt::Debug for Qmd {
 /// Recoverable-poison lock: a panicking writer between calls does not
 /// corrupt state because every mutation is wrapped in a transaction or a
 /// full config rewrite, so keeping the guard is safe.
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
@@ -1847,11 +1847,20 @@ impl Qmd {
     /// query-embedding failure, [`Error::Db`] on SQLite failures.
     pub fn search_vector(&self, query: &str, opts: &VectorOptions) -> Result<Vec<SearchResult>> {
         let embedder = self.embedder()?;
-        let conn = lock(&self.conn);
-        store::search::search_vec(
-            &conn,
-            embedder.as_ref(),
-            query,
+        // `has_vectors_vec` is checked before embedding: no vectors
+        // means `[]` without touching the embedder — and the guard is
+        // dropped before inference so concurrent callers are not
+        // blocked by it (parity-matrix deviation 43).
+        let has_vectors = store::status::has_vectors_vec(&lock(&self.conn))?;
+        if !has_vectors {
+            return Ok(Vec::new());
+        }
+        let Some(embedding) = store::search::embed_query(embedder.as_ref(), query)? else {
+            return Ok(Vec::new());
+        };
+        store::search::search_vec_with_embedding(
+            &lock(&self.conn),
+            &embedding,
             opts.limit.unwrap_or(20),
             opts.collections.clone(),
             opts.filter.as_ref(),
@@ -1865,16 +1874,10 @@ impl Qmd {
     /// # Errors
     /// [`Error::NoBackend`] without a query-expansion backend;
     /// [`Error::Db`] on cache access failure.
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the connection guard must live until the query completes"
-    )]
     pub fn expand_query(&self, query: &str) -> Result<Vec<crate::query::ExpandedQuery>> {
-        // Resolve config before locking conn: `load_config` may itself
-        // lock it on the `DbOnly` source, and the lazy backend
-        // resolvers below need it while the guard is held.
+        // Resolve config before any conn lock: `load_config` locks it
+        // itself on the `DbOnly` source.
         let config = self.config()?;
-        let conn = lock(&self.conn);
         // Backend resolvers must outlive the context, so they are bound
         // as named locals before `SearchCtx` borrows them (lazy — a
         // pipeline only resolves the backends it reaches).
@@ -1882,7 +1885,7 @@ impl Qmd {
         let reranker = || self.reranker_with(&config);
         let generator = || self.generator_with(&config);
         let ctx = store::hybrid::SearchCtx {
-            conn: &conn,
+            conn: &self.conn,
             cache_writes: &self.cache_writes,
             backends: store::hybrid::Backends {
                 embedder: &embedder,
@@ -1903,10 +1906,6 @@ impl Qmd {
     /// # Errors
     /// [`Error::InvalidQuery`] on an empty query string or per-line
     /// structured validation; backend/database errors propagate.
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the connection guard must live until the query completes"
-    )]
     pub fn search(
         &self,
         opts: &SearchOptions,
@@ -1928,12 +1927,11 @@ impl Qmd {
         let intent = opts.intent.as_deref().filter(|s| !s.is_empty());
         let collections = opts.collections.clone().filter(|c| !c.is_empty());
         let config = self.config()?;
-        let conn = lock(&self.conn);
         let embedder = || self.embedder_with(&config);
         let reranker = || self.reranker_with(&config);
         let generator = || self.generator_with(&config);
         let ctx = store::hybrid::SearchCtx {
-            conn: &conn,
+            conn: &self.conn,
             cache_writes: &self.cache_writes,
             backends: store::hybrid::Backends {
                 embedder: &embedder,
@@ -1985,10 +1983,6 @@ impl Qmd {
     /// # Errors
     /// [`Error::NoBackend`] without an embedding/expansion backend;
     /// [`Error::Db`] on database failure.
-    #[allow(
-        clippy::significant_drop_tightening,
-        reason = "the connection guard must live until the query completes"
-    )]
     pub fn vector_query(
         &self,
         query: &str,
@@ -1996,12 +1990,11 @@ impl Qmd {
         hooks: &dyn SearchHooks,
     ) -> Result<Vec<store::hybrid::VectorQueryResult>> {
         let config = self.config()?;
-        let conn = lock(&self.conn);
         let embedder = || self.embedder_with(&config);
         let reranker = || self.reranker_with(&config);
         let generator = || self.generator_with(&config);
         let ctx = store::hybrid::SearchCtx {
-            conn: &conn,
+            conn: &self.conn,
             cache_writes: &self.cache_writes,
             backends: store::hybrid::Backends {
                 embedder: &embedder,

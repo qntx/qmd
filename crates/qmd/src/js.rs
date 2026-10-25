@@ -324,6 +324,32 @@ pub fn number(s: &str) -> Option<f64> {
     trimmed.parse().ok()
 }
 
+/// JS `encodeURIComponent`: every byte outside the unreserved set
+/// `A-Z a-z 0-9 - _ . ! ~ * ' ( )` is percent-encoded as uppercase
+/// `%XX` of its UTF-8 bytes.
+#[must_use]
+pub fn encode_uri_component(s: &str) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut encoded = String::new();
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'-' | b'_' | b'.' | b'!' | b'~' | b'*' | b'\'' | b'(' | b')'
+            )
+        {
+            encoded.push(char::from(b));
+        } else {
+            let hi = HEX.get(usize::from(b >> 4)).copied().unwrap_or(b'0');
+            let lo = HEX.get(usize::from(b & 0x0F)).copied().unwrap_or(b'0');
+            encoded.push('%');
+            encoded.push(char::from(hi));
+            encoded.push(char::from(lo));
+        }
+    }
+    encoded
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -452,5 +478,18 @@ mod tests {
         assert_eq!(number("-0x10"), None);
         assert_eq!(number("1_000"), None);
         assert_eq!(number("."), None);
+    }
+
+    #[test]
+    fn encode_uri_component_escapes() {
+        assert_eq!(encode_uri_component("a b.md"), "a%20b.md");
+        assert_eq!(encode_uri_component("a#b?c%d"), "a%23b%3Fc%25d");
+        assert_eq!(
+            encode_uri_component("日本語"),
+            "%E6%97%A5%E6%9C%AC%E8%AA%9E"
+        );
+        assert_eq!(encode_uri_component(""), "");
+        // Unreserved set is untouched.
+        assert_eq!(encode_uri_component("AZaz09-_.!~*'()"), "AZaz09-_.!~*'()");
     }
 }
