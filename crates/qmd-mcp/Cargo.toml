@@ -15,3 +15,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true
+
+[dependencies]
+qmd        = { version = "0.6.0", path = "../qmd" }
+rmcp       = { version = "3.5.1", features = ["server", "transport-io"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+thiserror  = "2.0.21"
+tokio      = { version = "1.53.3", features = ["io-std", "io-util", "macros", "rt-multi-thread", "sync", "time"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"

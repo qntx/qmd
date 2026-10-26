@@ -1,0 +1,9 @@
+[
+  {
+    "name": "document",
+    "uriTemplate": "qmd://{+path}",
+    "title": "QMD Document",
+    "description": "A markdown document from your QMD knowledge base. Use search tools to discover documents.",
+    "mimeType": "text/markdown"
+  }
+]

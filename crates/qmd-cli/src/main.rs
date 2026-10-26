@@ -10,6 +10,8 @@ use std::process::ExitCode;
 
 // The bin uses only `qmd_cli::run`; these are lib-facing dependencies.
 use clap as _;
+#[cfg(feature = "mcp")]
+use qmd_mcp as _;
 #[cfg(test)]
 use regex as _;
 #[cfg(test)]
@@ -17,13 +19,23 @@ use rusqlite as _;
 use serde_json as _;
 #[cfg(test)]
 use tempfile as _;
+#[cfg(feature = "mcp")]
+use tokio as _;
 
 fn main() -> ExitCode {
     // `local-offset` queries the system zoneinfo and is not safe once
     // other threads exist; the offset is captured here for the whole
     // process (upstream reads the system timezone lazily everywhere).
     let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
-    install_signal_handlers();
+    // Deliberate deviation (parity-matrix deviation 76): upstream keeps
+    // its cursor-restore `process.exit` handler under `mcp` too. The
+    // server is long-lived with models resident, and exiting with a live
+    // llama.cpp context risks the Metal teardown abort (deviation 47);
+    // the default signal action ends the process without exit handlers.
+    // `qmd --index <n> mcp` still gets the watcher (upstream behaviour).
+    if std::env::args().nth(1).as_deref() != Some("mcp") {
+        install_signal_handlers();
+    }
     let env = qmd::Environment::from_process();
     let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let stdout_tty = std::io::stdout().is_terminal();
