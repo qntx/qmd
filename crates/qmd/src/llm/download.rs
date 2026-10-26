@@ -1,7 +1,9 @@
 //! Model download, HF cache naming, and GGUF validation.
 //!
 //! Ports upstream `pullModels` / `inspectGgufFile` / `validateGgufFile`
-//! (`src/llm.ts:323-580`) plus node-llama-cpp's `hf:` URI resolution and
+//! (`src/llm.ts:323-580`), the runtime `resolveModel` (`llm.ts:1126-1132`,
+//! [`resolve_model`] — cache first, no etag check) plus node-llama-cpp's
+//! `hf:` URI resolution and
 //! `hf_*` cache naming (`parseModelUri.js`, `buildHuggingFaceFilePrefix`),
 //! npm `filenamify` defaults, and the endpoint resolution of
 //! `modelDownloadEndpoints.js`.
@@ -15,7 +17,9 @@
 //!
 //! Deviation: the remote-etag HEAD request uses the resolved endpoint and
 //! the URI's branch. Upstream `getRemoteEtag` hardcodes `huggingface.co` and
-//! `main`, which silently defeats `HF_ENDPOINT` mirrors.
+//! `main`, which silently defeats `HF_ENDPOINT` mirrors. A failed HEAD
+//! never deletes the cache (see [`pull_models`]), and every request has
+//! connect/header timeouts (`HTTP_TIMEOUT`).
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -662,6 +666,31 @@ pub struct PullResult {
     pub refreshed: bool,
 }
 
+/// Bound on connecting and on waiting for response headers. Upstream's
+/// `fetch` has none, so an unreachable or stalled host hangs the call
+/// forever — a hang a long-lived `qmd mcp` cannot recover from. Body
+/// reads stay unbounded: ureq only offers a total body budget, which a
+/// multi-GB model download on a slow link would trip.
+const HTTP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Agent config for etag checks and downloads: `timeout` bounds DNS,
+/// connect incl. TLS, request send and response headers. The proxy comes
+/// from `HTTPS_PROXY`/`NO_PROXY` like any ureq default.
+fn agent_config(
+    timeout: std::time::Duration,
+) -> ureq::config::ConfigBuilder<ureq::typestate::AgentScope> {
+    ureq::Agent::config_builder()
+        .timeout_resolve(Some(timeout))
+        .timeout_connect(Some(timeout))
+        .timeout_send_request(Some(timeout))
+        .timeout_recv_response(Some(timeout))
+}
+
+/// The production agent ([`HTTP_TIMEOUT`]).
+fn http_agent() -> ureq::Agent {
+    agent_config(HTTP_TIMEOUT).build().into()
+}
+
 /// `getRemoteEtag`: HEAD the resolve URL; `None` on any failure.
 fn remote_etag(agent: &ureq::Agent, hf: &HfRef, endpoint: &str) -> Option<String> {
     let url = format!(
@@ -808,10 +837,73 @@ fn dest_display_name(dest: &Path) -> String {
         .map_or_else(|| "model".to_owned(), |n| n.to_string_lossy().into_owned())
 }
 
+/// Resolve a model URI to a local GGUF for loading — upstream
+/// `LlamaCpp.resolveModel` (`llm.ts:1126-1132`).
+///
+/// This is the runtime path the lazy backends load through. Like upstream's
+/// `resolveModelFile`, a cached `hf:` model is returned without any
+/// network call — only a missing file is downloaded — and a local path
+/// must exist. The etag refresh belongs to `qmd pull` alone.
+///
+/// # Errors
+/// [`Error::Download`] when a missing model cannot be downloaded, a
+/// local path does not exist, or the file is not valid GGUF;
+/// [`Error::Io`] on filesystem failure; [`Error::InvalidInput`] on an
+/// `hf:` URI with fewer than three parts.
+pub fn resolve_model(model: &str, env: &Environment) -> Result<PathBuf> {
+    resolve_model_with(&http_agent(), model, env)
+}
+
+/// [`resolve_model`] over a given agent.
+fn resolve_model_with(agent: &ureq::Agent, model: &str, env: &Environment) -> Result<PathBuf> {
+    let dir = model_cache_dir(env);
+    std::fs::create_dir_all(&dir).map_err(|e| Error::Io {
+        path: dir.clone(),
+        source: e,
+    })?;
+    let Some(hf) = parse_model_uri(model)? else {
+        return resolve_local_model(&dir, model);
+    };
+    let path = resolve_or_download(agent, &hf, &resolve_hf_endpoint(env), &dir, &mut |_, _| {})?;
+    validate_gguf_file(&path, model)?;
+    Ok(path)
+}
+
+/// `Some` for an `hf:` URI, `None` for a local path; a malformed `hf:`
+/// URI is an error.
+fn parse_model_uri(model: &str) -> Result<Option<HfRef>> {
+    let hf = parse_hf_uri(model);
+    if model.starts_with("hf:") && hf.is_none() {
+        return Err(Error::InvalidInput {
+            reason: format!("Invalid Hugging Face URI: {model}"),
+        });
+    }
+    Ok(hf)
+}
+
+/// Local file spec: `path.resolve(cacheDir, spec)` (resolveModelFile.js),
+/// which must exist and be valid GGUF.
+fn resolve_local_model(dir: &Path, model: &str) -> Result<PathBuf> {
+    let path = resolve_lexical(dir, model);
+    if !path.exists() {
+        return Err(Error::Download {
+            reason: format!("No model file found at \"{}\"", path.display()),
+        });
+    }
+    validate_gguf_file(&path, model)?;
+    Ok(path)
+}
+
 /// Upstream `pullModels` (`llm.ts:523-580`).
 ///
 /// `cache_dir` overrides [`model_cache_dir`]; `refresh` forces
 /// re-download of every model regardless of etags.
+///
+/// Deliberate deviation: upstream also deletes the cache when the etag
+/// HEAD fails, so an offline `pull` destroys working models it then
+/// cannot re-download (parity-matrix §8, not replicated). Here only
+/// `refresh`, a confirmed remote/local etag mismatch or an empty cache
+/// trigger the sweep.
 ///
 /// # Errors
 /// [`Error::Download`] on HTTP failure or a confirmed-bad (HTML/invalid)
@@ -844,43 +936,51 @@ pub fn pull_models_with_progress(
     refresh: bool,
     on_progress: &mut dyn FnMut(&str, u64, Option<u64>),
 ) -> Result<Vec<PullResult>> {
+    pull_models_with(&http_agent(), models, env, cache_dir, refresh, on_progress)
+}
+
+/// [`pull_models_with_progress`] over a given agent.
+fn pull_models_with(
+    agent: &ureq::Agent,
+    models: &[String],
+    env: &Environment,
+    cache_dir: Option<&Path>,
+    refresh: bool,
+    on_progress: &mut dyn FnMut(&str, u64, Option<u64>),
+) -> Result<Vec<PullResult>> {
     let dir = cache_dir.map_or_else(|| model_cache_dir(env), Path::to_path_buf);
     std::fs::create_dir_all(&dir).map_err(|e| Error::Io {
         path: dir.clone(),
         source: e,
     })?;
     let endpoint = resolve_hf_endpoint(env);
-    let agent = ureq::Agent::new_with_defaults();
 
     let mut results = Vec::with_capacity(models.len());
     for model in models {
         let mut refreshed = false;
         let filename = model.rsplit('/').next().unwrap_or(model);
-        let hf = parse_hf_uri(model);
-
-        if model.starts_with("hf:") && hf.is_none() {
-            return Err(Error::InvalidInput {
-                reason: format!("Invalid Hugging Face URI: {model}"),
-            });
-        }
+        let hf = parse_model_uri(model)?;
 
         // Etag-driven refresh (upstream lines 537-565).
         if let Some(hf_ref) = &hf {
             let etag = etag_path(&dir, filename);
-            let remote = remote_etag(&agent, hf_ref, &endpoint);
+            let remote = remote_etag(agent, hf_ref, &endpoint);
             let local = std::fs::read_to_string(&etag)
                 .ok()
                 .map(|s| s.trim().to_owned());
             let cached = cached_files_containing(&dir, filename);
-            let should_refresh =
-                refresh || remote.is_none() || remote != local || cached.is_empty();
+            // An unknown remote tag (`None`: HEAD failed) is not a
+            // mismatch — see the deviation note above.
+            let should_refresh = refresh
+                || cached.is_empty()
+                || remote.is_some_and(|r| local.as_deref() != Some(r.as_str()));
             if should_refresh {
                 remove_files(&cached);
                 drop(std::fs::remove_file(&etag));
                 refreshed = !cached.is_empty();
             }
 
-            let path = resolve_or_download(&agent, hf_ref, &endpoint, &dir, &mut |done, total| {
+            let path = resolve_or_download(agent, hf_ref, &endpoint, &dir, &mut |done, total| {
                 on_progress(model, done, total);
             })?;
             validate_gguf_file(&path, model)?;
@@ -888,7 +988,7 @@ pub fn pull_models_with_progress(
             // Upstream HEADs again after the download (llm.ts:572) so the
             // stored tag reflects the remote at completion, not the possibly
             // stale pre-download value.
-            if let Some(etag_value) = remote_etag(&agent, hf_ref, &endpoint) {
+            if let Some(etag_value) = remote_etag(agent, hf_ref, &endpoint) {
                 drop(std::fs::write(&etag, format!("{etag_value}\n")));
             }
             results.push(PullResult {
@@ -904,13 +1004,7 @@ pub fn pull_models_with_progress(
                 remove_files(&cached);
                 refreshed = !cached.is_empty();
             }
-            let path = resolve_lexical(&dir, model);
-            if !path.exists() {
-                return Err(Error::Download {
-                    reason: format!("No model file found at \"{}\"", path.display()),
-                });
-            }
-            validate_gguf_file(&path, model)?;
+            let path = resolve_local_model(&dir, model)?;
             let size_bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
             results.push(PullResult {
                 model: model.clone(),
@@ -1287,5 +1381,207 @@ mod tests {
         // JS toFixed(0) rounds half away from zero.
         assert_eq!(format_model_file_size(2560), "3 KB");
         assert_eq!(format_model_file_size(1_282_438_912), "1252382 KB");
+    }
+
+    // ── Runtime resolution vs. `pull` refresh ───────────────────────────
+
+    use std::io::{BufRead as _, BufReader};
+    use std::net::TcpListener;
+    use std::sync::{Arc, Mutex};
+
+    const URI: &str = "hf:acme/demo-GGUF/demo-Q8_0.gguf";
+    const OLD: &[u8] = b"GGUF cached bytes";
+    const NEW: &[u8] = b"GGUF fresh bytes";
+
+    /// A stand-in Hub: HEAD answers with `etag`, GET with `NEW`; every
+    /// request's method is logged so tests can assert on network use.
+    fn fake_hub(etag: &'static str) -> (String, Arc<Mutex<Vec<String>>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let endpoint = format!("http://{}/", listener.local_addr().expect("addr"));
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let requests = Arc::clone(&log);
+        std::thread::spawn(move || {
+            for stream in listener.incoming().map_while(std::result::Result::ok) {
+                serve_one(stream, etag, &log);
+            }
+        });
+        (endpoint, requests)
+    }
+
+    /// Answer one `Connection: close` request for [`fake_hub`].
+    fn serve_one(mut stream: std::net::TcpStream, etag: &str, log: &Mutex<Vec<String>>) {
+        let mut reader = BufReader::new(stream.try_clone().expect("clone"));
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("request line");
+        let mut header = String::from("-");
+        while !header.trim().is_empty() {
+            header.clear();
+            reader.read_line(&mut header).expect("header");
+        }
+        let method = line.split(' ').next().unwrap_or_default().to_owned();
+        // Logged before replying so the client never outruns it.
+        log.lock().expect("log").push(method.clone());
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nETag: {etag}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            NEW.len()
+        );
+        stream.write_all(head.as_bytes()).expect("write head");
+        if method == "GET" {
+            stream.write_all(NEW).expect("write body");
+        }
+    }
+
+    /// Port 0 is never connectable, so every request fails at connect —
+    /// unlike a freed ephemeral port, which a parallel test could reuse.
+    const DEAD_ENDPOINT: &str = "http://127.0.0.1:0/";
+
+    /// Env with the model cache under `root` and `endpoint` as the Hub;
+    /// returns the cache path of [`URI`].
+    fn hub_env(root: &Path, endpoint: String) -> (Environment, PathBuf) {
+        let env = Environment {
+            xdg_cache_home: Some(root.to_path_buf()),
+            hf_endpoint: Some(endpoint),
+            ..Environment::default()
+        };
+        let path = model_cache_dir(&env).join(hf_cache_filename(&hf(URI)));
+        (env, path)
+    }
+
+    fn seed_cache(path: &Path, etag: Option<&str>) {
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+        std::fs::write(path, OLD).expect("seed model");
+        if let Some(tag) = etag {
+            let dir = path.parent().expect("parent");
+            std::fs::write(etag_path(dir, "demo-Q8_0.gguf"), format!("{tag}\n")).expect("etag");
+        }
+    }
+
+    fn requests(log: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
+        log.lock().expect("log").clone()
+    }
+
+    /// The production config minus any `HTTPS_PROXY` in the developer's
+    /// shell, so loopback traffic stays hermetic.
+    fn direct(timeout: std::time::Duration) -> ureq::Agent {
+        agent_config(timeout).proxy(None).build().into()
+    }
+
+    fn resolve(env: &Environment) -> Result<PathBuf> {
+        resolve_model_with(&direct(HTTP_TIMEOUT), URI, env)
+    }
+
+    fn pull(env: &Environment, refresh: bool) -> Result<Vec<PullResult>> {
+        pull_models_with(
+            &direct(HTTP_TIMEOUT),
+            &[URI.to_owned()],
+            env,
+            None,
+            refresh,
+            &mut |_, _, _| {},
+        )
+    }
+
+    #[test]
+    fn resolve_model_uses_the_cache_without_network() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (endpoint, log) = fake_hub("\"v2\"");
+        let (env, path) = hub_env(tmp.path(), endpoint);
+        // No etag file: runtime resolution must not care about freshness.
+        seed_cache(&path, None);
+        assert_eq!(resolve(&env).expect("resolve"), path);
+        assert_eq!(std::fs::read(&path).expect("read"), OLD);
+        assert!(
+            requests(&log).is_empty(),
+            "network used: {:?}",
+            requests(&log)
+        );
+    }
+
+    #[test]
+    fn resolve_model_with_cache_survives_a_dead_endpoint() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (env, path) = hub_env(tmp.path(), DEAD_ENDPOINT.to_owned());
+        seed_cache(&path, Some("\"v1\""));
+        assert_eq!(resolve(&env).expect("resolve"), path);
+        assert_eq!(std::fs::read(&path).expect("read"), OLD);
+    }
+
+    #[test]
+    fn resolve_model_downloads_only_a_missing_model() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (endpoint, log) = fake_hub("\"v2\"");
+        let (env, path) = hub_env(tmp.path(), endpoint);
+        assert_eq!(resolve(&env).expect("resolve"), path);
+        assert_eq!(std::fs::read(&path).expect("read"), NEW);
+        assert_eq!(requests(&log), ["GET"]);
+    }
+
+    #[test]
+    fn pull_keeps_the_cache_when_the_etag_head_fails() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (env, path) = hub_env(tmp.path(), DEAD_ENDPOINT.to_owned());
+        seed_cache(&path, Some("\"v1\""));
+        let pulled = pull(&env, false).expect("pull");
+        assert!(!pulled.first().expect("result").refreshed);
+        assert_eq!(std::fs::read(&path).expect("read"), OLD);
+    }
+
+    #[test]
+    fn pull_keeps_the_cache_when_the_etag_matches() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (endpoint, log) = fake_hub("\"v1\"");
+        let (env, path) = hub_env(tmp.path(), endpoint);
+        seed_cache(&path, Some("\"v1\""));
+        let pulled = pull(&env, false).expect("pull");
+        assert!(!pulled.first().expect("result").refreshed);
+        assert_eq!(std::fs::read(&path).expect("read"), OLD);
+        assert_eq!(requests(&log), ["HEAD", "HEAD"]);
+    }
+
+    #[test]
+    fn pull_redownloads_on_a_confirmed_etag_mismatch() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (endpoint, log) = fake_hub("\"v2\"");
+        let (env, path) = hub_env(tmp.path(), endpoint);
+        seed_cache(&path, Some("\"v1\""));
+        let pulled = pull(&env, false).expect("pull");
+        assert!(pulled.first().expect("result").refreshed);
+        assert_eq!(std::fs::read(&path).expect("read"), NEW);
+        assert_eq!(requests(&log), ["HEAD", "GET", "HEAD"]);
+        let tag = std::fs::read_to_string(etag_path(path.parent().expect("dir"), "demo-Q8_0.gguf"));
+        assert_eq!(tag.expect("etag").trim(), "\"v2\"");
+    }
+
+    #[test]
+    fn pull_refresh_redownloads_a_current_model() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (endpoint, log) = fake_hub("\"v1\"");
+        let (env, path) = hub_env(tmp.path(), endpoint);
+        seed_cache(&path, Some("\"v1\""));
+        let pulled = pull(&env, true).expect("pull");
+        assert!(pulled.first().expect("result").refreshed);
+        assert_eq!(std::fs::read(&path).expect("read"), NEW);
+        assert_eq!(requests(&log), ["HEAD", "GET", "HEAD"]);
+    }
+
+    /// A host that accepts but never answers must not hang the caller.
+    #[test]
+    fn http_timeouts_bound_a_silent_server() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let endpoint = format!("http://{}/", listener.local_addr().expect("addr"));
+        std::thread::spawn(move || {
+            // Accept, never answer; hold the socket until the client gives up.
+            if let Some(Ok(mut stream)) = listener.incoming().next() {
+                drop(std::io::copy(&mut stream, &mut std::io::sink()));
+            }
+        });
+        let started = std::time::Instant::now();
+        let agent = direct(std::time::Duration::from_millis(200));
+        assert_eq!(remote_etag(&agent, &hf(URI), &endpoint), None);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "HEAD took {:?}",
+            started.elapsed()
+        );
     }
 }

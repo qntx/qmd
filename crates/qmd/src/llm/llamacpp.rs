@@ -1155,18 +1155,7 @@ impl LazyLlamaEmbedder {
     /// Resolve `model_uri` to a local GGUF and build the backend —
     /// runs inside the slot lock so concurrent first-calls serialize.
     fn build(&self) -> Result<LlamaEmbedder> {
-        let pulled = super::download::pull_models(
-            std::slice::from_ref(&self.model_uri),
-            &self.env,
-            None,
-            false,
-        )?;
-        let path = pulled
-            .first()
-            .map(|r| r.path.clone())
-            .ok_or_else(|| Error::InvalidInput {
-                reason: format!("model resolution returned no path for {}", self.model_uri),
-            })?;
+        let path = super::download::resolve_model(&self.model_uri, &self.env)?;
         LlamaEmbedder::new(&path, &self.model_uri, &self.env, self.mode)
     }
 
@@ -1702,18 +1691,7 @@ impl LazyLlamaReranker {
     /// Resolve `model_uri` to a local GGUF and build the backend —
     /// runs inside the slot lock so concurrent first-calls serialize.
     fn build(&self) -> Result<LlamaReranker> {
-        let pulled = super::download::pull_models(
-            std::slice::from_ref(&self.model_uri),
-            &self.env,
-            None,
-            false,
-        )?;
-        let path = pulled
-            .first()
-            .map(|r| r.path.clone())
-            .ok_or_else(|| Error::InvalidInput {
-                reason: format!("model resolution returned no path for {}", self.model_uri),
-            })?;
+        let path = super::download::resolve_model(&self.model_uri, &self.env)?;
         LlamaReranker::new(&path, &self.model_uri, &self.env)
     }
 }
@@ -1782,18 +1760,7 @@ impl LazyLlamaGenerator {
     /// Resolve `model_uri` to a local GGUF and build the backend —
     /// runs inside the slot lock so concurrent first-calls serialize.
     fn build(&self) -> Result<LlamaGenerator> {
-        let pulled = super::download::pull_models(
-            std::slice::from_ref(&self.model_uri),
-            &self.env,
-            None,
-            false,
-        )?;
-        let path = pulled
-            .first()
-            .map(|r| r.path.clone())
-            .ok_or_else(|| Error::InvalidInput {
-                reason: format!("model resolution returned no path for {}", self.model_uri),
-            })?;
+        let path = super::download::resolve_model(&self.model_uri, &self.env)?;
         LlamaGenerator::new(&path, &self.model_uri, &self.env)
     }
 }
@@ -1986,7 +1953,7 @@ mod tests {
     // Model resolution failures on lazy backends surface as
     // `InferenceError::ModelLoad` (A3/A4) — never as a 0.5 rerank
     // fallback or a silent expand error. A nonexistent local GGUF path
-    // fails inside `pull_models` without touching the network.
+    // fails inside `resolve_model` without touching the network.
     #[test]
     #[allow(clippy::unwrap_used, reason = "idiomatic test-code patterns")]
     fn lazy_backends_report_model_load_on_missing_gguf() {

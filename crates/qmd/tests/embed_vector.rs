@@ -850,8 +850,8 @@ mod eval_e2e {
         let tmp = tempfile::tempdir().unwrap();
         let corpus = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/eval-docs");
         let db = tmp.path().join("i.sqlite");
-        // Local path — bypasses `pull_models` etag refresh (a missing
-        // remote deletes + re-downloads; this test never downloads).
+        // Direct cache path — no model resolution; this test never
+        // downloads.
         let embedder = LlamaEmbedder::new(
             &model_file,
             qmd::llm::DEFAULT_EMBED_MODEL,

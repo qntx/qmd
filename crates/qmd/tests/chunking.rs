@@ -1009,8 +1009,8 @@ mod token_chunk_golden {
     #[test]
     #[ignore = "requires cached GGUF models"]
     fn token_chunks_match_upstream() {
-        // Local path like the e0 fixtures — bypasses `pull_models`' etag
-        // refresh entirely (a model-less run skips, never downloads).
+        // Direct cache path like the e0 fixtures — no model resolution,
+        // so a model-less run fails the assert and never downloads.
         let path = model_cache_dir(&Environment::default())
             .join("hf_ggml-org_embeddinggemma-300M-Q8_0.gguf");
         assert!(path.exists(), "model cache missing: {}", path.display());

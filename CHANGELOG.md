@@ -39,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Model URI resolution treats an empty `models.embed`/`rerank`/`generate` config value as unset and falls through to `QMD_*_MODEL`, matching upstream's `||` chain (previously it skipped the environment variable).
 - `Qmd::search`/`vector_query`/`expand_query` resolve backend configuration before locking the connection — resolving a lazy backend on a `DbOnly` config source inside the guard previously deadlocked (config load re-locks `conn`).
 - Local config discovery now checks `.qmd/index.yaml` (preferred) and `.qmd/index.yml`, matching upstream — P1.1 mistakenly looked for `qmd.yml`.
+- Cached models are no longer deleted when Hugging Face is unreachable. The lazy embed/generate/rerank backends resolved models through `pull_models`, whose etag HEAD ran on every first use; a failed HEAD triggered a refresh that removed the cached GGUF and then could not re-download it (offline `embed`/`query`/`qmd mcp` destroyed working models). Runtime loading now goes through the new `download::resolve_model` — upstream's `resolveModel`/`resolveModelFile`: a cached file is used without any network call, only a missing one is downloaded. `pull` keeps its etag refresh but sweeps the cache only on `--refresh`, a confirmed etag mismatch or an empty cache — upstream's delete-on-failed-HEAD stays unreplicated (parity-matrix §8). Every Hub request now has 30 s DNS/connect/send/response-header timeouts instead of hanging forever on a stalled connection.
 
 ### Changed
 

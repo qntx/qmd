@@ -8,8 +8,9 @@
 //! Model-dependent paths stay deterministic: `embed` on a pending index
 //! is exercised under `CI=1`, where the lazy backend fails fast with the
 //! upstream `_ciMode` message before any download; `pull` is exercised
-//! with local-path model URIs, which upstream resolves as plain files —
-//! no `hf:` download is ever attempted.
+//! with local-path model URIs, which upstream resolves as plain files,
+//! and `hf:` models only ever with a pre-seeded cache and a dead
+//! `HF_ENDPOINT` — no download is ever attempted.
 //!
 //! Upstream differences noted inline: a busy embed lock is an OS
 //! `try_lock` on `<db>.embed.lock` (P4-D4), and `--chunk-strategy`
@@ -285,4 +286,114 @@ fn pull_refresh_rechecks_local_models() {
     assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
     assert!(out.stdout.contains("Pulling models"), "{}", out.stdout);
     assert!(out.stdout.contains(&model_str), "{}", out.stdout);
+}
+
+// ── Cached `hf:` models offline (issue 88) ──────────────────────────
+
+/// Default `hf:` models, their cache filenames and the sweep key `pull`
+/// uses for `<file>.etag`.
+fn default_models() -> [(&'static str, String, &'static str); 3] {
+    use qmd::llm::download::{hf_cache_filename, parse_hf_uri};
+    [
+        qmd::llm::DEFAULT_EMBED_MODEL,
+        qmd::llm::DEFAULT_GENERATE_MODEL,
+        qmd::llm::DEFAULT_RERANK_MODEL,
+    ]
+    .map(|uri| {
+        let cache_name = hf_cache_filename(&parse_hf_uri(uri).unwrap());
+        (uri, cache_name, uri.rsplit('/').next().unwrap())
+    })
+}
+
+/// `$XDG_CACHE_HOME/qmd/models` of the isolated env.
+fn model_dir(env: &CliEnv) -> std::path::PathBuf {
+    let dir = env.root.join("xdg-cache/qmd/models");
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// Port 0 is never connectable, so every request fails at connect —
+/// unlike a freed ephemeral port, which a parallel test could reuse.
+const DEAD_ENDPOINT: &str = "http://127.0.0.1:0/";
+
+#[test]
+fn embed_with_a_cached_hf_model_stays_offline() {
+    // Runtime resolution is upstream's `resolveModelFile`: a cached file
+    // is used as-is, no etag HEAD. The fake GGUF then fails to load —
+    // what matters is that resolution neither deleted it nor tried the
+    // (dead) endpoint.
+    let env = env_with_fixtures();
+    let (_, cache_name, _) = default_models()[0].clone();
+    let cached = fake_gguf(&env, "seed.gguf");
+    let model = model_dir(&env).join(&cache_name);
+    std::fs::rename(&cached, &model).unwrap();
+    let out = env.run_opts(
+        &["embed"],
+        &env.fixtures,
+        true,
+        &[("HF_ENDPOINT", DEAD_ENDPOINT)],
+    );
+    assert!(
+        model.exists(),
+        "cached model deleted; stderr: {}",
+        out.stderr
+    );
+    assert!(
+        !out.stderr.contains("download failed"),
+        "stderr: {}",
+        out.stderr
+    );
+}
+
+#[test]
+fn pull_offline_keeps_cached_hf_models() {
+    // Upstream deletes the cache when the etag HEAD fails and then cannot
+    // re-download (parity-matrix §8, not replicated).
+    let env = CliEnv::new();
+    env.write_config("index", "collections: {}\n");
+    let dir = model_dir(&env);
+    for (_, cache_name, file) in default_models() {
+        let seed = fake_gguf(&env, "seed.gguf");
+        std::fs::rename(seed, dir.join(&cache_name)).unwrap();
+        std::fs::write(dir.join(format!("{file}.etag")), "\"v1\"\n").unwrap();
+    }
+    let out = env.run_opts(
+        &["pull"],
+        &env.fixtures,
+        true,
+        &[("HF_ENDPOINT", DEAD_ENDPOINT)],
+    );
+    assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
+    for (uri, cache_name, _) in default_models() {
+        assert!(dir.join(&cache_name).exists(), "{uri} deleted");
+    }
+}
+
+/// End to end through all three lazy backends with the user's real
+/// models, hard-linked into the isolated cache (a deleted link leaves
+/// the user's file intact) and a dead `HF_ENDPOINT`.
+#[test]
+#[ignore = "requires cached GGUF models"]
+fn embed_and_query_offline_with_cached_real_models() {
+    let env = env_with_fixtures();
+    let real = qmd::llm::download::model_cache_dir(&qmd::Environment::from_process());
+    let dir = model_dir(&env);
+    for (_, cache_name, _) in default_models() {
+        std::fs::hard_link(real.join(&cache_name), dir.join(&cache_name))
+            .unwrap_or_else(|e| panic!("hard-link {cache_name}: {e}"));
+    }
+    let offline = [("HF_ENDPOINT", DEAD_ENDPOINT)];
+    let embed = env.run_opts(&["embed"], &env.fixtures, true, &offline);
+    assert_eq!(embed.exit_code, 0, "embed stderr: {}", embed.stderr);
+    let query = env.run_opts(
+        &["query", "who fixes the authentication bug"],
+        &env.fixtures,
+        true,
+        &offline,
+    );
+    assert_eq!(query.exit_code, 0, "query stderr: {}", query.stderr);
+    assert!(query.stdout.contains("meeting.md"), "{}", query.stdout);
+    for (uri, cache_name, _) in default_models() {
+        assert!(dir.join(&cache_name).exists(), "{uri} deleted");
+    }
 }
