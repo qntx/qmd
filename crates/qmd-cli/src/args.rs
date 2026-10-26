@@ -84,13 +84,25 @@ pub(crate) enum Command {
 #[derive(Debug)]
 pub(crate) struct UnknownArgs(pub(crate) Vec<String>);
 
-/// `qmd mcp [args]` — takes no positional yet; any positional is
-/// rejected (`Unknown subcommand:`) until P5.4 adds `stop`.
+/// `qmd mcp [args]` — `stop`/other positionals are rejected
+/// (`Unknown subcommand:`) until P5.4 adds the daemon lifecycle.
 #[derive(Debug, clap::Args)]
 #[cfg(feature = "mcp")]
 pub(crate) struct McpArgs {
-    /// Positional words after `mcp`.
+    /// Positional words after `mcp` (upstream `cli.args[0]`).
     pub(crate) args: Vec<String>,
+    /// `--http` — serve streamable HTTP instead of stdio
+    /// (qmd.ts:4839 `cli.values.http`).
+    #[arg(long)]
+    pub(crate) http: bool,
+    /// `--port <N>` — HTTP port; resolved with `Number(v) || 8181`
+    /// semantics (qmd.ts:4840), so kept as a string here.
+    #[arg(long)]
+    pub(crate) port: Option<String>,
+    /// `--host <H>` — bind host; falsy falls back to `QMD_HOST` then
+    /// `localhost` (qmd.ts:4841-4844).
+    #[arg(long)]
+    pub(crate) host: Option<String>,
 }
 
 impl UnknownArgs {

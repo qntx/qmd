@@ -156,8 +156,27 @@ and exposes the same surface as upstream:
 stdout carries JSON-RPC only; logs go to stderr. When stdin closes the
 server prints `Shutting down (stdin closed)...`, waits up to 5 s for
 in-flight calls and exits 0. `qmd mcp <anything>` is rejected with exit
-1 (upstream would start a server). The HTTP transport, `--daemon` and
-`qmd mcp stop` are not ported yet.
+1 (upstream would start a server).
+
+## MCP over HTTP
+
+`qmd mcp --http [--port N] [--host H]` serves the same protocol surface
+over HTTP — port defaults to `8181`, the host comes from `--host`, then
+`QMD_HOST`, then `localhost`. Endpoints, matching upstream:
+
+| Route | Purpose |
+| --- | --- |
+| `POST /mcp` | Stateless MCP — SSE responses for the 2025 era, plain JSON for 2026-07-28 (`_meta`/`MCP-Protocol-Version` requests) |
+| `GET /health` | `{"status":"ok","uptime":<seconds>}` |
+| `POST /query`, `POST /search` | REST structured search — `{"searches":[...]}` → `{"results":[...]}` |
+
+Origin and Host headers are checked before routing
+(`QMD_ALLOWED_ORIGINS` / `QMD_ALLOWED_HOSTS` — a wildcard bind without a
+host allowlist prints upstream's warning and skips Host validation);
+rejections are `403` with a `-32003` body. SIGINT/SIGTERM print
+`Shutting down (SIGINT|SIGTERM)...` and exit 0; an occupied port prints
+`Port <n> already in use`. `--daemon` and `qmd mcp stop` are not ported
+yet.
 
 ## CI behavior
 

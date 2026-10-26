@@ -21,10 +21,12 @@ pub(crate) fn show(io: &mut Io<'_>, ctx: &CliContext) {
     #[cfg(feature = "mcp")]
     print(
         io,
-        &["  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs."],
+        &[
+            "  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs.",
+            // qmd.ts:3710 minus `--daemon`, which lands with P5.4.
+            "  - Advanced: `qmd mcp --http ...` is optional for a custom transport.",
+        ],
     );
-    // Upstream's last agents line advertises `qmd mcp --http [--daemon]`
-    // (qmd.ts:3710); it joins once those transports are ported.
     print(io, TAIL);
     let _ = writeln!(io.out, "Index: {}", ctx.db_path().display());
 }

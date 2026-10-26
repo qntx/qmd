@@ -5,7 +5,7 @@
 //! uses `IsTerminal`. SIGINT/SIGTERM restore the terminal cursor and
 //! exit 130/143 like upstream (qmd.ts:332-333).
 
-use std::io::{IsTerminal, Write};
+use std::io::IsTerminal;
 use std::process::ExitCode;
 
 // The bin uses only `qmd_cli::run`; these are lib-facing dependencies.
@@ -17,6 +17,9 @@ use regex as _;
 #[cfg(test)]
 use rusqlite as _;
 use serde_json as _;
+// Used by the lib's cursor-restore watcher; the bin itself never
+// references it, but the lint counts dependencies per target.
+use signal_hook as _;
 #[cfg(test)]
 use tempfile as _;
 #[cfg(feature = "mcp")]
@@ -27,15 +30,6 @@ fn main() -> ExitCode {
     // other threads exist; the offset is captured here for the whole
     // process (upstream reads the system timezone lazily everywhere).
     let local_offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
-    // Deliberate deviation (parity-matrix deviation 76): upstream keeps
-    // its cursor-restore `process.exit` handler under `mcp` too. The
-    // server is long-lived with models resident, and exiting with a live
-    // llama.cpp context risks the Metal teardown abort (deviation 47);
-    // the default signal action ends the process without exit handlers.
-    // `qmd --index <n> mcp` still gets the watcher (upstream behaviour).
-    if std::env::args().nth(1).as_deref() != Some("mcp") {
-        install_signal_handlers();
-    }
     let env = qmd::Environment::from_process();
     let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let stdout_tty = std::io::stdout().is_terminal();
@@ -54,43 +48,4 @@ fn main() -> ExitCode {
         local_offset,
     };
     qmd_cli::run(std::env::args_os().skip(1), env, &cwd, &mut io)
-}
-
-/// Upstream `process.on('SIGINT'|'SIGTERM')` (qmd.ts:332-333): show the
-/// cursor (`cursor.show()` — it can stay hidden after an interrupted
-/// `embed` render, qmd.ts:2224) then `process.exit(130|143)`.
-///
-/// `signal-hook` runs real handlers on a watcher thread (the installed
-/// OS handler only writes a self-pipe), so the cursor write below is
-/// ordinary stderr output — a lock wait on an in-flight `writeln!` is a
-/// bounded stall, matching upstream's unconditional
-/// `process.stderr.write`. `std::process::exit` runs from that thread,
-/// so destructors — including the llama.cpp Metal teardown upstream
-/// avoids via `process.exit` (qmd.ts:285-303) — never run.
-#[allow(
-    clippy::exit,
-    clippy::disallowed_methods,
-    clippy::let_underscore_must_use,
-    reason = "signal termination cannot return an ExitCode and cannot surface \
-              a write error; mirrors upstream process.exit(130|143) and an \
-              unconditional process.stderr.write"
-)]
-fn install_signal_handlers() {
-    use signal_hook::consts::{SIGINT, SIGTERM};
-    let Ok(mut signals) = signal_hook::iterator::Signals::new([SIGINT, SIGTERM]) else {
-        return;
-    };
-    // A detached watcher is fine: failure to spawn only loses the
-    // cursor restore, and the default signal action still applies.
-    drop(
-        std::thread::Builder::new()
-            .name("signal-cursor-restore".to_owned())
-            .spawn(move || {
-                // The process is gone after the first signal.
-                if let Some(sig) = signals.forever().next() {
-                    let _ = std::io::stderr().write_all(b"\x1b[?25h");
-                    std::process::exit(if sig == SIGTERM { 143 } else { 130 });
-                }
-            }),
-    );
 }

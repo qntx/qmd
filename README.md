@@ -7,8 +7,8 @@ local markdown knowledge bases with BM25, vector similarity and hybrid
 query expansion, from a single binary.
 
 > **Status:** rewrite in progress. Indexing, retrieval, collections,
-> contexts, models, diagnostics, the skills commands and the stdio MCP
-> server are implemented; `qmd mcp --http`/`--daemon`/`stop` and
+> contexts, models, diagnostics, the skills commands and the MCP server
+> (stdio and HTTP) are implemented; `qmd mcp --daemon`/`stop` and
 > `qmd bench` are not yet ported.
 
 See [docs/](docs/) for the full reference.
@@ -30,6 +30,7 @@ qmd pull                    # download configured models
 qmd skills list|get|path    # inspect bundled skills
 qmd skill show|install      # print or install the QMD skill
 qmd mcp                     # MCP server over stdio for agents/IDEs
+qmd mcp --http [--port N] [--host H]   # or HTTP (default :8181, localhost)
 ```
 
 `query` also accepts a structured multi-line document of
@@ -67,11 +68,12 @@ parity matrix in `qmd-study`:
 - **Unnoted crash paths** (e.g. `skill show`/`--skill` with no skill,
   invalid `--chunk-strategy`) print the upstream message plus the doctor
   hint instead of a Bun stack dump.
-- **`qmd mcp`** serves the upstream tools and resource byte-for-byte,
-  but `qmd mcp <anything>` exits 1 instead of silently starting a
-  server, and a checked-in `.qmd` config's models go through the trust
-  gate like every other command. `--http`/`--daemon`/`stop` and
-  `qmd bench` are not yet ported; `--help` omits them.
+- **`qmd mcp`** serves the upstream tools and resource byte-for-byte
+  over stdio and HTTP (`--http`), but `qmd mcp <anything>` exits 1
+  instead of silently starting a server, and a checked-in `.qmd`
+  config's models go through the trust gate like every other command.
+  `--daemon`/`stop` and `qmd bench` are not yet ported; `--help` omits
+  them.
 - The embedded `SKILL.md` still mentions `npm install -g @tobilu/qmd`
   (kept verbatim for parity); install this port via cargo or a release
   binary instead.

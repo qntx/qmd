@@ -184,8 +184,29 @@ impl CliEnv {
     /// `qmd mcp` with the isolated env, cwd = `fixtures/` and all three
     /// stdio streams piped — for tests that drive the session live.
     pub(crate) fn mcp_command(&self) -> Command {
+        self.mcp_command_with(&[])
+    }
+
+    /// `qmd mcp [extra]` with the isolated env — used by both the stdio
+    /// harness (`[]`) and the HTTP one (`--http --port <n>`).
+    pub(crate) fn mcp_command_with(&self, extra: &[String]) -> Command {
+        let mut args: Vec<&str> = vec!["mcp"];
+        args.extend(extra.iter().map(String::as_str));
+        self.qmd_command(&args, true, &[])
+    }
+
+    /// `qmd [args]` with the isolated env and piped stdio — the general
+    /// form behind `mcp_command_with`, for tests that put flags ahead of
+    /// the subcommand (`--index <name> mcp --http`), drop `INDEX_PATH`
+    /// (named-index scenarios) or set extra env (`QMD_HOST`, …).
+    pub(crate) fn qmd_command(
+        &self,
+        args: &[&str],
+        index_path: bool,
+        extra: &[(&str, &str)],
+    ) -> Command {
         let mut cmd = Command::new(BIN);
-        cmd.arg("mcp")
+        cmd.args(args)
             .current_dir(&self.fixtures)
             .env_clear()
             .env("PATH", "/usr/bin:/bin")
@@ -193,13 +214,18 @@ impl CliEnv {
             .env("XDG_CONFIG_HOME", self.root.join("xdg-config"))
             .env("XDG_CACHE_HOME", self.root.join("xdg-cache"))
             .env("QMD_CONFIG_DIR", &self.config_dir)
-            .env("INDEX_PATH", &self.db_path)
             .env("TZ", "UTC")
             .env("NO_COLOR", "1")
             .env("TMPDIR", self.root.join("tmp"))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        if index_path {
+            cmd.env("INDEX_PATH", &self.db_path);
+        }
+        for (key, value) in extra {
+            cmd.env(key, value);
+        }
         cmd
     }
 
@@ -254,6 +280,108 @@ pub(crate) fn collection_yaml(name: &str, path: &Path, pattern: &str) -> String 
         "collections:\n  {name}:\n    path: {}\n    pattern: \"{pattern}\"\n",
         path.display()
     )
+}
+
+/// A parsed HTTP/1.1 response.
+pub(crate) struct HttpReply {
+    /// Status code.
+    pub(crate) status: u16,
+    /// Lower-cased header map.
+    pub(crate) headers: std::collections::BTreeMap<String, String>,
+    /// Raw body text.
+    pub(crate) body: String,
+}
+
+/// A free loopback port: bind :0, read it back, release. There is an
+/// inherent race before the server claims it, but nothing else here
+/// binds ports so in practice it does not trip.
+pub(crate) fn free_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
+
+/// Send one request on a fresh connection and read the full response
+/// (every response here is `Content-Length`-sized). `Host` defaults to
+/// `localhost:<port>` like `fetch`; POSTs default to
+/// `Content-Type: application/json` like the fixture recorder.
+pub(crate) fn http_request(
+    port: u16,
+    method: &str,
+    path: &str,
+    headers: &serde_json::Map<String, serde_json::Value>,
+    body: Option<&str>,
+) -> HttpReply {
+    use std::fmt::Write as _;
+    use std::io::{Read as _, Write as _};
+
+    let mut stream = std::net::TcpStream::connect(format!("localhost:{port}")).unwrap();
+    let mut req = format!("{method} {path} HTTP/1.1\r\n");
+    let has = |name: &str| headers.keys().any(|k| k.eq_ignore_ascii_case(name));
+    if !has("host") {
+        write!(req, "Host: localhost:{port}\r\n").unwrap();
+    }
+    for (k, v) in headers {
+        write!(req, "{k}: {}\r\n", v.as_str().unwrap()).unwrap();
+    }
+    if method == "POST" && body.is_some() && !has("content-type") {
+        req.push_str("Content-Type: application/json\r\n");
+    }
+    if let Some(b) = body {
+        write!(req, "Content-Length: {}\r\n", b.len()).unwrap();
+    }
+    req.push_str("\r\n");
+    stream.write_all(req.as_bytes()).unwrap();
+    if let Some(b) = body {
+        // The server may legitimately answer (405/413) and close before
+        // the body is fully sent — a failed write is not a test failure;
+        // the response still has to arrive.
+        drop(stream.write_all(b.as_bytes()));
+    }
+
+    let mut buf = Vec::new();
+    let mut chunk = [0u8; 8192];
+    let head_end = loop {
+        if let Some(p) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+            break p + 4;
+        }
+        let n = stream.read(&mut chunk).unwrap();
+        assert_ne!(n, 0, "connection closed mid-headers");
+        buf.extend_from_slice(&chunk[..n]);
+    };
+    let head = String::from_utf8_lossy(&buf[..head_end]).into_owned();
+    let mut lines = head.lines();
+    let status: u16 = lines
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .nth(1)
+        .unwrap()
+        .parse()
+        .unwrap();
+    let mut resp_headers = std::collections::BTreeMap::new();
+    for line in lines {
+        if let Some((k, v)) = line.split_once(':') {
+            resp_headers.insert(k.trim().to_lowercase(), v.trim().to_owned());
+        }
+    }
+    let body_start = head_end;
+    let want_len: usize = resp_headers
+        .get("content-length")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    while buf.len() - body_start < want_len {
+        let n = stream.read(&mut chunk).unwrap();
+        assert_ne!(n, 0, "connection closed mid-body");
+        buf.extend_from_slice(&chunk[..n]);
+    }
+    HttpReply {
+        status,
+        headers: resp_headers,
+        body: String::from_utf8_lossy(&buf[body_start..body_start + want_len]).into_owned(),
+    }
 }
 
 /// Strip ANSI SGR (`\x1b[…m`) and OSC 8 (`\x1b]8;;…\x07`) sequences —

@@ -1,18 +1,23 @@
 //! MCP server for qmd — ports `tobi/qmd` `src/mcp/server.ts` (v2.8.3).
 //!
-//! Dual-era protocol over stdio: 2025-era clients use the initialize
-//! handshake; 2026-07-28 clients send namespaced `_meta` and call
-//! `server/discover` without one. Known envelope deviations vs
-//! upstream are registered in `design/parity-matrix.md` §12
-//! (deviations 69+).
+//! Dual-era protocol over stdio and HTTP (`serve_stdio`/`serve_http`):
+//! 2025-era clients use the initialize handshake; 2026-07-28 clients
+//! send namespaced `_meta` and call `server/discover` without one.
+//! Known envelope deviations vs upstream are registered in
+//! `design/parity-matrix.md` §12 (deviations 69+).
 
+mod http;
 mod instructions;
+mod js;
+mod origin_guard;
 mod resource;
+mod rest;
 mod schema;
 mod server;
 mod stdio;
 mod tools;
 
+pub use http::{HttpOptions, serve_http};
 pub use server::QmdMcpService;
 pub use stdio::{StdioOptions, serve, serve_stdio};
 
@@ -34,6 +39,9 @@ pub enum Error {
     /// The pinned upstream schema/config JSON failed to deserialize.
     #[error("pinned JSON: {0}")]
     Json(#[from] serde_json::Error),
+    /// Binding or serving the HTTP listener failed.
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 #[cfg(test)]

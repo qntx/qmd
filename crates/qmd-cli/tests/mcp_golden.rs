@@ -21,6 +21,8 @@
     clippy::indexing_slicing,
     clippy::missing_assert_message,
     clippy::panic,
+    clippy::cast_possible_truncation,
+    clippy::float_cmp,
     reason = "idiomatic test-code patterns"
 )]
 
@@ -61,8 +63,10 @@ fn golden_env(fixture: &Value) -> CliEnv {
 
 /// Normalize the only fields that cannot be byte-stable across
 /// processes/versions: this run's root path → `<ROOT>` (matching the
-/// record side) and `serverInfo.version` → `<V>` (ours is the crate
-/// version; upstream's is its package version).
+/// record side), `serverInfo.version` → `<V>` (ours is the crate
+/// version; upstream's is its package version), `/health` `uptime` →
+/// `<U>` and integral floats → ints (JSON.stringify writes `1` for
+/// `1.0`, `serde_json` writes `1.0`).
 fn normalize(v: &mut Value, our_root: &str) {
     match v {
         Value::Object(map) => {
@@ -71,6 +75,8 @@ fn normalize(v: &mut Value, our_root: &str) {
             for (k, x) in map.iter_mut() {
                 if is_server_info && k == "version" {
                     *x = Value::from("<V>");
+                } else if k == "uptime" {
+                    *x = Value::from("<U>");
                 } else if let Value::String(s) = x {
                     *x = Value::from(s.replace(our_root, "<ROOT>/corpus"));
                 } else {
@@ -79,6 +85,14 @@ fn normalize(v: &mut Value, our_root: &str) {
             }
         }
         Value::Array(a) => a.iter_mut().for_each(|x| normalize(x, our_root)),
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64()
+                && f.fract() == 0.0
+                && f.abs() < 9e15
+            {
+                *v = Value::from(f as i64);
+            }
+        }
         _ => {}
     }
 }
@@ -283,5 +297,184 @@ fn mcp_query_real_models_emits_jsonrpc_only() {
             .first()
             .is_some_and(|r| r["file"] == "fixtures/notes/meeting.md"),
         "meeting notes should rank first: {query}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// HTTP transport (P5.3) — replay the recorded `qmd mcp --http` session:
+// the 56 exchanges in `fixture["http"]["cases"]` then the SIGTERM
+// shutdown. Requests go over a raw socket so the recorded header set
+// (including a deliberately absent `Accept`) is sent verbatim — the
+// socket client lives in `common`.
+// ---------------------------------------------------------------------------
+
+/// `data:` lines of an SSE response, parsed as JSON.
+fn sse_events(body: &str) -> Vec<Value> {
+    body.lines()
+        .filter_map(|l| l.strip_prefix("data: "))
+        .map(|d| serde_json::from_str(d).unwrap_or_else(|e| panic!("bad SSE data {d:?}: {e}")))
+        .collect()
+}
+
+/// stderr → comparable lines: clock prefix, port and ms stripped;
+/// upstream's `responseMode:` SDK warning and its `HTTP handler error`
+/// JS stack are folded (ours logs a single line instead of a stack —
+/// the stderr *shape* deviation is recorded in the parity matrix).
+fn norm_stderr(s: &str) -> Vec<String> {
+    let ts = regex::Regex::new(r"^\d{2}:\d{2}:\d{2}\.\d{3} ").unwrap();
+    let ts_line = regex::Regex::new(r"^\d{2}:\d{2}:\d{2}").unwrap();
+    let port = regex::Regex::new(r"localhost:\d+").unwrap();
+    let ms = regex::Regex::new(r"\(\d+ms\)").unwrap();
+    let mut out = Vec::new();
+    // After `HTTP handler error` Bun prints the error's source frame
+    // and `at` stack until the next real log line — fold the block.
+    let mut skip_error_block = false;
+    for line in s.lines() {
+        let is_log_line = ts_line.is_match(line)
+            || line.starts_with("Shutting down")
+            || line.starts_with("QMD MCP server");
+        if skip_error_block && !is_log_line {
+            continue;
+        }
+        skip_error_block = false;
+        // Upstream's SDK prints this warning at startup; our transport
+        // does not (recorded deviation).
+        if line.starts_with("responseMode:") {
+            continue;
+        }
+        if line.contains("HTTP handler error:") {
+            out.push("HTTP handler error".to_owned());
+            skip_error_block = true;
+            continue;
+        }
+        let l = ts.replace(line, "<TS> ");
+        let l = port.replace_all(&l, "localhost:<PORT>");
+        let l = ms.replace_all(&l, "(<MS>)");
+        out.push(l.into_owned());
+    }
+    out
+}
+
+/// Golden replay of the recorded HTTP session (P5.3).
+#[test]
+fn mcp_http_golden_replay() {
+    use std::io::{BufRead as _, BufReader};
+    use std::sync::mpsc::channel;
+    use std::time::{Duration, Instant};
+
+    let fixture: Value = serde_json::from_str(include_str!("fixtures/mcp_golden.json")).unwrap();
+    let env = golden_env(&fixture);
+    let root = env.fixtures.to_string_lossy().into_owned();
+
+    let port = common::free_port();
+    let mut child = env
+        .mcp_command_with(&["--http".to_owned(), "--port".to_owned(), port.to_string()])
+        .spawn()
+        .unwrap();
+
+    // stderr lines stream over a channel — wait for the startup line,
+    // keep everything for the final comparison.
+    let (tx, rx) = channel::<String>();
+    let stderr_pipe = child.stderr.take().unwrap();
+    let reader = std::thread::spawn(move || {
+        let mut r = BufReader::new(stderr_pipe);
+        let mut line = String::new();
+        while r.read_line(&mut line).unwrap_or(0) > 0 {
+            drop(tx.send(std::mem::take(&mut line)));
+        }
+    });
+    let mut stderr = String::new();
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+            Ok(line) => {
+                stderr.push_str(&line);
+                if line.contains("listening on") {
+                    break;
+                }
+            }
+            Err(e) => {
+                panic!("server never printed its listening line ({e}); stderr so far:\n{stderr}");
+            }
+        }
+    }
+
+    let cases = fixture["http"]["cases"].as_array().unwrap();
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        let method = case["method"].as_str().unwrap();
+        let path = case["path"].as_str().unwrap();
+        let headers = case["headers"].as_object().unwrap();
+        let body = match &case["body"] {
+            Value::Null => None,
+            Value::String(s) => Some(s.clone()),
+            other => Some(serde_json::to_string(other).unwrap()),
+        };
+        let reply = common::http_request(port, method, path, headers, body.as_deref());
+
+        let want = &case["response"];
+        assert_eq!(
+            reply.status,
+            want["status"].as_u64().unwrap() as u16,
+            "case {name}: status"
+        );
+        for (k, v) in want["headers"].as_object().unwrap() {
+            let have = reply.headers.get(k.as_str());
+            if v.is_null() {
+                assert!(
+                    have.is_none(),
+                    "case {name}: header {k} should be absent, got {have:?}"
+                );
+            } else {
+                assert_eq!(
+                    have.map(String::as_str),
+                    Some(v.as_str().unwrap()),
+                    "case {name}: header {k}"
+                );
+            }
+        }
+
+        let want_body = want["body"].as_str().unwrap();
+        let want_sse = want["sse"].as_array().unwrap();
+        if !want_sse.is_empty() {
+            // SSE: compare the parsed `data:` events, not the frame
+            // bytes (JSON key order differs by implementation).
+            let mut have: Vec<Value> = sse_events(&reply.body);
+            let mut want_events: Vec<Value> = want_sse.clone();
+            for v in &mut want_events {
+                normalize(v, "__NONE__");
+            }
+            for v in &mut have {
+                normalize(v, &root);
+            }
+            assert_eq!(have, want_events, "case {name}: SSE events differ");
+        } else if let Ok(mut want_v) = serde_json::from_str::<Value>(want_body) {
+            let mut have_v: Value = serde_json::from_str(&reply.body)
+                .unwrap_or_else(|e| panic!("case {name}: body not JSON {:?}: {e}", reply.body));
+            normalize(&mut want_v, "__NONE__");
+            normalize(&mut have_v, &root);
+            assert_eq!(have_v, want_v, "case {name}: JSON body differs");
+        } else {
+            assert_eq!(reply.body, want_body, "case {name}: body differs");
+        }
+    }
+
+    // SIGTERM shutdown — `Shutting down (SIGTERM)...` + exit 0.
+    std::process::Command::new("kill")
+        .args(["-TERM", &child.id().to_string()])
+        .output()
+        .unwrap();
+    let status = child.wait().unwrap();
+    while let Ok(line) = rx.recv() {
+        stderr.push_str(&line);
+    }
+    reader.join().unwrap();
+    assert_eq!(status.code(), Some(0), "SIGTERM exit code: {status}");
+
+    let want_lines = norm_stderr(fixture["http"]["stderr"].as_str().unwrap());
+    let have_lines = norm_stderr(&stderr);
+    assert_eq!(
+        have_lines, want_lines,
+        "stderr differs:\n--- got ---\n{stderr}"
     );
 }
