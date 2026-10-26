@@ -85,6 +85,12 @@ qmd pull [--refresh] [--progress]
   --progress  # byte-progress line on stderr (TTY only)
 ```
 
+`pull` re-downloads a model only on `--refresh` or when the Hub reports
+a newer etag; if the Hub is unreachable, cached models are kept as-is.
+Commands that load models (`embed`, `vsearch`, `query`, `qmd mcp`) use
+the cached file directly and only download a model that is missing.
+Network requests time out after 30 s of no connection or no response.
+
 Model selection order, like upstream: `models:` pinned in `index.yml` >
 `QMD_*_MODEL` environment > built-in defaults. Local file paths are
 accepted as model URIs (handy for air-gapped setups); anything starting
