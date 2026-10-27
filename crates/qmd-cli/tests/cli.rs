@@ -12,8 +12,8 @@
 //! Other describes live elsewhere: `CLI Skills`/`CLI Skill Commands`
 //! in `cli_skills.rs`, `CLI Embed` in `cli_embed_pull.rs`, `CLI
 //! Status`/`doctor` in `cli_maintenance.rs`/`cli_doctor.rs`, `mcp stdio
-//! launcher` in `mcp_golden.rs`; `mcp http daemon` waits for P5.4. The
-//! mutation describes live in
+//! launcher` in `mcp_golden.rs`, `mcp http daemon` in `mcp_daemon.rs`.
+//! The mutation describes live in
 //! `cli_collections.rs` (`CLI Add`, `CLI Collection Commands`,
 //! `collection ignore patterns`), `cli_contexts.rs` (`CLI Add-Context`,
 //! `CLI Context Management`), `cli_maintenance.rs` (`CLI Init`,

@@ -8,8 +8,8 @@ query expansion, from a single binary.
 
 > **Status:** rewrite in progress. Indexing, retrieval, collections,
 > contexts, models, diagnostics, the skills commands and the MCP server
-> (stdio and HTTP) are implemented; `qmd mcp --daemon`/`stop` and
-> `qmd bench` are not yet ported.
+> (stdio, HTTP, daemon lifecycle) are implemented; `qmd bench` is not
+> yet ported.
 
 See [docs/](docs/) for the full reference.
 
@@ -31,6 +31,8 @@ qmd skills list|get|path    # inspect bundled skills
 qmd skill show|install      # print or install the QMD skill
 qmd mcp                     # MCP server over stdio for agents/IDEs
 qmd mcp --http [--port N] [--host H]   # or HTTP (default :8181, localhost)
+qmd mcp --http --daemon     # detached daemon (pidfile + log under cache dir)
+qmd mcp stop                # stop the daemon
 ```
 
 `query` also accepts a structured multi-line document of
@@ -69,11 +71,11 @@ parity matrix in `qmd-study`:
   invalid `--chunk-strategy`) print the upstream message plus the doctor
   hint instead of a Bun stack dump.
 - **`qmd mcp`** serves the upstream tools and resource byte-for-byte
-  over stdio and HTTP (`--http`), but `qmd mcp <anything>` exits 1
-  instead of silently starting a server, and a checked-in `.qmd`
-  config's models go through the trust gate like every other command.
-  `--daemon`/`stop` and `qmd bench` are not yet ported; `--help` omits
-  them.
+  over stdio and HTTP (`--http`, `--daemon`, `stop`), but
+  `qmd mcp <anything>` other than `stop` exits 1 instead of silently
+  starting a server, and a checked-in `.qmd` config's models go through
+  the trust gate like every other command. `qmd bench` is not yet
+  ported; `--help` omits it.
 - The embedded `SKILL.md` still mentions `npm install -g @tobilu/qmd`
   (kept verbatim for parity); install this port via cargo or a release
   binary instead.

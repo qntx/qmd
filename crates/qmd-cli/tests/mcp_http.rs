@@ -187,15 +187,15 @@ fn http_out_of_range_port_rejected() {
     );
 }
 
-/// Positionals are rejected until P5.4 lands `stop` — `qmd mcp stop`
-/// must fail instead of silently starting stdio like upstream.
+/// Positionals other than `stop` are rejected — `qmd mcp <bogus>` must
+/// fail instead of silently starting stdio like upstream.
 #[test]
 fn http_unknown_subcommand_rejected() {
     let env = CliEnv::new();
-    let out = env.run(&["mcp", "stop"]);
+    let out = env.run(&["mcp", "bogus"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("Unknown subcommand: stop"),
+        out.stderr.contains("Unknown subcommand: bogus"),
         "stderr: {}",
         out.stderr
     );

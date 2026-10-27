@@ -84,8 +84,8 @@ pub(crate) enum Command {
 #[derive(Debug)]
 pub(crate) struct UnknownArgs(pub(crate) Vec<String>);
 
-/// `qmd mcp [args]` — `stop`/other positionals are rejected
-/// (`Unknown subcommand:`) until P5.4 adds the daemon lifecycle.
+/// `qmd mcp [stop]` — `stop` ends the HTTP daemon; other positionals
+/// are rejected (`Unknown subcommand:`).
 #[derive(Debug, clap::Args)]
 #[cfg(feature = "mcp")]
 pub(crate) struct McpArgs {
@@ -103,6 +103,10 @@ pub(crate) struct McpArgs {
     /// `localhost` (qmd.ts:4841-4844).
     #[arg(long)]
     pub(crate) host: Option<String>,
+    /// `--daemon` — respawn `mcp --http` detached with a pidfile and log
+    /// (qmd.ts:3146, 4849). Ignored without `--http`, like upstream.
+    #[arg(long)]
+    pub(crate) daemon: bool,
 }
 
 impl UnknownArgs {

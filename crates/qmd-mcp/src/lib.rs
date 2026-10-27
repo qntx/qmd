@@ -6,6 +6,7 @@
 //! Known envelope deviations vs upstream are registered in
 //! `design/parity-matrix.md` §12 (deviations 69+).
 
+pub mod daemon;
 mod http;
 mod instructions;
 mod js;
