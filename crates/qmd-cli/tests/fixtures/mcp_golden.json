@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-25T17:39:48.282Z",
+  "generated": "2026-10-26T12:41:44.366Z",
   "upstream": "tobi/qmd v2.8.3 @ 04e4dbd8",
   "corpus": {
     "files": [
@@ -1992,5 +1992,1939 @@
       "stderr": "Shutting down (stdin closed)...\n",
       "exit_code": 0
     }
-  ]
+  ],
+  "http": {
+    "cases": [
+      {
+        "name": "health",
+        "method": "GET",
+        "path": "/health",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"status\":\"ok\",\"uptime\":0}",
+          "sse": []
+        }
+      },
+      {
+        "name": "health-post",
+        "method": "POST",
+        "path": "/health",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 404,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Not Found",
+          "sse": []
+        }
+      },
+      {
+        "name": "health-trailing",
+        "method": "GET",
+        "path": "/health/",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 404,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Not Found",
+          "sse": []
+        }
+      },
+      {
+        "name": "init-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "spike",
+              "version": "0"
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
+          "sse": [
+            {
+              "result": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {
+                  "resources": {
+                    "listChanged": true
+                  },
+                  "tools": {
+                    "listChanged": true
+                  }
+                },
+                "serverInfo": {
+                  "name": "qmd",
+                  "version": "2.8.3"
+                },
+                "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+              },
+              "jsonrpc": "2.0",
+              "id": 1
+            }
+          ]
+        }
+      },
+      {
+        "name": "init-2026-named",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "initialize",
+          "params": {
+            "protocolVersion": "2026-07-28",
+            "capabilities": {},
+            "clientInfo": {
+              "name": "spike",
+              "version": "0"
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
+          "sse": [
+            {
+              "result": {
+                "protocolVersion": "2025-11-25",
+                "capabilities": {
+                  "resources": {
+                    "listChanged": true
+                  },
+                  "tools": {
+                    "listChanged": true
+                  }
+                },
+                "serverInfo": {
+                  "name": "qmd",
+                  "version": "2.8.3"
+                },
+                "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+              },
+              "jsonrpc": "2.0",
+              "id": 1
+            }
+          ]
+        }
+      },
+      {
+        "name": "tools-list-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "method": "tools/list"
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"tools\":[{\"name\":\"query\",\"title\":\"Query\",\"description\":\"Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\\n\\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\\n\\n## Query Types\\n\\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\\nFull lex syntax:\\n- `term` — prefix match (\\\"perf\\\" matches \\\"performance\\\")\\n- `\\\"exact phrase\\\"` — phrase must appear verbatim\\n- `-term` or `-\\\"phrase\\\"` — exclude documents containing this\\n\\nGood lex examples:\\n- `\\\"connection pool\\\" timeout -redis`\\n- `\\\"machine learning\\\" -sports -athlete`\\n- `handleError async typescript`\\n\\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\\n- `how does the rate limiter handle burst traffic?`\\n- `what is the tradeoff between consistency and availability?`\\n\\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\\n\\n## Strategy\\n\\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\\n\\n| Goal | Approach |\\n|------|----------|\\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\\n| Know exact term/name | `lex` only |\\n| Concept search | `vec` only |\\n| Best recall | `lex` + `vec` |\\n| Complex/nuanced | `lex` + `vec` + `hyde` |\\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\\n\\n## Examples\\n\\nSimple lookup:\\n```json\\n[{ \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"CAP theorem\\\" }]\\n```\\n\\nBest recall on a technical topic:\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"connection pool\\\\\\\" timeout -redis\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"why do database connections time out under load\\\" },\\n  { \\\"type\\\": \\\"hyde\\\", \\\"query\\\": \\\"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\\\" }\\n]\\n```\\n\\nIntent-aware lex (C++ performance, not sports):\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"C++ performance\\\\\\\" optimization -sports -athlete\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"how to optimize C++ program performance\\\" }\\n]\\n```\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"query\":{\"description\":\"Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.\",\"type\":\"string\"},\"searches\":{\"description\":\"Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.\",\"maxItems\":10,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"description\":\"lex = BM25 keywords (supports \\\"phrase\\\" and -negation); vec = semantic question; hyde = hypothetical answer passage\",\"type\":\"string\",\"enum\":[\"lex\",\"vec\",\"hyde\"]},\"query\":{\"description\":\"The query text. For lex: use keywords, \\\"quoted phrases\\\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.\",\"type\":\"string\"}},\"required\":[\"type\",\"query\"]}},\"limit\":{\"description\":\"Max results (default: 10)\",\"default\":10,\"type\":\"number\"},\"minScore\":{\"description\":\"Min relevance 0-1 (default: 0)\",\"default\":0,\"type\":\"number\"},\"candidateLimit\":{\"description\":\"Maximum candidates to rerank (default: 40, lower = faster but may miss results)\",\"type\":\"number\"},\"collections\":{\"description\":\"Filter to collections (OR match)\",\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"filter\":{\"description\":\"Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\\\"operator\\\":\\\"and\\\",\\\"operands\\\":[{\\\"key\\\":\\\"topics\\\",\\\"operator\\\":\\\"all\\\",\\\"value\\\":[\\\"typescript\\\"]},{\\\"key\\\":\\\"status\\\",\\\"operator\\\":\\\"ne\\\",\\\"value\\\":\\\"draft\\\"}]}\",\"type\":\"object\",\"propertyNames\":{\"type\":\"string\"},\"additionalProperties\":{}},\"intent\":{\"description\":\"Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.\",\"type\":\"string\"},\"rerank\":{\"description\":\"Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.\",\"default\":true,\"type\":\"boolean\"}}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"get\",\"title\":\"Get Document\",\"description\":\"Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"file\":{\"description\":\"File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.\",\"type\":\"string\"},\"fromLine\":{\"description\":\"Start from this line number (1-indexed)\",\"type\":\"number\"},\"maxLines\":{\"description\":\"Maximum number of lines to return\",\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"file\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"multi_get\",\"title\":\"Multi-Get Documents\",\"description\":\"Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"pattern\":{\"description\":\"Glob pattern, docid, or comma-separated list of file paths/docids\",\"type\":\"string\"},\"maxLines\":{\"description\":\"Maximum lines per file\",\"type\":\"number\"},\"maxBytes\":{\"description\":\"Skip files larger than this (default: 65536 = 64KB)\",\"default\":65536,\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"pattern\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"status\",\"title\":\"Index Status\",\"description\":\"Show the status of the QMD index: collections, document counts, and health information.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}}]},\"jsonrpc\":\"2.0\",\"id\":2}\n\n",
+          "sse": [
+            {
+              "result": {
+                "tools": [
+                  {
+                    "name": "query",
+                    "title": "Query",
+                    "description": "Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\n\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\n\n## Query Types\n\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\nFull lex syntax:\n- `term` — prefix match (\"perf\" matches \"performance\")\n- `\"exact phrase\"` — phrase must appear verbatim\n- `-term` or `-\"phrase\"` — exclude documents containing this\n\nGood lex examples:\n- `\"connection pool\" timeout -redis`\n- `\"machine learning\" -sports -athlete`\n- `handleError async typescript`\n\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\n- `how does the rate limiter handle burst traffic?`\n- `what is the tradeoff between consistency and availability?`\n\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\n\n## Strategy\n\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\n\n| Goal | Approach |\n|------|----------|\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\n| Know exact term/name | `lex` only |\n| Concept search | `vec` only |\n| Best recall | `lex` + `vec` |\n| Complex/nuanced | `lex` + `vec` + `hyde` |\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\n\n## Examples\n\nSimple lookup:\n```json\n[{ \"type\": \"lex\", \"query\": \"CAP theorem\" }]\n```\n\nBest recall on a technical topic:\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"connection pool\\\" timeout -redis\" },\n  { \"type\": \"vec\", \"query\": \"why do database connections time out under load\" },\n  { \"type\": \"hyde\", \"query\": \"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\" }\n]\n```\n\nIntent-aware lex (C++ performance, not sports):\n```json\n[\n  { \"type\": \"lex\", \"query\": \"\\\"C++ performance\\\" optimization -sports -athlete\" },\n  { \"type\": \"vec\", \"query\": \"how to optimize C++ program performance\" }\n]\n```",
+                    "inputSchema": {
+                      "type": "object",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "properties": {
+                        "query": {
+                          "description": "Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.",
+                          "type": "string"
+                        },
+                        "searches": {
+                          "description": "Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.",
+                          "maxItems": 10,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "description": "lex = BM25 keywords (supports \"phrase\" and -negation); vec = semantic question; hyde = hypothetical answer passage",
+                                "type": "string",
+                                "enum": [
+                                  "lex",
+                                  "vec",
+                                  "hyde"
+                                ]
+                              },
+                              "query": {
+                                "description": "The query text. For lex: use keywords, \"quoted phrases\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "query"
+                            ]
+                          }
+                        },
+                        "limit": {
+                          "description": "Max results (default: 10)",
+                          "default": 10,
+                          "type": "number"
+                        },
+                        "minScore": {
+                          "description": "Min relevance 0-1 (default: 0)",
+                          "default": 0,
+                          "type": "number"
+                        },
+                        "candidateLimit": {
+                          "description": "Maximum candidates to rerank (default: 40, lower = faster but may miss results)",
+                          "type": "number"
+                        },
+                        "collections": {
+                          "description": "Filter to collections (OR match)",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "filter": {
+                          "description": "Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\"operator\":\"and\",\"operands\":[{\"key\":\"topics\",\"operator\":\"all\",\"value\":[\"typescript\"]},{\"key\":\"status\",\"operator\":\"ne\",\"value\":\"draft\"}]}",
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        },
+                        "intent": {
+                          "description": "Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.",
+                          "type": "string"
+                        },
+                        "rerank": {
+                          "description": "Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.",
+                          "default": true,
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "annotations": {
+                      "readOnlyHint": true,
+                      "openWorldHint": false
+                    }
+                  },
+                  {
+                    "name": "get",
+                    "title": "Get Document",
+                    "description": "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
+                    "inputSchema": {
+                      "type": "object",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "properties": {
+                        "file": {
+                          "description": "File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.",
+                          "type": "string"
+                        },
+                        "fromLine": {
+                          "description": "Start from this line number (1-indexed)",
+                          "type": "number"
+                        },
+                        "maxLines": {
+                          "description": "Maximum number of lines to return",
+                          "type": "number"
+                        },
+                        "lineNumbers": {
+                          "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                          "default": true,
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "file"
+                      ]
+                    },
+                    "annotations": {
+                      "readOnlyHint": true,
+                      "openWorldHint": false
+                    }
+                  },
+                  {
+                    "name": "multi_get",
+                    "title": "Multi-Get Documents",
+                    "description": "Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.",
+                    "inputSchema": {
+                      "type": "object",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "properties": {
+                        "pattern": {
+                          "description": "Glob pattern, docid, or comma-separated list of file paths/docids",
+                          "type": "string"
+                        },
+                        "maxLines": {
+                          "description": "Maximum lines per file",
+                          "type": "number"
+                        },
+                        "maxBytes": {
+                          "description": "Skip files larger than this (default: 65536 = 64KB)",
+                          "default": 65536,
+                          "type": "number"
+                        },
+                        "lineNumbers": {
+                          "description": "Add line numbers to output (format: 'N: content'). On by default; set false for raw content.",
+                          "default": true,
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "pattern"
+                      ]
+                    },
+                    "annotations": {
+                      "readOnlyHint": true,
+                      "openWorldHint": false
+                    }
+                  },
+                  {
+                    "name": "status",
+                    "title": "Index Status",
+                    "description": "Show the status of the QMD index: collections, document counts, and health information.",
+                    "inputSchema": {
+                      "type": "object",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "properties": {}
+                    },
+                    "annotations": {
+                      "readOnlyHint": true,
+                      "openWorldHint": false
+                    }
+                  }
+                ]
+              },
+              "jsonrpc": "2.0",
+              "id": 2
+            }
+          ]
+        }
+      },
+      {
+        "name": "call-status-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 3,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":3}\n\n",
+          "sse": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                  }
+                ],
+                "structuredContent": {
+                  "totalDocuments": 3,
+                  "needsEmbedding": 3,
+                  "hasVectorIndex": false,
+                  "pendingMetadata": 0,
+                  "collections": [
+                    {
+                      "name": "notes",
+                      "path": "<ROOT>/corpus/notes",
+                      "pattern": "**/*.md",
+                      "documents": 1,
+                      "lastUpdated": "2023-11-14T22:14:20.000Z"
+                    },
+                    {
+                      "name": "docs",
+                      "path": "<ROOT>/corpus/docs",
+                      "pattern": "**/*.md",
+                      "documents": 2,
+                      "lastUpdated": "2023-11-14T22:13:30.000Z"
+                    }
+                  ]
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": 3
+            }
+          ]
+        }
+      },
+      {
+        "name": "res-read-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 5,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs/readme.md"
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"contents\":[{\"uri\":\"qmd://docs/readme.md\",\"name\":\"docs/readme.md\",\"title\":\"Readme\",\"mimeType\":\"text/markdown\",\"text\":\"<!-- Context: Spike corpus\\n\\nDocumentation files -->\\n\\n1: # Readme\\n2: \\n3: index search content\\n4: \"}]},\"jsonrpc\":\"2.0\",\"id\":5}\n\n",
+          "sse": [
+            {
+              "result": {
+                "contents": [
+                  {
+                    "uri": "qmd://docs/readme.md",
+                    "name": "docs/readme.md",
+                    "title": "Readme",
+                    "mimeType": "text/markdown",
+                    "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+                  }
+                ]
+              },
+              "jsonrpc": "2.0",
+              "id": 5
+            }
+          ]
+        }
+      },
+      {
+        "name": "discover-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "server/discover"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 6,
+          "method": "server/discover",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"result\":{\"supportedVersions\":[\"2026-07-28\"],\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\",\"resultType\":\"complete\",\"ttlMs\":60000,\"cacheScope\":\"private\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":6}",
+          "sse": []
+        }
+      },
+      {
+        "name": "tools-list-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"result\":{\"tools\":[{\"name\":\"query\",\"title\":\"Query\",\"description\":\"Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\\n\\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\\n\\n## Query Types\\n\\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\\nFull lex syntax:\\n- `term` — prefix match (\\\"perf\\\" matches \\\"performance\\\")\\n- `\\\"exact phrase\\\"` — phrase must appear verbatim\\n- `-term` or `-\\\"phrase\\\"` — exclude documents containing this\\n\\nGood lex examples:\\n- `\\\"connection pool\\\" timeout -redis`\\n- `\\\"machine learning\\\" -sports -athlete`\\n- `handleError async typescript`\\n\\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\\n- `how does the rate limiter handle burst traffic?`\\n- `what is the tradeoff between consistency and availability?`\\n\\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\\n\\n## Strategy\\n\\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\\n\\n| Goal | Approach |\\n|------|----------|\\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\\n| Know exact term/name | `lex` only |\\n| Concept search | `vec` only |\\n| Best recall | `lex` + `vec` |\\n| Complex/nuanced | `lex` + `vec` + `hyde` |\\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\\n\\n## Examples\\n\\nSimple lookup:\\n```json\\n[{ \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"CAP theorem\\\" }]\\n```\\n\\nBest recall on a technical topic:\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"connection pool\\\\\\\" timeout -redis\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"why do database connections time out under load\\\" },\\n  { \\\"type\\\": \\\"hyde\\\", \\\"query\\\": \\\"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\\\" }\\n]\\n```\\n\\nIntent-aware lex (C++ performance, not sports):\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"C++ performance\\\\\\\" optimization -sports -athlete\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"how to optimize C++ program performance\\\" }\\n]\\n```\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"query\":{\"description\":\"Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.\",\"type\":\"string\"},\"searches\":{\"description\":\"Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.\",\"maxItems\":10,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"description\":\"lex = BM25 keywords (supports \\\"phrase\\\" and -negation); vec = semantic question; hyde = hypothetical answer passage\",\"type\":\"string\",\"enum\":[\"lex\",\"vec\",\"hyde\"]},\"query\":{\"description\":\"The query text. For lex: use keywords, \\\"quoted phrases\\\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.\",\"type\":\"string\"}},\"required\":[\"type\",\"query\"]}},\"limit\":{\"description\":\"Max results (default: 10)\",\"default\":10,\"type\":\"number\"},\"minScore\":{\"description\":\"Min relevance 0-1 (default: 0)\",\"default\":0,\"type\":\"number\"},\"candidateLimit\":{\"description\":\"Maximum candidates to rerank (default: 40, lower = faster but may miss results)\",\"type\":\"number\"},\"collections\":{\"description\":\"Filter to collections (OR match)\",\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"filter\":{\"description\":\"Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\\\"operator\\\":\\\"and\\\",\\\"operands\\\":[{\\\"key\\\":\\\"topics\\\",\\\"operator\\\":\\\"all\\\",\\\"value\\\":[\\\"typescript\\\"]},{\\\"key\\\":\\\"status\\\",\\\"operator\\\":\\\"ne\\\",\\\"value\\\":\\\"draft\\\"}]}\",\"type\":\"object\",\"propertyNames\":{\"type\":\"string\"},\"additionalProperties\":{}},\"intent\":{\"description\":\"Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.\",\"type\":\"string\"},\"rerank\":{\"description\":\"Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.\",\"default\":true,\"type\":\"boolean\"}}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"get\",\"title\":\"Get Document\",\"description\":\"Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"file\":{\"description\":\"File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.\",\"type\":\"string\"},\"fromLine\":{\"description\":\"Start from this line number (1-indexed)\",\"type\":\"number\"},\"maxLines\":{\"description\":\"Maximum number of lines to return\",\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"file\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"multi_get\",\"title\":\"Multi-Get Documents\",\"description\":\"Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"pattern\":{\"description\":\"Glob pattern, docid, or comma-separated list of file paths/docids\",\"type\":\"string\"},\"maxLines\":{\"description\":\"Maximum lines per file\",\"type\":\"number\"},\"maxBytes\":{\"description\":\"Skip files larger than this (default: 65536 = 64KB)\",\"default\":65536,\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"pattern\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"status\",\"title\":\"Index Status\",\"description\":\"Show the status of the QMD index: collections, document counts, and health information.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}}],\"resultType\":\"complete\",\"ttlMs\":60000,\"cacheScope\":\"private\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":7}",
+          "sse": []
+        }
+      },
+      {
+        "name": "call-status-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call",
+          "Mcp-Name": "status"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 8,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {},
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]},\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":8}",
+          "sse": []
+        }
+      },
+      {
+        "name": "call-query-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call",
+          "Mcp-Name": "query"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 9,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": "index"
+                }
+              ],
+              "rerank": false
+            },
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Found 1 result for \\\"index\\\":\\n\\n#f6b585 100% docs/readme.md - Readme\"}],\"structuredContent\":{\"results\":[{\"docid\":\"#f6b585\",\"file\":\"docs/readme.md\",\"title\":\"Readme\",\"score\":1,\"context\":\"Spike corpus\\n\\nDocumentation files\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: index search content\\n6: \"}]},\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":9}",
+          "sse": []
+        }
+      },
+      {
+        "name": "res-read-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "resources/read"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 10,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs/readme.md",
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body carries params.uri=\\\"qmd://docs/readme.md\\\" but the required Mcp-Name header is absent\",\"data\":{\"mismatch\":{\"header\":\"(missing)\",\"body\":\"the body carries params.uri=\\\"qmd://docs/readme.md\\\" but the required Mcp-Name header is absent\"}}},\"id\":10}",
+          "sse": []
+        }
+      },
+      {
+        "name": "no-method-hdr",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 11,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body names method tools/list but the required Mcp-Method header is absent\",\"data\":{\"mismatch\":{\"header\":\"(missing)\",\"body\":\"the body names method tools/list but the required Mcp-Method header is absent\"}}},\"id\":11}",
+          "sse": []
+        }
+      },
+      {
+        "name": "method-hdr-mismatch",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "resources/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 12,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body names method tools/list but the Mcp-Method header names resources/list\",\"data\":{\"mismatch\":{\"header\":\"resources/list\",\"body\":\"the body names method tools/list but the Mcp-Method header names resources/list\"}}},\"id\":12}",
+          "sse": []
+        }
+      },
+      {
+        "name": "name-hdr-mismatch",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call",
+          "Mcp-Name": "query"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 13,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {},
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body carries params.name=\\\"status\\\" but the Mcp-Name header names \\\"query\\\"\",\"data\":{\"mismatch\":{\"header\":\"query\",\"body\":\"the body carries params.name=\\\"status\\\" but the Mcp-Name header names \\\"query\\\"\"}}},\"id\":13}",
+          "sse": []
+        }
+      },
+      {
+        "name": "name-hdr-missing",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/call"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 14,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {},
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body carries params.name=\\\"status\\\" but the required Mcp-Name header is absent\",\"data\":{\"mismatch\":{\"header\":\"(missing)\",\"body\":\"the body carries params.name=\\\"status\\\" but the required Mcp-Name header is absent\"}}},\"id\":14}",
+          "sse": []
+        }
+      },
+      {
+        "name": "meta-no-version-hdr",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 15,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"result\":{\"tools\":[{\"name\":\"query\",\"title\":\"Query\",\"description\":\"Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.\\n\\nEach result includes a `line` field with the absolute 1-indexed line of the best match in the source markdown. To read more context around a hit, call `get(file, fromLine = max(1, line - 20), maxLines = 80, lineNumbers = true)`.\\n\\n## Query Types\\n\\n**lex** — BM25 keyword search. Fast, exact, no LLM needed.\\nFull lex syntax:\\n- `term` — prefix match (\\\"perf\\\" matches \\\"performance\\\")\\n- `\\\"exact phrase\\\"` — phrase must appear verbatim\\n- `-term` or `-\\\"phrase\\\"` — exclude documents containing this\\n\\nGood lex examples:\\n- `\\\"connection pool\\\" timeout -redis`\\n- `\\\"machine learning\\\" -sports -athlete`\\n- `handleError async typescript`\\n\\n**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.\\n- `how does the rate limiter handle burst traffic?`\\n- `what is the tradeoff between consistency and availability?`\\n\\n**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.\\n- `The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.`\\n\\n## Strategy\\n\\nCombine types for best results. First sub-query gets 2× weight — put your strongest signal first.\\n\\n| Goal | Approach |\\n|------|----------|\\n| General search (recommended) | Pass `query` — auto-expanded into typed variants, fused, reranked |\\n| Know exact term/name | `lex` only |\\n| Concept search | `vec` only |\\n| Best recall | `lex` + `vec` |\\n| Complex/nuanced | `lex` + `vec` + `hyde` |\\n| Unknown vocabulary | Pass `query` with natural language so the server auto-expands it |\\n\\n## Examples\\n\\nSimple lookup:\\n```json\\n[{ \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"CAP theorem\\\" }]\\n```\\n\\nBest recall on a technical topic:\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"connection pool\\\\\\\" timeout -redis\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"why do database connections time out under load\\\" },\\n  { \\\"type\\\": \\\"hyde\\\", \\\"query\\\": \\\"Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected.\\\" }\\n]\\n```\\n\\nIntent-aware lex (C++ performance, not sports):\\n```json\\n[\\n  { \\\"type\\\": \\\"lex\\\", \\\"query\\\": \\\"\\\\\\\"C++ performance\\\\\\\" optimization -sports -athlete\\\" },\\n  { \\\"type\\\": \\\"vec\\\", \\\"query\\\": \\\"how to optimize C++ program performance\\\" }\\n]\\n```\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"query\":{\"description\":\"Plain-text query, auto-expanded by the SDK into lex/vec/hyde variants, fused via RRF and reranked. Recommended default for most searches. Mutually exclusive with 'searches'.\",\"type\":\"string\"},\"searches\":{\"description\":\"Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight. Use for precise control over retrieval strategy. Mutually exclusive with 'query'.\",\"maxItems\":10,\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"type\":{\"description\":\"lex = BM25 keywords (supports \\\"phrase\\\" and -negation); vec = semantic question; hyde = hypothetical answer passage\",\"type\":\"string\",\"enum\":[\"lex\",\"vec\",\"hyde\"]},\"query\":{\"description\":\"The query text. For lex: use keywords, \\\"quoted phrases\\\", and -negation. For vec: natural language question. For hyde: 50-100 word answer passage.\",\"type\":\"string\"}},\"required\":[\"type\",\"query\"]}},\"limit\":{\"description\":\"Max results (default: 10)\",\"default\":10,\"type\":\"number\"},\"minScore\":{\"description\":\"Min relevance 0-1 (default: 0)\",\"default\":0,\"type\":\"number\"},\"candidateLimit\":{\"description\":\"Maximum candidates to rerank (default: 40, lower = faster but may miss results)\",\"type\":\"number\"},\"collections\":{\"description\":\"Filter to collections (OR match)\",\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"filter\":{\"description\":\"Metadata filter (recursive JSON AST). Every returned result satisfies it. Nodes are operator-discriminated: logical groups {operator:'and'|'or', operands:[...]}, negation {operator:'not', operand:{...}}, and conditions {key, operator, value} with operators eq/ne/gt/gte/lt/lte (comparison), in/nin/all (membership), exists (presence). Values are typed exactly (no coercion); missing keys do not match ne/nin. Example: {\\\"operator\\\":\\\"and\\\",\\\"operands\\\":[{\\\"key\\\":\\\"topics\\\",\\\"operator\\\":\\\"all\\\",\\\"value\\\":[\\\"typescript\\\"]},{\\\"key\\\":\\\"status\\\",\\\"operator\\\":\\\"ne\\\",\\\"value\\\":\\\"draft\\\"}]}\",\"type\":\"object\",\"propertyNames\":{\"type\":\"string\"},\"additionalProperties\":{}},\"intent\":{\"description\":\"Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own.\",\"type\":\"string\"},\"rerank\":{\"description\":\"Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines.\",\"default\":true,\"type\":\"boolean\"}}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"get\",\"title\":\"Get Document\",\"description\":\"Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"file\":{\"description\":\"File path or docid from search results. Supports a line-range suffix: 'pages/meeting.md:100' starts at line 100; 'pages/meeting.md:100:40' (or '#abc123:100:40') reads 40 lines from line 100.\",\"type\":\"string\"},\"fromLine\":{\"description\":\"Start from this line number (1-indexed)\",\"type\":\"number\"},\"maxLines\":{\"description\":\"Maximum number of lines to return\",\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"file\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"multi_get\",\"title\":\"Multi-Get Documents\",\"description\":\"Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md'), comma-separated list, or docids. Skips files larger than maxBytes.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{\"pattern\":{\"description\":\"Glob pattern, docid, or comma-separated list of file paths/docids\",\"type\":\"string\"},\"maxLines\":{\"description\":\"Maximum lines per file\",\"type\":\"number\"},\"maxBytes\":{\"description\":\"Skip files larger than this (default: 65536 = 64KB)\",\"default\":65536,\"type\":\"number\"},\"lineNumbers\":{\"description\":\"Add line numbers to output (format: 'N: content'). On by default; set false for raw content.\",\"default\":true,\"type\":\"boolean\"}},\"required\":[\"pattern\"]},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}},{\"name\":\"status\",\"title\":\"Index Status\",\"description\":\"Show the status of the QMD index: collections, document counts, and health information.\",\"inputSchema\":{\"type\":\"object\",\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"properties\":{}},\"annotations\":{\"readOnlyHint\":true,\"openWorldHint\":false}}],\"resultType\":\"complete\",\"ttlMs\":60000,\"cacheScope\":\"private\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":15}",
+          "sse": []
+        }
+      },
+      {
+        "name": "version-hdr-no-meta",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 16,
+          "method": "tools/list",
+          "params": {}
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32602,\"message\":\"Invalid params: the MCP-Protocol-Version header names protocol revision 2026-07-28, but the request is missing the required per-request envelope key(s): _meta\",\"data\":{\"envelope\":{\"missing\":[\"_meta\"]}}},\"id\":16}",
+          "sse": []
+        }
+      },
+      {
+        "name": "version-mismatch",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "tools/list"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 17,
+          "method": "tools/list",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2025-11-25",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32020,\"message\":\"Bad Request: the request headers and body disagree: the body envelope names protocol version 2025-11-25 but the MCP-Protocol-Version header names 2026-07-28\",\"data\":{\"mismatch\":{\"header\":\"2026-07-28\",\"body\":\"the body envelope names protocol version 2025-11-25 but the MCP-Protocol-Version header names 2026-07-28\"}}},\"id\":17}",
+          "sse": []
+        }
+      },
+      {
+        "name": "version-unsupported",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "1900-01-01",
+          "Mcp-Method": "server/discover"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 18,
+          "method": "server/discover",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "1900-01-01",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32022,\"message\":\"Unsupported protocol version: 1900-01-01\",\"data\":{\"supported\":[\"2026-07-28\"],\"requested\":\"1900-01-01\"}},\"id\":18}",
+          "sse": []
+        }
+      },
+      {
+        "name": "initialized-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "notifications/initialized"
+        },
+        "response": {
+          "status": 202,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "",
+          "sse": []
+        }
+      },
+      {
+        "name": "notification-2026",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2026-07-28",
+          "Mcp-Method": "notifications/cancelled"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "method": "notifications/cancelled",
+          "params": {
+            "_meta": {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                "name": "spike",
+                "version": "0"
+              }
+            }
+          }
+        },
+        "response": {
+          "status": 202,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "",
+          "sse": []
+        }
+      },
+      {
+        "name": "bad-json",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": "{not json",
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32700,\"message\":\"Parse error: Invalid JSON\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "batch-array",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": [
+          {
+            "jsonrpc": "2.0",
+            "id": 19,
+            "method": "tools/call",
+            "params": {
+              "name": "status",
+              "arguments": {}
+            }
+          }
+        ],
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":19}\n\n",
+          "sse": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                  }
+                ],
+                "structuredContent": {
+                  "totalDocuments": 3,
+                  "needsEmbedding": 3,
+                  "hasVectorIndex": false,
+                  "pendingMetadata": 0,
+                  "collections": [
+                    {
+                      "name": "notes",
+                      "path": "<ROOT>/corpus/notes",
+                      "pattern": "**/*.md",
+                      "documents": 1,
+                      "lastUpdated": "2023-11-14T22:14:20.000Z"
+                    },
+                    {
+                      "name": "docs",
+                      "path": "<ROOT>/corpus/docs",
+                      "pattern": "**/*.md",
+                      "documents": 2,
+                      "lastUpdated": "2023-11-14T22:13:30.000Z"
+                    }
+                  ]
+                }
+              },
+              "jsonrpc": "2.0",
+              "id": 19
+            }
+          ]
+        }
+      },
+      {
+        "name": "scalar-body",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": "42",
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Bad Request: the request body is not a valid JSON-RPC message\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "mcp-get",
+        "method": "GET",
+        "path": "/mcp",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 405,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Method not allowed.\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "mcp-delete",
+        "method": "DELETE",
+        "path": "/mcp",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 405,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Method not allowed.\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "mcp-put",
+        "method": "PUT",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 20,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 405,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Method not allowed.\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "accept-json-only",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 21,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 406,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Not Acceptable: Client must accept both application/json and text/event-stream\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "accept-star",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "*/*"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 22,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 406,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Not Acceptable: Client must accept both application/json and text/event-stream\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "accept-missing",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": ""
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 23,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 406,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Not Acceptable: Client must accept both application/json and text/event-stream\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "ctype-text",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream",
+          "Content-Type": "text/plain"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 24,
+          "method": "tools/call",
+          "params": {
+            "name": "status",
+            "arguments": {}
+          }
+        },
+        "response": {
+          "status": 415,
+          "headers": {
+            "content-type": "application/json;charset=utf-8",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32000,\"message\":\"Unsupported Media Type: Content-Type must be application/json\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-hit",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "index"
+            }
+          ],
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[{\"docid\":\"#f6b585\",\"file\":\"qmd://docs/readme.md\",\"title\":\"Readme\",\"score\":1,\"context\":\"Spike corpus\\n\\nDocumentation files\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: index search content\\n6: \"}]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "search-alias",
+        "method": "POST",
+        "path": "/search",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "weekly"
+            }
+          ],
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[{\"docid\":\"#99b053\",\"file\":\"qmd://notes/meeting.md\",\"title\":\"Meeting\",\"score\":1,\"context\":\"Spike corpus\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: weekly sync notes\\n6: \"}]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-vec-ftype",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "bogus",
+              "query": "index"
+            }
+          ],
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-collections",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "install"
+            }
+          ],
+          "collections": [
+            "docs"
+          ],
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[{\"docid\":\"#64c0b8\",\"file\":\"qmd://docs/install.md\",\"title\":\"Install\",\"score\":1,\"context\":\"Spike corpus\\n\\nDocumentation files\",\"line\":1,\"snippet\":\"1: @@ -1,3 @@ (0 before, 1 after)\\n2: # Install\\n3: \\n4: install the binary then search\"}]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-empty-collections",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "index"
+            }
+          ],
+          "collections": [],
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[{\"docid\":\"#f6b585\",\"file\":\"qmd://docs/readme.md\",\"title\":\"Readme\",\"score\":1,\"context\":\"Spike corpus\\n\\nDocumentation files\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: index search content\\n6: \"}]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-limit-opts",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "a"
+            }
+          ],
+          "limit": 1,
+          "minScore": 0,
+          "intent": "find docs",
+          "rerank": false
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-bad-json",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": "{nope",
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"Invalid JSON body\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-array-body",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": [
+          1,
+          2
+        ],
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"JSON body must be an object\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-scalar-body",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": "\"x\"",
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"JSON body must be an object\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-no-searches",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "limit": 1
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"Missing required field: searches (array)\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-searches-obj",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": {
+            "type": "lex"
+          }
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"Missing required field: searches (array)\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-searches-empty",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": []
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-filter-str",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "index"
+            }
+          ],
+          "filter": "x",
+          "rerank": false
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"Invalid field: filter (must be an object)\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-filter-bad",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            {
+              "type": "lex",
+              "query": "index"
+            }
+          ],
+          "filter": {
+            "key": {
+              "$bad": 1
+            }
+          },
+          "rerank": false
+        },
+        "response": {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"error\":\"Invalid metadata filter at $: missing 'operator' property\"}",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-searches-null-elem",
+        "method": "POST",
+        "path": "/query",
+        "headers": {},
+        "body": {
+          "searches": [
+            null
+          ]
+        },
+        "response": {
+          "status": 500,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Internal Server Error",
+          "sse": []
+        }
+      },
+      {
+        "name": "query-get",
+        "method": "GET",
+        "path": "/query",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": null,
+        "response": {
+          "status": 404,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Not Found",
+          "sse": []
+        }
+      },
+      {
+        "name": "unknown-path",
+        "method": "GET",
+        "path": "/nope",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 404,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Not Found",
+          "sse": []
+        }
+      },
+      {
+        "name": "unknown-post",
+        "method": "POST",
+        "path": "/",
+        "headers": {},
+        "body": null,
+        "response": {
+          "status": 404,
+          "headers": {
+            "content-type": null,
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "Not Found",
+          "sse": []
+        }
+      },
+      {
+        "name": "origin-evil",
+        "method": "POST",
+        "path": "/query",
+        "headers": {
+          "Origin": "http://evil.example",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "searches": []
+        },
+        "response": {
+          "status": 403,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32003,\"message\":\"Forbidden: Origin not allowed: http://evil.example\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "origin-loopback",
+        "method": "POST",
+        "path": "/query",
+        "headers": {
+          "Origin": "http://localhost:9999",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "searches": []
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "origin-localhost-suffix",
+        "method": "POST",
+        "path": "/query",
+        "headers": {
+          "Origin": "http://app.localhost:81",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "searches": []
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"results\":[]}",
+          "sse": []
+        }
+      },
+      {
+        "name": "host-evil",
+        "method": "POST",
+        "path": "/query",
+        "headers": {
+          "Host": "evil.example",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "searches": []
+        },
+        "response": {
+          "status": 403,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32003,\"message\":\"Forbidden: Host not allowed: evil.example\"},\"id\":null}",
+          "sse": []
+        }
+      },
+      {
+        "name": "host-allowed-bind",
+        "method": "GET",
+        "path": "/health",
+        "headers": {
+          "Host": "127.0.0.1:1"
+        },
+        "body": null,
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "allow": null,
+            "cache-control": null,
+            "x-accel-buffering": null,
+            "connection": null,
+            "mcp-session-id": null
+          },
+          "body": "{\"status\":\"ok\",\"uptime\":0}",
+          "sse": []
+        }
+      }
+    ],
+    "sigterm_stderr": "",
+    "stderr": "responseMode: 'json' drops mid-call notifications. subscriptions/listen streams are always served over SSE regardless; other notifications emitted before a result are dropped.\nQMD MCP server listening on http://localhost:19533/mcp\n12:41:45.109 GET /health (0ms)\n12:41:45.128 POST /mcp initialize (17ms)\n12:41:45.132 POST /mcp initialize (3ms)\n12:41:45.135 POST /mcp tools/list (2ms)\n12:41:45.138 POST /mcp tools/call status (3ms)\n12:41:45.140 POST /mcp resources/read (2ms)\n12:41:45.147 POST /mcp server/discover (6ms)\n12:41:45.151 POST /mcp tools/list (3ms)\n12:41:45.153 POST /mcp tools/call status (2ms)\n12:41:45.158 POST /mcp tools/call query (5ms)\n12:41:45.158 POST /mcp resources/read (0ms)\n12:41:45.158 POST /mcp tools/list (0ms)\n12:41:45.159 POST /mcp tools/list (0ms)\n12:41:45.159 POST /mcp tools/call status (0ms)\n12:41:45.159 POST /mcp tools/call status (0ms)\n12:41:45.161 POST /mcp tools/list (1ms)\n12:41:45.161 POST /mcp tools/list (0ms)\n12:41:45.161 POST /mcp tools/list (0ms)\n12:41:45.162 POST /mcp server/discover (1ms)\n12:41:45.163 POST /mcp notifications/initialized (1ms)\n12:41:45.164 POST /mcp notifications/cancelled (1ms)\n12:41:45.167 POST /mcp POST (2ms)\n12:41:45.168 POST /mcp unknown (1ms)\n12:41:45.169 POST /mcp POST (0ms)\n12:41:45.169 GET /mcp GET (0ms)\n12:41:45.169 DELETE /mcp DELETE (0ms)\n12:41:45.169 PUT /mcp tools/call status (0ms)\n12:41:45.170 POST /mcp tools/call status (0ms)\n12:41:45.171 POST /mcp tools/call status (1ms)\n12:41:45.172 POST /mcp tools/call status (1ms)\n12:41:45.172 POST /mcp tools/call status (0ms)\n12:41:45.173 POST /query 1 queries (1ms)\n12:41:45.174 POST /query 1 queries (1ms)\n12:41:45.174 POST /query 1 queries (0ms)\n12:41:45.174 POST /query 1 queries (0ms)\n12:41:45.175 POST /query 1 queries (1ms)\n12:41:45.175 POST /query 1 queries (0ms)\n12:41:45.176 POST /query 0 queries (0ms)\nHTTP handler error: 1041 |         }\n1042 | \n1043 |         // Map to internal format\n1044 |         const searches = params.searches as RestSearchInput[];\n1045 |         const queries: ExpandedQuery[] = searches.map((s) => ({\n1046 |           type: s.type as 'lex' | 'vec' | 'hyde',\n                       ^\nTypeError: null is not an object (evaluating 's.type')\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1046:17)\n      at map (1:11)\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1045:51)\n\n12:41:45.179 POST /query 403 — Origin not allowed: http://evil.example\n12:41:45.179 POST /query 0 queries (0ms)\n12:41:45.179 POST /query 0 queries (0ms)\n12:41:45.179 POST /query 403 — Host not allowed: evil.example\n12:41:45.179 GET /health (0ms)\nShutting down (SIGTERM)...\n",
+    "exit_code": 0
+  }
 }

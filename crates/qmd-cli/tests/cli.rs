@@ -64,15 +64,16 @@ fn shows_help_with_help_flag() {
     assert!(out.stdout.contains("qmd search"));
     assert!(out.stdout.contains("--no-gpu"));
     assert!(out.stdout.contains("qmd skill show/install"));
-    // Not upstream-asserted: the `mcp` lines appear with the feature and
-    // the not-yet-ported `bench`/`--http` lines stay out (P4-D8).
+    // Not upstream-asserted: the `mcp` lines appear with the feature; the
+    // P5.3 Advanced `--http` line matches upstream, while the
+    // not-yet-ported `bench` stays out (P4-D8).
     assert!(
         out.stdout
             .contains("qmd mcp                       - Start the MCP server")
     );
     assert!(out.stdout.contains("AI agents & integrations:"));
+    assert!(out.stdout.contains("qmd mcp --http"));
     assert!(!out.stdout.contains("qmd bench"));
-    assert!(!out.stdout.contains("--http"));
 }
 
 #[test]

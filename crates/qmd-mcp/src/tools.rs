@@ -505,6 +505,27 @@ fn effective_collections(
 /// Upstream's per-result mapping (server.ts:410-421): `docid`/`file`/
 /// `title`/`score`/`context` + optional `metadata` + `line`/`snippet`.
 fn result_items(results: &[qmd::HybridResult], primary: &str, intent: Option<&str>) -> Vec<Value> {
+    result_items_with(results, primary, intent, |r| r.display_path.clone())
+}
+
+/// REST `/query` result items (server.ts:1088-1099): identical to the
+/// tool's mapping except `file` is the `qmd://` URI, not the display path.
+pub(crate) fn rest_result_items(
+    results: &[qmd::HybridResult],
+    primary: &str,
+    intent: Option<&str>,
+) -> Vec<Value> {
+    result_items_with(results, primary, intent, |r| {
+        format!("qmd://{}", encode_qmd_path(&r.display_path))
+    })
+}
+
+fn result_items_with(
+    results: &[qmd::HybridResult],
+    primary: &str,
+    intent: Option<&str>,
+    file: impl Fn(&qmd::HybridResult) -> String,
+) -> Vec<Value> {
     let mut items = Vec::with_capacity(results.len());
     for r in results {
         // `chunkPos: r.bestChunkPos, chunkLen: r.bestChunk.length`
@@ -524,7 +545,7 @@ fn result_items(results: &[qmd::HybridResult], primary: &str, intent: Option<&st
         };
         let mut item = json!({
             "docid": format!("#{}", r.docid),
-            "file": r.display_path,
+            "file": file(r),
             "title": r.title,
             "score": score,
             "context": r.context,

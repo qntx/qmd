@@ -2,7 +2,8 @@
 /**
  * Regenerate `crates/qmd-cli/tests/fixtures/mcp_golden.json` by driving
  * the upstream (tobi/qmd) MCP server — `bun src/cli/qmd.ts mcp` — over
- * stdio with scripted JSON-RPC sessions (P5.2).
+ * stdio with scripted JSON-RPC sessions (P5.2), and
+ * `qmd mcp --http --port N` with scripted HTTP requests (P5.3).
  *
  * Isolation mirrors scripts/gen_cli_golden.ts: minimal env, HOME/
  * XDG dirs, QMD_CONFIG_DIR, INDEX_PATH, TMPDIR inside a throwaway /tmp root,
@@ -194,5 +195,195 @@ for (const s of sessions) {
   out.sessions.push(stripRoot({ name: s.name, requests: s.requests, ...r }));
   console.log(`${s.name}: ${Object.keys(r.responses).length} responses, exit ${r.exit_code}`);
 }
+
+// ---------------------------------------------------------------------------
+// HTTP transport (P5.3): `qmd mcp --http --port N` + scripted fetch requests.
+// ---------------------------------------------------------------------------
+
+const HTTP_ACCEPT = { Accept: "application/json, text/event-stream" };
+const H26 = { ...HTTP_ACCEPT, "MCP-Protocol-Version": "2026-07-28" };
+const h26 = (method: string, extra: Record<string, string> = {}) =>
+  ({ ...H26, "Mcp-Method": method, ...extra });
+const tc26h = (id: number, name: string, args: unknown) => ({
+  body: tc26(id, name, args), headers: h26("tools/call", { "Mcp-Name": name }),
+});
+const m26h = (id: number, method: string, params: unknown = {}) => ({
+  body: m26(id, method, params), headers: h26(method),
+});
+
+type HttpCase = {
+  name: string;
+  method?: string;
+  path?: string;
+  headers?: Record<string, string>;
+  body?: unknown | string;
+  env?: Record<string, string>;
+};
+const httpCases: HttpCase[] = [
+  { name: "health" },
+  { name: "health-post", method: "POST" },
+  { name: "health-trailing", path: "/health/" },
+  { name: "init-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: init25("2025-06-18") },
+  { name: "init-2026-named", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: init25("2026-07-28") },
+  { name: "tools-list-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: { jsonrpc: "2.0", id: 2, method: "tools/list" } },
+  { name: "call-status-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: tc(3, "status", {}) },
+  { name: "res-read-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: { jsonrpc: "2.0", id: 5, method: "resources/read",
+            params: { uri: "qmd://docs/readme.md" } } },
+  { name: "discover-2026", method: "POST", path: "/mcp", ...m26h(6, "server/discover") },
+  { name: "tools-list-2026", method: "POST", path: "/mcp", ...m26h(7, "tools/list") },
+  { name: "call-status-2026", method: "POST", path: "/mcp", ...tc26h(8, "status", {}) },
+  { name: "call-query-2026", method: "POST", path: "/mcp",
+    ...tc26h(9, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }) },
+  { name: "res-read-2026", method: "POST", path: "/mcp",
+    ...m26h(10, "resources/read", { uri: "qmd://docs/readme.md" }) },
+  { name: "no-method-hdr", method: "POST", path: "/mcp", headers: H26,
+    body: m26(11, "tools/list") },
+  { name: "method-hdr-mismatch", method: "POST", path: "/mcp",
+    headers: h26("resources/list"), body: m26(12, "tools/list") },
+  { name: "name-hdr-mismatch", method: "POST", path: "/mcp",
+    headers: h26("tools/call", { "Mcp-Name": "query" }),
+    body: tc26(13, "status", {}) },
+  { name: "name-hdr-missing", method: "POST", path: "/mcp",
+    headers: h26("tools/call"), body: tc26(14, "status", {}) },
+  { name: "meta-no-version-hdr", method: "POST", path: "/mcp",
+    headers: { Accept: HTTP_ACCEPT.Accept, "Mcp-Method": "tools/list" },
+    body: m26(15, "tools/list") },
+  { name: "version-hdr-no-meta", method: "POST", path: "/mcp",
+    headers: h26("tools/list"),
+    body: { jsonrpc: "2.0", id: 16, method: "tools/list", params: {} } },
+  { name: "version-mismatch", method: "POST", path: "/mcp",
+    headers: h26("tools/list"),
+    body: { jsonrpc: "2.0", id: 17, method: "tools/list",
+            params: { _meta: { ...META26,
+              "io.modelcontextprotocol/protocolVersion": "2025-11-25" } } } },
+  { name: "version-unsupported", method: "POST", path: "/mcp",
+    headers: h26("server/discover", { "MCP-Protocol-Version": "1900-01-01" }),
+    body: { jsonrpc: "2.0", id: 18, method: "server/discover",
+            params: { _meta: { ...META26,
+              "io.modelcontextprotocol/protocolVersion": "1900-01-01" } } } },
+  { name: "initialized-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: initd },
+  { name: "notification-2026", method: "POST", path: "/mcp",
+    headers: h26("notifications/cancelled"),
+    body: { jsonrpc: "2.0", method: "notifications/cancelled", params: { _meta: META26 } } },
+  { name: "bad-json", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: "{not json" },
+  { name: "batch-array", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: [tc(19, "status", {})] },
+  { name: "scalar-body", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: "42" },
+  { name: "mcp-get", method: "GET", path: "/mcp" },
+  { name: "mcp-delete", method: "DELETE", path: "/mcp" },
+  { name: "mcp-put", method: "PUT", path: "/mcp", headers: HTTP_ACCEPT,
+    body: tc(20, "status", {}) },
+  { name: "accept-json-only", method: "POST", path: "/mcp",
+    headers: { Accept: "application/json" }, body: tc(21, "status", {}) },
+  { name: "accept-star", method: "POST", path: "/mcp",
+    headers: { Accept: "*/*" }, body: tc(22, "status", {}) },
+  { name: "accept-missing", method: "POST", path: "/mcp",
+    headers: { Accept: "" }, body: tc(23, "status", {}) },
+  { name: "ctype-text", method: "POST", path: "/mcp",
+    headers: { ...HTTP_ACCEPT, "Content-Type": "text/plain" },
+    body: tc(24, "status", {}) },
+  { name: "query-hit", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "index" }], rerank: false } },
+  { name: "search-alias", method: "POST", path: "/search",
+    body: { searches: [{ type: "lex", query: "weekly" }], rerank: false } },
+  { name: "query-vec-ftype", method: "POST", path: "/query",
+    body: { searches: [{ type: "bogus", query: "index" }], rerank: false } },
+  { name: "query-collections", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "install" }], collections: ["docs"], rerank: false } },
+  { name: "query-empty-collections", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "index" }], collections: [], rerank: false } },
+  { name: "query-limit-opts", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "a" }],
+            limit: 1, minScore: 0, intent: "find docs", rerank: false } },
+  { name: "query-bad-json", method: "POST", path: "/query", body: "{nope" },
+  { name: "query-array-body", method: "POST", path: "/query", body: [1, 2] },
+  { name: "query-scalar-body", method: "POST", path: "/query", body: "\"x\"" },
+  { name: "query-no-searches", method: "POST", path: "/query",
+    body: { limit: 1 } },
+  { name: "query-searches-obj", method: "POST", path: "/query",
+    body: { searches: { type: "lex" } } },
+  { name: "query-searches-empty", method: "POST", path: "/query",
+    body: { searches: [] } },
+  { name: "query-filter-str", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "index" }], filter: "x", rerank: false } },
+  { name: "query-filter-bad", method: "POST", path: "/query",
+    body: { searches: [{ type: "lex", query: "index" }],
+            filter: { key: { $bad: 1 } }, rerank: false } },
+  { name: "query-searches-null-elem", method: "POST", path: "/query",
+    body: { searches: [null] } },
+  { name: "query-get", method: "GET", path: "/query",
+    headers: { "Content-Type": "application/json" } },
+  { name: "unknown-path", path: "/nope" },
+  { name: "unknown-post", method: "POST", path: "/" },
+  { name: "origin-evil", method: "POST", path: "/query",
+    headers: { Origin: "http://evil.example", "Content-Type": "application/json" },
+    body: { searches: [] } },
+  { name: "origin-loopback", method: "POST", path: "/query",
+    headers: { Origin: "http://localhost:9999", "Content-Type": "application/json" },
+    body: { searches: [] } },
+  { name: "origin-localhost-suffix", method: "POST", path: "/query",
+    headers: { Origin: "http://app.localhost:81", "Content-Type": "application/json" },
+    body: { searches: [] } },
+  { name: "host-evil", method: "POST", path: "/query",
+    headers: { Host: "evil.example", "Content-Type": "application/json" },
+    body: { searches: [] } },
+  { name: "host-allowed-bind", path: "/health",
+    headers: { Host: "127.0.0.1:1" } },
+];
+
+async function runHttp(): Promise<unknown> {
+  const port = 18200 + (process.pid % 2000);
+  const proc = spawn(process.execPath, [QMD_TS, "mcp", "--http", "--port", String(port)],
+    { env, stdio: ["ignore", "pipe", "pipe"] });
+  let stderr = "";
+  proc.stderr.on("data", (d) => (stderr += d));
+  const deadline = Date.now() + 30000;
+  while (!stderr.includes("/mcp") && Date.now() < deadline)
+    await new Promise((r) => setTimeout(r, 100));
+  const base = `http://localhost:${port}`;
+  const results = [];
+  for (const c of httpCases) {
+    const method = c.method ?? "GET";
+    const path = c.path ?? "/health";
+    const headers: Record<string, string> =
+      method === "POST" && !("Content-Type" in (c.headers ?? {}))
+        ? { "Content-Type": "application/json", ...(c.headers ?? {}) }
+        : (c.headers ?? {});
+    const res = await fetch(`${base}${path}`, {
+      method, headers,
+      ...(method !== "GET" && method !== "HEAD" && c.body !== undefined
+        ? { body: typeof c.body === "string" ? c.body : JSON.stringify(c.body) }
+        : {}),
+    });
+    const text = await res.text();
+    const keep = ["content-type", "allow", "cache-control", "x-accel-buffering",
+      "connection", "mcp-session-id"] as const;
+    const recorded: Record<string, string | null> = {};
+    for (const k of keep) recorded[k] = res.headers.get(k);
+    const sse = [...text.matchAll(/^data: (.*)$/gm)].map((m) => JSON.parse(m[1]));
+    results.push(stripRoot({
+      name: c.name, method, path, headers: c.headers ?? {},
+      body: c.body ?? null,
+      response: { status: res.status, headers: recorded,
+                  body: text, sse },
+    }));
+    console.log(`${c.name}: ${res.status}`);
+  }
+  // SIGTERM shutdown: stderr breadcrumb + exit 0.
+  proc.kill("SIGTERM");
+  const exit = await new Promise<number | null>((r) => proc.on("close", (c) => r(c)));
+  await new Promise((r) => setTimeout(r, 500));
+  return { cases: results, sigterm_stderr: stderr.split("\n").pop() ?? "",
+           stderr, exit_code: exit };
+}
+(out as any).http = await runHttp();
 writeFileSync(OUT, JSON.stringify(out, null, 2) + "\n");
 console.log("wrote", OUT);

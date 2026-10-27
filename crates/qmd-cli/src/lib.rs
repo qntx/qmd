@@ -37,10 +37,8 @@ use regex as _;
 // `content_vectors` rows; the lib never touches it.
 #[cfg(test)]
 use rusqlite as _;
-// `signal-hook` is used by the `qmd` binary's cursor-restore handler
-// (main.rs); the lib installs no process-level state.
-use signal_hook as _;
-
+// `signal-hook` backs the cursor-restore watcher `run` installs for
+// non-MCP commands once the argv has been parsed.
 mod args;
 mod collections;
 #[cfg(test)]
@@ -112,6 +110,22 @@ pub fn run(
             return ExitCode::from(1);
         }
     };
+    // Deliberate deviation (parity-matrix deviation 76): upstream keeps
+    // its cursor-restore `process.exit` handler under `mcp` too. The
+    // server is long-lived with models resident, and exiting with a live
+    // llama.cpp context risks the Metal teardown abort (deviation 47);
+    // the default signal action ends the process without exit handlers.
+    // The check runs on the parsed command, so `qmd --index <n> mcp` is
+    // covered — upstream's argv-position check misses it. Under `--http`
+    // the server's own SIGTERM/SIGINT handlers own shutdown instead
+    // (qmd.ts:4894-4896 removes the CLI's listeners there).
+    #[cfg(feature = "mcp")]
+    let is_mcp = matches!(&parsed.command, Some(args::Command::Mcp(_)));
+    #[cfg(not(feature = "mcp"))]
+    let is_mcp = false;
+    if !is_mcp {
+        install_signal_handlers();
+    }
     let mut env = env;
     if parsed.no_gpu {
         // Upstream `QMD_FORCE_CPU = "1"` (qmd.ts:3155-3157); writing the
@@ -208,4 +222,45 @@ fn version_string() -> String {
         }
         _ => format!("qmd {}", env!("CARGO_PKG_VERSION")),
     }
+}
+
+/// Upstream `process.on('SIGINT'|'SIGTERM')` (qmd.ts:332-333): show the
+/// cursor (`cursor.show()` — it can stay hidden after an interrupted
+/// `embed` render, qmd.ts:2224) then `process.exit(130|143)`.
+///
+/// `signal-hook` runs real handlers on a watcher thread (the installed
+/// OS handler only writes a self-pipe), so the cursor write below is
+/// ordinary stderr output — a lock wait on an in-flight `writeln!` is a
+/// bounded stall, matching upstream's unconditional
+/// `process.stderr.write`. `std::process::exit` runs from that thread,
+/// so destructors — including the llama.cpp Metal teardown upstream
+/// avoids via `process.exit` (qmd.ts:285-303) — never run.
+#[allow(
+    clippy::exit,
+    clippy::disallowed_methods,
+    clippy::let_underscore_must_use,
+    reason = "signal termination cannot return an ExitCode and cannot surface \
+              a write error; mirrors upstream process.exit(130|143) and an \
+              unconditional process.stderr.write"
+)]
+fn install_signal_handlers() {
+    use std::io::Write as _;
+
+    use signal_hook::consts::{SIGINT, SIGTERM};
+    let Ok(mut signals) = signal_hook::iterator::Signals::new([SIGINT, SIGTERM]) else {
+        return;
+    };
+    // A detached watcher is fine: failure to spawn only loses the
+    // cursor restore, and the default signal action still applies.
+    drop(
+        std::thread::Builder::new()
+            .name("signal-cursor-restore".to_owned())
+            .spawn(move || {
+                // The process is gone after the first signal.
+                if let Some(sig) = signals.forever().next() {
+                    let _ = std::io::stderr().write_all(b"\x1b[?25h");
+                    std::process::exit(if sig == SIGTERM { 143 } else { 130 });
+                }
+            }),
+    );
 }
