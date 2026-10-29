@@ -185,8 +185,8 @@ fn mcp_stdio_golden_replay() {
     }
 }
 
-/// `qmd mcp <positional>` is rejected — upstream has no `status`/`stop`
-/// here (stop lands in P5.4).
+/// `qmd mcp <positional>` other than `stop` is rejected — upstream has
+/// no `status` here.
 #[test]
 fn mcp_positional_is_unknown_subcommand() {
     let env = CliEnv::new();

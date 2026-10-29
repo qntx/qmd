@@ -51,6 +51,22 @@ pub(crate) fn status(env: &Environment, ctx: &CliContext, io: &mut Io<'_>) -> Re
     let _ = writeln!(io.out, "{}QMD Status{}\n", c.bold, c.reset);
     let _ = writeln!(io.out, "Index: {}", ctx.db_path().display());
     let _ = writeln!(io.out, "Size:  {}", format_bytes(index_size));
+
+    // MCP daemon status (qmd.ts:552-560): a live pidfile prints the
+    // green "running" line; a stale, recycled or unparseable file is
+    // cleaned silently — nothing prints for it.
+    #[cfg(feature = "mcp")]
+    {
+        let daemon = qmd_mcp::daemon::daemon_paths(env, ctx.index_name());
+        if daemon.pid_path.exists() {
+            match qmd_mcp::daemon::read_pidfile(&daemon.pid_path) {
+                Some(pid) if qmd_mcp::daemon::is_qmd_mcp_pid(pid) => {
+                    let _ = writeln!(io.out, "MCP:   {}running{} (PID {pid})", c.green, c.reset);
+                }
+                _ => drop(std::fs::remove_file(&daemon.pid_path)),
+            }
+        }
+    }
     let _ = writeln!(io.out);
 
     let _ = writeln!(io.out, "{}Documents{}", c.bold, c.reset);

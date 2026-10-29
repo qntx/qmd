@@ -155,8 +155,8 @@ and exposes the same surface as upstream:
 
 stdout carries JSON-RPC only; logs go to stderr. When stdin closes the
 server prints `Shutting down (stdin closed)...`, waits up to 5 s for
-in-flight calls and exits 0. `qmd mcp <anything>` is rejected with exit
-1 (upstream would start a server).
+in-flight calls and exits 0. `qmd mcp <anything>` other than `stop` is
+rejected with exit 1 (upstream would start a server).
 
 ## MCP over HTTP
 
@@ -175,8 +175,21 @@ Origin and Host headers are checked before routing
 host allowlist prints upstream's warning and skips Host validation);
 rejections are `403` with a `-32003` body. SIGINT/SIGTERM print
 `Shutting down (SIGINT|SIGTERM)...` and exit 0; an occupied port prints
-`Port <n> already in use`. `--daemon` and `qmd mcp stop` are not ported
-yet.
+`Port <n> already in use`.
+
+### Daemon mode
+
+`qmd mcp --http --daemon` re-launches the server detached: the launcher
+prints `Started on http://<host>:<port>/mcp (PID <n>)` plus `Logs:
+<path>` and exits; the child writes its stdout/stderr to
+`$XDG_CACHE_HOME/qmd/mcp[-<index>].log` (`~/.cache/qmd` without XDG) and
+its PID to the sibling `.pid` file. A live pidfile refuses with
+`Already running (PID <n>)`; a stale or recycled one is removed.
+`qmd mcp stop` reports `Not running (no PID file).`, cleans a stale
+file, or SIGTERMs a verified qmd PID (`Stopped QMD MCP server (PID
+<n>).`) — identity is confirmed by the process command line so a
+reused PID is never signalled. `qmd status` adds a green `MCP:
+running (PID <n>)` line while the daemon is alive.
 
 ## CI behavior
 

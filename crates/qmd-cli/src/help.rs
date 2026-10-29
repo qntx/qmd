@@ -23,8 +23,8 @@ pub(crate) fn show(io: &mut Io<'_>, ctx: &CliContext) {
         io,
         &[
             "  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs.",
-            // qmd.ts:3710 minus `--daemon`, which lands with P5.4.
-            "  - Advanced: `qmd mcp --http ...` is optional for a custom transport.",
+            // qmd.ts:3710 verbatim.
+            "  - Advanced: `qmd mcp --http ...` and `qmd mcp --http --daemon` are optional for custom transports.",
         ],
     );
     print(io, TAIL);

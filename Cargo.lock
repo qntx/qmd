@@ -1237,7 +1237,9 @@ version = "0.6.0"
 dependencies = [
  "axum",
  "qmd",
+ "regex",
  "rmcp",
+ "rustix",
  "serde_json",
  "tempfile",
  "thiserror",
