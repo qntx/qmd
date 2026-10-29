@@ -12,6 +12,7 @@
 //! `Service<RoleServer>` — the same service object stdio uses,
 //! interception included.
 
+use std::future::Future;
 use std::net::ToSocketAddrs as _;
 use std::sync::Arc;
 use std::time::Instant;
@@ -29,7 +30,7 @@ use rmcp::transport::OneshotTransport;
 use rmcp::{RoleServer, Service};
 use serde_json::{Value, json};
 
-use crate::origin_guard::{OriginGuard, check_request_origin, resolve_origin_guard};
+use crate::origin_guard::{OriginGuard, check_request_origin, resolve_origin_guard_with};
 use crate::rest::RestState;
 use crate::{Error, QmdMcpService};
 
@@ -67,16 +68,24 @@ pub struct HttpOptions {
     pub host: Option<String>,
     /// Suppress startup and per-request stderr logging (upstream `quiet`).
     pub quiet: bool,
+    /// upstream `options.allowedOrigins` — `Some` wins over
+    /// `QMD_ALLOWED_ORIGINS` (origin-guard.ts:98).
+    pub allowed_origins: Option<Vec<String>>,
+    /// upstream `options.allowedHosts` — `Some` wins over
+    /// `QMD_ALLOWED_HOSTS` (origin-guard.ts:99).
+    pub allowed_hosts: Option<Vec<String>>,
 }
 
 impl Default for HttpOptions {
     /// Upstream defaults: port `8181`, host `None` (env/localhost
-    /// fallback at bind time), logging on.
+    /// fallback at bind time), logging on, env-only allowlists.
     fn default() -> Self {
         Self {
             port: 8181,
             host: None,
             quiet: false,
+            allowed_origins: None,
+            allowed_hosts: None,
         }
     }
 }
@@ -115,110 +124,179 @@ fn ts() -> String {
     )
 }
 
-/// Run the HTTP MCP server until SIGTERM/SIGINT.
+/// Bound HTTP MCP server — upstream `HttpServerHandle`
+/// (`{httpServer, port, stop}`, server.ts:1124-1145).
 ///
-/// # Errors
-/// [`Error::Io`] on bind/listen failure (`EADDRINUSE` arrives as
-/// [`std::io::ErrorKind::AddrInUse`]); [`Error::Store`] on the
-/// `defaultCollectionNames` read; [`Error::Serve`] on
-/// `QmdMcpService` construction.
-pub async fn serve_http(qmd: Arc<Qmd>, options: HttpOptions) -> Result<(), Error> {
-    // `host = options.host ?? QMD_HOST ?? "localhost"` (server.ts:977).
-    let host = options
-        .host
-        .unwrap_or_else(|| std::env::var("QMD_HOST").unwrap_or_else(|_| "localhost".to_owned()));
-    let guard = resolve_origin_guard(&host);
+/// [`bind`] returns the handle so embedders learn the real port and
+/// control the shutdown trigger; [`HttpServer::serve`] is upstream's
+/// `stop()`.
+///
+/// [`bind`]: HttpServer::bind
+pub struct HttpServer {
+    listener: tokio::net::TcpListener,
+    app: Router,
+    state: Arc<AppState>,
+    port: u16,
+}
 
-    // `defaultCollectionNames` for the REST endpoint (server.ts:904).
-    let default_collections = qmd
-        .collections()
-        .map_err(Error::Store)?
-        .into_iter()
-        .filter(|c| c.include_by_default)
-        .map(|c| c.name)
-        .collect();
+impl std::fmt::Debug for HttpServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HttpServer")
+            .field("port", &self.port)
+            .finish_non_exhaustive()
+    }
+}
 
-    let state = Arc::new(AppState {
-        rest: Arc::new(RestState {
-            qmd: Arc::clone(&qmd),
-            default_collections,
-        }),
-        qmd,
-        guard,
-        start: Instant::now(),
-        quiet: options.quiet,
-    });
-
-    // Upstream tests the pathname *and* verb (`POST /health` → 404
-    // without an `Allow` header). `on()` would inject `Allow` even on a
-    // fallback response and `get()` answers HEAD, so each route is an
-    // `any()` handler that gates the verb itself (`any` skips the
-    // Allow header).
-    let app = Router::new()
-        .route("/health", axum::routing::any(health_gate))
-        .route("/query", axum::routing::any(search_gate))
-        .route("/search", axum::routing::any(search_gate))
-        .route("/mcp", axum::routing::any(mcp))
-        .fallback(not_found)
-        .layer(middleware::from_fn_with_state(
-            Arc::clone(&state),
-            guard_and_log,
-        ))
-        .with_state(Arc::clone(&state));
-
-    // A wildcard host string is a guard concept; the socket needs a
-    // concrete address (`""`/`*` → v4-any like Node's `listen`).
-    let bind_host = match host.trim() {
-        "" | "*" => "0.0.0.0".to_owned(),
-        h if h.contains(':') && !h.starts_with('[') => format!("[{h}]"),
-        h => h.to_owned(),
-    };
-    // Node's `listen(port, host)` binds the FIRST resolved address and
-    // fails EADDRINUSE when it's taken; tokio's multi-address bind
-    // would silently fall through to another family, so resolve once
-    // and bind exactly one address (`getaddrinfo` on `localhost` is
-    // dual-stack — first result decides, like Node).
-    let bind_addr = format!("{bind_host}:{}", options.port)
-        .to_socket_addrs()
-        .map_err(Error::Io)?
-        .next()
-        .ok_or_else(|| {
-            Error::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("could not resolve host {bind_host}"),
-            ))
-        })?;
-    let listener = tokio::net::TcpListener::bind(bind_addr)
-        .await
-        .map_err(Error::Io)?;
-    let actual_port = listener.local_addr().map_err(Error::Io)?.port();
-
-    // server.ts:1175-1183 — startup line then the two guard warnings.
-    log_line(
-        &state,
-        &format!("QMD MCP server listening on http://{host}:{actual_port}/mcp"),
-    );
-    if state.guard.disabled {
-        log_line(
-            &state,
-            "Warning: QMD_ALLOWED_ORIGINS=* — DNS-rebinding protection is off. Only do this behind your own authenticating proxy.",
-        );
-    } else if !state.guard.enforce_host {
-        log_line(
-            &state,
-            &format!(
-                "Warning: bound to {host} with no QMD_ALLOWED_HOSTS — Host validation is off and the index is readable by anyone who can reach this port."
-            ),
-        );
+impl HttpServer {
+    /// Actual bound port (upstream `handle.port`; meaningful with
+    /// port 0).
+    #[must_use]
+    pub const fn port(&self) -> u16 {
+        self.port
     }
 
-    let result = axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown())
+    /// Serve until `shutdown` resolves, then finish in-flight requests
+    /// and drop the store — upstream `stop()` (mcpHandler.close +
+    /// httpServer.close + store.close, server.ts:1156-1160).
+    ///
+    /// # Errors
+    /// [`Error::Io`] when the listener fails mid-serve.
+    pub async fn serve<F>(self, shutdown: F) -> Result<(), Error>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let result = axum::serve(self.listener, self.app)
+            .with_graceful_shutdown(shutdown)
+            .await
+            .map_err(Error::Io);
+        // `store.close()` (server.ts:1156-1160).
+        drop(self.state);
+        result
+    }
+
+    /// Bind and print the startup line + guard warnings
+    /// (server.ts:1175-1183).
+    ///
+    /// # Errors
+    /// [`Error::Io`] on bind/listen failure (`EADDRINUSE` arrives as
+    /// [`std::io::ErrorKind::AddrInUse`]); [`Error::Store`] on the
+    /// `defaultCollectionNames` read; [`Error::Serve`] on
+    /// `QmdMcpService` construction.
+    pub async fn bind(qmd: Arc<Qmd>, options: HttpOptions) -> Result<Self, Error> {
+        // `host = options.host ?? QMD_HOST ?? "localhost"` (server.ts:977).
+        let host = options.host.unwrap_or_else(|| {
+            std::env::var("QMD_HOST").unwrap_or_else(|_| "localhost".to_owned())
+        });
+        // Explicit allowlists win over env like upstream's `??`
+        // (origin-guard.ts:98-99).
+        let guard =
+            resolve_origin_guard_with(&host, options.allowed_origins, options.allowed_hosts, |k| {
+                std::env::var(k).ok()
+            });
+
+        // `defaultCollectionNames` for the REST endpoint (server.ts:904).
+        let default_collections = qmd
+            .collections()
+            .map_err(Error::Store)?
+            .into_iter()
+            .filter(|c| c.include_by_default)
+            .map(|c| c.name)
+            .collect();
+
+        let state = Arc::new(AppState {
+            rest: Arc::new(RestState {
+                qmd: Arc::clone(&qmd),
+                default_collections,
+            }),
+            qmd,
+            guard,
+            start: Instant::now(),
+            quiet: options.quiet,
+        });
+
+        // Upstream tests the pathname *and* verb (`POST /health` → 404
+        // without an `Allow` header). `on()` would inject `Allow` even on a
+        // fallback response and `get()` answers HEAD, so each route is an
+        // `any()` handler that gates the verb itself (`any` skips the
+        // Allow header).
+        let app = Router::new()
+            .route("/health", axum::routing::any(health_gate))
+            .route("/query", axum::routing::any(search_gate))
+            .route("/search", axum::routing::any(search_gate))
+            .route("/mcp", axum::routing::any(mcp))
+            .fallback(not_found)
+            .layer(middleware::from_fn_with_state(
+                Arc::clone(&state),
+                guard_and_log,
+            ))
+            .with_state(Arc::clone(&state));
+
+        // A wildcard host string is a guard concept; the socket needs a
+        // concrete address (`""`/`*` → v4-any like Node's `listen`).
+        let bind_host = match host.trim() {
+            "" | "*" => "0.0.0.0".to_owned(),
+            h if h.contains(':') && !h.starts_with('[') => format!("[{h}]"),
+            h => h.to_owned(),
+        };
+        // Node's `listen(port, host)` binds the FIRST resolved address and
+        // fails EADDRINUSE when it's taken; tokio's multi-address bind
+        // would silently fall through to another family, so resolve once
+        // and bind exactly one address (`getaddrinfo` on `localhost` is
+        // dual-stack — first result decides, like Node).
+        let bind_addr = format!("{bind_host}:{}", options.port)
+            .to_socket_addrs()
+            .map_err(Error::Io)?
+            .next()
+            .ok_or_else(|| {
+                Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    format!("could not resolve host {bind_host}"),
+                ))
+            })?;
+        let listener = tokio::net::TcpListener::bind(bind_addr)
+            .await
+            .map_err(Error::Io)?;
+        let actual_port = listener.local_addr().map_err(Error::Io)?.port();
+
+        // server.ts:1175-1183 — startup line then the two guard warnings.
+        log_line(
+            &state,
+            &format!("QMD MCP server listening on http://{host}:{actual_port}/mcp"),
+        );
+        if state.guard.disabled {
+            log_line(
+                &state,
+                "Warning: QMD_ALLOWED_ORIGINS=* — DNS-rebinding protection is off. Only do this behind your own authenticating proxy.",
+            );
+        } else if !state.guard.enforce_host {
+            log_line(
+                &state,
+                &format!(
+                    "Warning: bound to {host} with no QMD_ALLOWED_HOSTS — Host validation is off and the index is readable by anyone who can reach this port."
+                ),
+            );
+        }
+
+        Ok(Self {
+            listener,
+            app,
+            state,
+            port: actual_port,
+        })
+    }
+}
+
+/// Run the HTTP MCP server until SIGTERM/SIGINT — `bind` +
+/// `serve(until signal)` (upstream's `process.on` handlers,
+/// server.ts:1162-1169).
+///
+/// # Errors
+/// Same as [`HttpServer::bind`]/[`HttpServer::serve`].
+pub async fn serve_http(qmd: Arc<Qmd>, options: HttpOptions) -> Result<(), Error> {
+    HttpServer::bind(qmd, options)
+        .await?
+        .serve(shutdown())
         .await
-        .map_err(Error::Io);
-    // `store.close()` (server.ts:1156-1160).
-    drop(state);
-    result
 }
 
 /// Prints `Shutting down (SIGINT|SIGTERM)...` then lets axum finish

@@ -33,12 +33,14 @@ const root = mkdtempSync(join(tmpdir(), "qmd-mcp-golden-"));
 const corpus = join(root, "corpus");
 mkdirSync(join(corpus, "docs"), { recursive: true });
 mkdirSync(join(corpus, "notes"), { recursive: true });
+mkdirSync(join(corpus, "notes", "External Podcast"), { recursive: true });
 // Fixed mtimes pin the `lastUpdated` collection order (notes newest
 // → notes listed before docs) on both record and replay.
 const files = [
   ["docs/readme.md", "# Readme\n\nindex search content\n", 1700000000],
   ["docs/install.md", "# Install\n\ninstall the binary then search\n", 1700000010],
   ["notes/meeting.md", "# Meeting\n\nweekly sync notes\n", 1700000060],
+  ["notes/External Podcast/2023 April - Interview.md", "# Interview\n\npodcast transcript\n", 1700000070],
 ] as const;
 for (const [rel, body, mtime] of files) {
   const p = join(corpus, rel);
@@ -128,6 +130,29 @@ const sessions = [
       tc(29, "get", { file: 1, maxLines: "x" }),
       tc(30, "query", { searches: [{ type: "bad", query: 1 }], limit: "x" }),
       tc(31, "multi_get", { pattern: 5, maxBytes: "x" }),
+      // resources/read — encoded paths + malformed escapes
+      // (mcp.test.ts:647-742); JS decodeURIComponent throws URIError on
+      // the malformed forms.
+      { jsonrpc: "2.0", id: 32, method: "resources/read", params: { uri: "qmd://notes%2Fmeeting.md" } },
+      { jsonrpc: "2.0", id: 33, method: "resources/read", params: { uri: "qmd://notes/External%20Podcast/2023%20April%20-%20Interview.md" } },
+      { jsonrpc: "2.0", id: 34, method: "resources/read", params: { uri: "qmd://notes%252Fmeeting.md" } },
+      { jsonrpc: "2.0", id: 35, method: "resources/read", params: { uri: "qmd://meeting.md" } },
+      { jsonrpc: "2.0", id: 36, method: "resources/read", params: { uri: "qmd://docs%ZZ.md" } },
+      { jsonrpc: "2.0", id: 37, method: "resources/read", params: { uri: "qmd://docs%2.md" } },
+      { jsonrpc: "2.0", id: 38, method: "resources/read", params: { uri: "qmd://%FF.md" } },
+      { jsonrpc: "2.0", id: 39, method: "resources/read", params: { uri: "qmd://%E2%82.md" } },
+      // get — bare filename (mcp.test.ts:463) + near-miss suggestions (:476)
+      tc(40, "get", { file: "readme.md" }),
+      tc(41, "get", { file: "readmee.md" }),
+      // multi_get — missing file in comma list (:541) + maxBytes skip (:555)
+      tc(42, "multi_get", { pattern: "docs/readme.md,notes/missing.md" }),
+      tc(43, "multi_get", { pattern: "docs/*.md", maxBytes: 32 }),
+      // query edge inputs (mcp.test.ts:785-807) — lex-only, no models
+      tc(44, "query", { searches: [{ type: "lex", query: "" }], rerank: false }),
+      tc(45, "query", { searches: [{ type: "lex", query: "C++ & \"quotes\" (parens)" }], rerank: false }),
+      tc(46, "query", { searches: [{ type: "lex", query: "日本語 café" }], rerank: false }),
+      tc(47, "query", { searches: [{ type: "lex", query: "index ".repeat(166) + "x" }], rerank: false }),
+      tc(48, "query", { searches: [{ type: "lex", query: "the a an of" }], rerank: false }),
   ]},
   { name: "2025-11-25", requests: [init25("2025-11-25"), initd, tc(2, "status", {})] },
   { name: "2026-07-28", requests: [
@@ -239,6 +264,8 @@ const httpCases: HttpCase[] = [
   { name: "call-status-2026", method: "POST", path: "/mcp", ...tc26h(8, "status", {}) },
   { name: "call-query-2026", method: "POST", path: "/mcp",
     ...tc26h(9, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }) },
+  { name: "call-get-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
+    body: tc(90, "get", { file: "docs/readme.md" }) },
   { name: "res-read-2026", method: "POST", path: "/mcp",
     ...m26h(10, "resources/read", { uri: "qmd://docs/readme.md" }) },
   { name: "no-method-hdr", method: "POST", path: "/mcp", headers: H26,

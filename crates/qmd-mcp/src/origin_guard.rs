@@ -11,8 +11,6 @@
 //! The predicates here are pure so they can be unit-tested without a socket;
 //! the HTTP middleware applies them to every request before routing.
 
-use std::env;
-
 /// Wildcard bind addresses — the request's legitimate `Host` is unknowable
 /// (origin-guard.ts:22).
 const WILDCARD_BIND_HOSTS: [&str; 5] = ["", "0.0.0.0", "::", "[::]", "*"];
@@ -105,13 +103,10 @@ pub(crate) struct OriginGuard {
 /// check is only enforced when the operator supplies an explicit allowlist.
 /// `Origin` validation always applies; browsers are the threat, and they
 /// always send it.
-pub(crate) fn resolve_origin_guard(host: &str) -> OriginGuard {
-    resolve_origin_guard_with(host, None, None, |k| env::var(k).ok())
-}
-
-/// Resolve with injectable values so tests do not touch the process env —
-/// `allowed_origins`/`allowed_hosts` `Some` wins over env like upstream's
-/// `??` (origin-guard.ts:91-92).
+///
+/// `allowed_origins`/`allowed_hosts` `Some` wins over the env lists like
+/// upstream's `??` (origin-guard.ts:98-99); `env` is injected so tests
+/// never touch the process environment.
 pub(crate) fn resolve_origin_guard_with(
     host: &str,
     allowed_origins: Option<Vec<String>>,

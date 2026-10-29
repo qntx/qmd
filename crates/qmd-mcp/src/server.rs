@@ -379,7 +379,7 @@ impl QmdMcpServer {
         })
         .await
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))?
-        .map_err(|e: qmd::Error| ErrorData::internal_error(e.to_string(), None))?;
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         if let Some(env) = envelope_2026(ctx, 0)
             && let Some(o) = value.as_object_mut()
         {
@@ -460,5 +460,63 @@ mod tests {
                     .unwrap(),
             );
         }
+    }
+
+    /// Nothing tracked → `wait_for_idle` returns `true` on the fast
+    /// path without waiting (upstream `waitForIdle` resolves
+    /// immediately, mcp-stdio-lifecycle.test.ts:226).
+    #[tokio::test]
+    async fn wait_for_idle_returns_true_when_nothing_tracked() {
+        let inflight = Inflight::default();
+        // A 60 s drain budget must not be consumed: the outer 100 ms
+        // bound proves the fast path, not just an eventual `true`.
+        let idle = tokio::time::timeout(
+            Duration::from_millis(100),
+            inflight.wait_for_idle(Duration::from_secs(60)),
+        )
+        .await;
+        assert_eq!(idle, Ok(true));
+    }
+
+    /// A blocking handler whose closure panics still releases the
+    /// gate — the guard lives inside the closure and drops on unwind
+    /// (upstream: a rejecting handler releases the gate,
+    /// mcp-stdio-lifecycle.test.ts:257).
+    #[tokio::test(flavor = "multi_thread")]
+    #[expect(clippy::panic, reason = "the test drives a panicking closure")]
+    async fn wait_for_idle_after_panicked_blocking_call() {
+        let inflight = Arc::new(Inflight::default());
+        let guard = inflight.enter();
+        let task = tokio::task::spawn_blocking(move || {
+            let _guard = guard;
+            panic!("handler failed");
+        });
+        assert!(
+            task.await.is_err(),
+            "closure panic should surface as JoinError"
+        );
+        assert!(
+            inflight.wait_for_idle(Duration::from_secs(1)).await,
+            "gate stayed held after the panicked closure"
+        );
+    }
+
+    /// A handler finishing with an error value (not a panic) releases
+    /// the gate the same way a success does.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn wait_for_idle_after_error_result() {
+        let inflight = Arc::new(Inflight::default());
+        let guard = inflight.enter();
+        let result: Result<(), String> = tokio::task::spawn_blocking(move || {
+            let _guard = guard;
+            Err("handler error".to_owned())
+        })
+        .await
+        .expect("blocking task itself completed");
+        assert!(result.is_err());
+        assert!(
+            inflight.wait_for_idle(Duration::from_secs(1)).await,
+            "gate stayed held after the error result"
+        );
     }
 }
