@@ -18,7 +18,7 @@ workspace = true
 
 [dependencies]
 axum       = { version = "0.8.9" }
-qmd        = { version = "0.6.0", path = "../qmd" }
+qmd        = { version = "0.6.0", path = "../qmd", default-features = false, features = ["llama"] }
 regex      = { version = "1.13.1" }
 rmcp       = { version = "3.5.1", features = ["server", "transport-io"] }
 rustix     = { version = "1.1.5", features = ["process"] }

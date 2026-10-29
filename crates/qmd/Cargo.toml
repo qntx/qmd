@@ -15,10 +15,16 @@ features            = ["testing"]
 rustdoc-args        = ["--cfg", "docsrs"]
 
 [features]
-default = ["llama"]
+default = ["llama", "ast"]
 # Deterministic in-memory inference backends (`qmd::testing`) for tests
 # and downstream embedders — no model files required.
 testing = []
+# Tree-sitter AST break points for `--chunk-strategy auto`
+# (`chunk::ast`). Grammar crates are pinned to the exact upstream wasm
+# versions; `tree-sitter` runtime on the 0.26 line matching upstream's
+# `web-tree-sitter` 0.26. Enabled by default.
+ast = ["dep:tree-sitter", "dep:tree-sitter-typescript", "dep:tree-sitter-python",
+       "dep:tree-sitter-go", "dep:tree-sitter-rust"]
 # On-device inference on llama.cpp (`llm::llamacpp`) plus HuggingFace model
 # download (`llm::download`). Enabled by default; builds C++ via cmake and
 # bindgen, so `cmake`, `clang`/`libclang` must be installed.
@@ -52,6 +58,14 @@ time          = { version = "0.3.36", features = ["formatting", "macros", "parsi
 llama-cpp-2   = { version = "=0.1.158", optional = true }
 ureq          = { version = "3.4.2", optional = true }
 tracing       = "0.1.44"
+tree-sitter   = { version = "0.26.13", optional = true }
+# Grammar crates pinned `=` to the exact upstream versions
+# (p6-ast.md §2.2). JavaScript intentionally absent — upstream reuses
+# the TypeScript grammar for `.js` (ast.ts:69).
+tree-sitter-typescript = { version = "=0.23.2", optional = true }
+tree-sitter-python     = { version = "=0.25.0", optional = true }
+tree-sitter-go         = { version = "=0.25.0", optional = true }
+tree-sitter-rust       = { version = "=0.24.0", optional = true }
 
 [dev-dependencies]
 tempfile = "3.23.0"

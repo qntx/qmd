@@ -25,6 +25,9 @@ use regex::Regex;
 
 use crate::llm::{CancelToken, Embedder, InferenceError};
 
+#[cfg(feature = "ast")]
+pub mod ast;
+
 /// Upstream `CHUNK_SIZE_TOKENS` (store.ts:114): 900 tokens per chunk.
 pub const CHUNK_SIZE_TOKENS: usize = 900;
 /// Upstream `CHUNK_OVERLAP_TOKENS` (store.ts:115): 15% of the chunk size.

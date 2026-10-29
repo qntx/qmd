@@ -867,3 +867,23 @@ mod validate {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `encode_qmd_path` (`vpath.rs:128`, upstream `encodeQmdPath`) —
+    /// per-segment `encodeURIComponent`: slashes preserved, spaces and
+    /// specials escaped (mcp.test.ts:832).
+    #[test]
+    fn encode_qmd_path_preserves_slashes_encodes_specials() {
+        assert_eq!(
+            encode_qmd_path("External Podcast/2023 April - Interview.md"),
+            "External%20Podcast/2023%20April%20-%20Interview.md"
+        );
+        assert!(encode_qmd_path("a/b c.md").contains('/'));
+        assert!(encode_qmd_path("a/b c.md").contains("%20"));
+        // Hash fragments and `?` are escaped inside a segment too.
+        assert_eq!(encode_qmd_path("a?b#c.md"), "a%3Fb%23c.md");
+    }
+}
