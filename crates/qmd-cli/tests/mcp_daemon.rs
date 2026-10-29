@@ -100,6 +100,43 @@ fn alive(pid: i64) -> bool {
         .is_ok_and(|o| o.status.success() && !String::from_utf8_lossy(&o.stdout).trim().is_empty())
 }
 
+/// `ps -p <pid> -o args=` — the process's full command line.
+fn args_of(pid: i64) -> String {
+    Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "args="])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default()
+}
+
+/// Best-effort SIGTERM for daemons a test launched — a failed assert
+/// must not leak a setsid'd server. Drop only signals when the
+/// recorded pid still looks like our `qmd` binary (a foreign process
+/// that reused the pid is never touched); the guard is a no-op once
+/// `mcp stop` removed the pidfile.
+struct DaemonGuard {
+    pidfiles: Vec<PathBuf>,
+}
+
+impl DaemonGuard {
+    fn new(pidfiles: impl IntoIterator<Item = PathBuf>) -> Self {
+        Self {
+            pidfiles: pidfiles.into_iter().collect(),
+        }
+    }
+}
+
+impl Drop for DaemonGuard {
+    fn drop(&mut self) {
+        for path in &self.pidfiles {
+            let pid = recorded_pid(path);
+            if pid > 0 && args_of(pid).contains("qmd") {
+                drop(Command::new("kill").arg(pid.to_string()).output());
+            }
+        }
+    }
+}
+
 /// Full lifecycle (cli.test.ts "mcp http daemon" foreground+daemon
 /// flow): launch → Started/Logs lines + exit 0 → pidfile + truncated
 /// log → detached session (ppid 1) → serves traffic → `mcp stop` →
@@ -116,6 +153,7 @@ fn daemon_lifecycle_start_serve_stop() {
 
     let out = env.run(&["mcp", "--http", "--daemon", "--port", &port]);
     assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
+    let _guard = DaemonGuard::new([pid_path.clone()]);
     assert!(
         out.stdout
             .contains(&format!("Started on http://localhost:{port}/mcp (PID ")),
@@ -168,6 +206,7 @@ fn daemon_already_running_refuses() {
     let out = env.run(&["mcp", "--http", "--daemon", "--port", &port]);
     assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
     let pid = recorded_pid(&pid_path);
+    let _guard = DaemonGuard::new([pid_path]);
     assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
 
     let again = env.run(&["mcp", "--http", "--daemon", "--port", &port]);
@@ -309,6 +348,7 @@ fn daemon_named_index_scopes_state_files() {
     );
     assert!(named_pid.exists(), "named pidfile missing");
     assert!(!default_pid.exists(), "default pidfile must not appear");
+    let _guard = DaemonGuard::new([named_pid.clone()]);
     let pid = recorded_pid(&named_pid);
     assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
 
@@ -361,6 +401,7 @@ fn status_reports_running_daemon() {
     let out = env.run(&["mcp", "--http", "--daemon", "--port", &port]);
     assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
     let pid = recorded_pid(&pid_path);
+    let _guard = DaemonGuard::new([pid_path]);
     assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
 
     let status = env.run(&["status"]);
@@ -380,4 +421,234 @@ fn status_reports_running_daemon() {
     let after = env.run(&["status"]);
     assert_eq!(after.exit_code, 0, "stderr: {}", after.stderr);
     assert!(!after.stdout.contains("MCP:"), "stdout: {}", after.stdout);
+}
+
+/// `--index <name>` daemon serves that named index (cli.test.ts
+/// "mcp http daemon" ~:2630): the named corpus carries a term absent
+/// from the default corpus, and the daemon's REST /query finds it.
+#[test]
+fn daemon_serves_named_index_data() {
+    let env = CliEnv::new();
+    // Default index — the shared corpus (no unique term).
+    fixtures_corpus(&env);
+    env.write_config("index", &collection_yaml("docs", &env.fixtures, "**/*.md"));
+    env.update();
+    // Named index — a separate corpus with a unique searchable term.
+    let alt = env.root.join("alt-corpus");
+    std::fs::create_dir_all(&alt).unwrap();
+    std::fs::write(alt.join("u.md"), "# U\n\nqwixzilonic term\n").unwrap();
+    env.write_config("alt", &collection_yaml("docs", &alt, "**/*.md"));
+    env.reindex("alt", "alt", false);
+
+    let port = common::free_port().to_string();
+    let out = env
+        .qmd_command(
+            &[
+                "--index", "alt", "mcp", "--http", "--daemon", "--port", &port,
+            ],
+            false,
+            &[],
+        )
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let _guard = DaemonGuard::new([daemon_paths(&env, "alt").0]);
+    assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
+
+    // The named daemon answers the named index's term.
+    let reply = common::http_request(
+        port.parse().unwrap(),
+        "POST",
+        "/query",
+        &serde_json::Map::new(),
+        Some(r#"{"searches":[{"type":"lex","query":"qwixzilonic"}],"rerank":false}"#),
+    );
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert!(
+        reply.body.contains("qwixzilonic") || reply.body.contains("u.md"),
+        "{}",
+        reply.body
+    );
+
+    let stopped = env
+        .qmd_command(&["--index", "alt", "mcp", "stop"], false, &[])
+        .output()
+        .unwrap();
+    let stop_out = String::from_utf8_lossy(&stopped.stdout);
+    assert!(
+        stopped.status.success() && stop_out.contains("Stopped QMD MCP server (PID "),
+        "named daemon not stopped: {stop_out}"
+    );
+}
+
+/// Named and default daemons run side by side on different ports
+/// (cli.test.ts ~:2785): both serve /health, each `mcp stop` only
+/// kills its own pidfile and port.
+#[test]
+fn named_and_default_daemons_coexist() {
+    let env = CliEnv::new();
+    fixtures_corpus(&env);
+    env.write_config("index", &collection_yaml("docs", &env.fixtures, "**/*.md"));
+    env.update();
+    let alt = env.root.join("alt-corpus");
+    std::fs::create_dir_all(&alt).unwrap();
+    std::fs::write(alt.join("u.md"), "# U\n\nalt corpus doc\n").unwrap();
+    env.write_config("alt", &collection_yaml("docs", &alt, "**/*.md"));
+    env.reindex("alt", "alt", false);
+
+    let port_a = common::free_port().to_string();
+    let port_b = common::free_port().to_string();
+    let (pid_a, _) = daemon_paths(&env, "index");
+    let (pid_b, _) = daemon_paths(&env, "alt");
+
+    let out_a = env
+        .qmd_command(
+            &["mcp", "--http", "--daemon", "--port", &port_a],
+            false,
+            &[],
+        )
+        .output()
+        .unwrap();
+    assert!(out_a.status.success());
+    let out_b = env
+        .qmd_command(
+            &[
+                "--index", "alt", "mcp", "--http", "--daemon", "--port", &port_b,
+            ],
+            false,
+            &[],
+        )
+        .output()
+        .unwrap();
+    assert!(out_b.status.success());
+    let _guard = DaemonGuard::new([pid_a.clone(), pid_b.clone()]);
+    assert!(wait_health(
+        port_a.parse().unwrap(),
+        Duration::from_secs(10)
+    ));
+    assert!(wait_health(
+        port_b.parse().unwrap(),
+        Duration::from_secs(10)
+    ));
+    assert!(pid_a.exists() && pid_b.exists());
+    assert_ne!(recorded_pid(&pid_a), recorded_pid(&pid_b));
+
+    // Stopping the named daemon leaves the default one serving.
+    let stopped_b = env
+        .qmd_command(&["--index", "alt", "mcp", "stop"], false, &[])
+        .output()
+        .unwrap();
+    assert!(
+        stopped_b.status.success()
+            && String::from_utf8_lossy(&stopped_b.stdout).contains("Stopped QMD MCP server (PID "),
+        "stopped_b: {}",
+        String::from_utf8_lossy(&stopped_b.stdout)
+    );
+    assert!(!pid_b.exists());
+    let health_a = common::http_request(
+        port_a.parse().unwrap(),
+        "GET",
+        "/health",
+        &serde_json::Map::new(),
+        None,
+    );
+    assert_eq!(health_a.status, 200);
+
+    let stopped_a = env
+        .qmd_command(&["mcp", "stop"], false, &[])
+        .output()
+        .unwrap();
+    assert!(
+        stopped_a.status.success()
+            && String::from_utf8_lossy(&stopped_a.stdout).contains("Stopped QMD MCP server (PID "),
+        "stopped_a: {}",
+        String::from_utf8_lossy(&stopped_a.stdout)
+    );
+    assert!(!pid_a.exists());
+}
+
+/// `--daemon` with a stale pidfile (dead pid) starts and rewrites the
+/// pidfile (cli.test.ts ~:2920).
+#[test]
+fn daemon_starts_over_stale_pidfile() {
+    let env = indexed_env();
+    let (pid_path, _) = daemon_paths(&env, "index");
+    std::fs::create_dir_all(pid_path.parent().unwrap()).unwrap();
+    std::fs::write(&pid_path, "999999999\n").unwrap(); // dead-pid contents; writes the same text upstream records
+
+    let port = common::free_port().to_string();
+    let out = env
+        .qmd_command(&["mcp", "--http", "--daemon", "--port", &port], false, &[])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let _guard = DaemonGuard::new([pid_path.clone()]);
+    assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
+    let pid = recorded_pid(&pid_path);
+    assert!(
+        pid > 0 && pid != 999_999_999,
+        "pidfile not rewritten: {pid}"
+    );
+
+    let stopped = env
+        .qmd_command(&["mcp", "stop"], false, &[])
+        .output()
+        .unwrap();
+    assert!(stopped.status.success());
+}
+
+/// `--daemon` with a *live foreign* pid in the pidfile starts anyway
+/// (the identity check refuses to signal a non-qmd process → treated
+/// like a stale file, cli.test.ts ~:2964) — and the foreign process
+/// is still alive afterwards.
+#[test]
+fn daemon_starts_over_foreign_pidfile() {
+    let env = indexed_env();
+    let (pid_path, _) = daemon_paths(&env, "index");
+    std::fs::create_dir_all(pid_path.parent().unwrap()).unwrap();
+    let mut sleeper = Command::new("sleep").arg("300").spawn().unwrap();
+    let sleeper_pid = i64::from(sleeper.id().cast_signed());
+    std::fs::write(&pid_path, format!("{sleeper_pid}\n")).unwrap();
+
+    let port = common::free_port().to_string();
+    let out = env
+        .qmd_command(&["mcp", "--http", "--daemon", "--port", &port], false, &[])
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(wait_health(port.parse().unwrap(), Duration::from_secs(10)));
+    let _guard = DaemonGuard::new([pid_path.clone()]);
+    let daemon_pid = recorded_pid(&pid_path);
+    assert!(
+        daemon_pid > 0 && daemon_pid != sleeper_pid,
+        "pidfile not rewritten: {daemon_pid}"
+    );
+
+    // The foreign process was never signalled.
+    assert!(alive(sleeper_pid), "foreign process was killed");
+    drop(sleeper.kill());
+    drop(sleeper.wait());
+
+    let stopped = env
+        .qmd_command(&["mcp", "stop"], false, &[])
+        .output()
+        .unwrap();
+    assert!(stopped.status.success());
+    let stopped_out = String::from_utf8_lossy(&stopped.stdout);
+    assert!(
+        stopped_out.contains(&format!("Stopped QMD MCP server (PID {daemon_pid}).")),
+        "stdout: {stopped_out}"
+    );
 }

@@ -1,0 +1,490 @@
+{
+  "generated": "2026-10-29",
+  "upstream": "tobi/qmd src/ast.ts getASTBreakPoints (pos = UTF-16 code-unit index)",
+  "cases": [
+    {
+      "path": "src/auth.ts",
+      "content": "import { Database } from './db';\nimport type { User } from './types';\n\ninterface AuthConfig {\n  secret: string;\n  ttl: number;\n}\n\ntype UserId = string;\n\nexport class AuthService {\n  constructor(private db: Database) {}\n\n  async authenticate(user: User, token: string): Promise<boolean> {\n    const session = await this.db.findSession(token);\n    return session?.userId === user.id;\n  }\n\n  validateToken(token: string): boolean {\n    return token.length === 64;\n  }\n}\n\nexport function hashPassword(password: string): string {\n  return crypto.createHash('sha256').update(password).digest('hex');\n}\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 33,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 71,
+          "score": 100,
+          "type": "ast:iface"
+        },
+        {
+          "pos": 130,
+          "score": 80,
+          "type": "ast:type"
+        },
+        {
+          "pos": 153,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 160,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 182,
+          "score": 90,
+          "type": "ast:method"
+        },
+        {
+          "pos": 222,
+          "score": 90,
+          "type": "ast:method"
+        },
+        {
+          "pos": 389,
+          "score": 90,
+          "type": "ast:method"
+        },
+        {
+          "pos": 468,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 475,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "mod/utils.mts",
+      "content": "import { join } from 'path';\n\nenum Kind { A, B }\n\nexport const parse = (s: string): string => s.trim();\n\nfunction helper() { return 1; }\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 30,
+          "score": 80,
+          "type": "ast:enum"
+        },
+        {
+          "pos": 50,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 57,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 105,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "conf/settings.cts",
+      "content": "import fs from 'fs';\n\nexport const load = function(path: string) { return fs.readFileSync(path); };\n\nclass Cache { get() { return null; } }\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 22,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 29,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 101,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 115,
+          "score": 90,
+          "type": "ast:method"
+        }
+      ]
+    },
+    {
+      "path": "src/App.tsx",
+      "content": "import React from 'react';\n\ninterface Props { name: string; }\n\ntype Size = 'sm' | 'lg';\n\nenum Variant { A, B }\n\nexport class Widget {\n  render() { return <div/>; }\n}\n\nexport const Label = (p: Props) => <span>{p.name}</span>;\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 28,
+          "score": 100,
+          "type": "ast:iface"
+        },
+        {
+          "pos": 63,
+          "score": 80,
+          "type": "ast:type"
+        },
+        {
+          "pos": 89,
+          "score": 80,
+          "type": "ast:enum"
+        },
+        {
+          "pos": 112,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 119,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 136,
+          "score": 90,
+          "type": "ast:method"
+        },
+        {
+          "pos": 167,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 174,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "src/View.jsx",
+      "content": "import { useState } from 'react';\n\nexport default function View() {\n  return <main/>;\n}\n\nconst Btn = () => <button/>;\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 35,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 50,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 89,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "src/util.js",
+      "content": "import { y } from 'z';\n\nexport function main() {\n  class Inner {}\n}\n\nconst arrow = () => \"x\";\n\nfunction legacy() { return null; }\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 24,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 31,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 51,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 69,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 95,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "src/mod.mjs",
+      "content": "import * as os from 'os';\n\nexport const detect = () => os.platform();\n\nclass Platform {\n  name = 'x';\n  getName() { return this.name; }\n}\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 27,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 34,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 71,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 104,
+          "score": 90,
+          "type": "ast:method"
+        }
+      ]
+    },
+    {
+      "path": "lib/old.cjs",
+      "content": "const fs = require('fs');\n\nfunction read() { return fs.readFileSync('x'); }\n\nconst write = function() {};\n",
+      "points": [
+        {
+          "pos": 27,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 77,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "auth.py",
+      "content": "import os\nfrom typing import Optional\n\nclass AuthService:\n    def __init__(self, db):\n        self.db = db\n\n    async def authenticate(self, user, token):\n        session = await self.db.find(token)\n        return session.user_id == user.id\n\n    def validate_token(self, token):\n        return len(token) == 64\n\ndef hash_password(password: str) -> str:\n    return hashlib.sha256(password.encode()).hexdigest()\n\n@decorator\ndef decorated_func():\n    pass\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 10,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 39,
+          "score": 100,
+          "type": "ast:class"
+        },
+        {
+          "pos": 62,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 112,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 246,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 312,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 411,
+          "score": 90,
+          "type": "ast:decorated"
+        },
+        {
+          "pos": 422,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "auth.go",
+      "content": "package main\n\nimport \"fmt\"\n\ntype AuthService struct {\n    db *Database\n}\n\nfunc (s *AuthService) Authenticate(user User) bool {\n    return true\n}\n\nfunc HashPassword(password string) string {\n    return \"hash\"\n}\n",
+      "points": [
+        {
+          "pos": 14,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 28,
+          "score": 80,
+          "type": "ast:type"
+        },
+        {
+          "pos": 74,
+          "score": 90,
+          "type": "ast:method"
+        },
+        {
+          "pos": 146,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "auth.rs",
+      "content": "use std::collections::HashMap;\n\nstruct AuthService {\n    db: Database,\n}\n\nimpl AuthService {\n    fn authenticate(&self, user: &User) -> bool {\n        true\n    }\n}\n\ntrait Authenticatable {\n    fn validate(&self) -> bool;\n}\n\nenum Role {\n    Admin,\n    User,\n}\n\nmod inner {\n    fn f() {}\n}\n\ntype UserId = u64;\n\nfn hash_password(password: &str) -> String {\n    String::new()\n}\n",
+      "points": [
+        {
+          "pos": 0,
+          "score": 60,
+          "type": "ast:import"
+        },
+        {
+          "pos": 32,
+          "score": 100,
+          "type": "ast:struct"
+        },
+        {
+          "pos": 74,
+          "score": 100,
+          "type": "ast:impl"
+        },
+        {
+          "pos": 97,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 165,
+          "score": 100,
+          "type": "ast:trait"
+        },
+        {
+          "pos": 224,
+          "score": 80,
+          "type": "ast:enum"
+        },
+        {
+          "pos": 260,
+          "score": 100,
+          "type": "ast:mod"
+        },
+        {
+          "pos": 276,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 289,
+          "score": 80,
+          "type": "ast:type"
+        },
+        {
+          "pos": 309,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    },
+    {
+      "path": "broken.ts",
+      "content": "function { broken syntax %%%",
+      "points": []
+    },
+    {
+      "path": "empty.ts",
+      "content": "",
+      "points": []
+    },
+    {
+      "path": "unicode.ts",
+      "content": "// 日本語のコメント\nexport function emoji() { return \"🎉\"; }\n\nclass After {\n  x = \"éèê\";\n}\n",
+      "points": [
+        {
+          "pos": 12,
+          "score": 90,
+          "type": "ast:export"
+        },
+        {
+          "pos": 19,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 54,
+          "score": 100,
+          "type": "ast:class"
+        }
+      ]
+    },
+    {
+      "path": "emoji.py",
+      "content": "# comment with emoji 🎉🎊\ndef greet():\n    return \"日本語\"\n\nclass Ünïcödé:\n    pass\n",
+      "points": [
+        {
+          "pos": 26,
+          "score": 90,
+          "type": "ast:func"
+        },
+        {
+          "pos": 57,
+          "score": 100,
+          "type": "ast:class"
+        }
+      ]
+    },
+    {
+      "path": "readme.md",
+      "content": "# Hello World",
+      "points": []
+    },
+    {
+      "path": "data.xyz",
+      "content": "not code",
+      "points": []
+    },
+    {
+      "path": "qmd://virtual/doc.py",
+      "content": "def v(): pass",
+      "points": [
+        {
+          "pos": 0,
+          "score": 90,
+          "type": "ast:func"
+        }
+      ]
+    }
+  ]
+}
