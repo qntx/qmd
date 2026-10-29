@@ -784,8 +784,8 @@ try {
     const cwdOf = (c: Cwd = "corpus") => ({ corpus, docs: join(corpus, "docs"), root, outside, proj }[c]);
     // `<AGO>`/`<SIZE>`/`<TS>`: db file size and clock-relative strings are
     // not byte-stable across implementations or run dates. The AST block is
-    // flattened to `<AST>` — the port pins upstream's `not available` branch
-    // until P6 while this upstream reports `active` plus a language list.
+    // flattened to `<AST>` — both sides report `active` plus a language
+    // list, but the fold keeps the fixture robust to grammar-set changes.
     // The doctor tokens fold deliberate driver/version differences:
     // `Runtime:` is `bun:sqlite` upstream vs `rusqlite` here; the SQLite
     // and sqlite-vec versions are whatever each build bundles; and the

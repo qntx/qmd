@@ -162,11 +162,11 @@ pub struct CodeFenceRegion {
 
 /// Break-point strategy — upstream `ChunkStrategy` (`store.ts:303`).
 /// `Auto` merges tree-sitter AST break points for supported code files;
-/// that backend arrives in P6, so `Auto` currently degrades to `Regex`.
+/// without the `ast` feature it degrades to [`Self::Regex`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum ChunkStrategy {
     /// AST-aware break points merged with regex ones (degrades to
-    /// [`Self::Regex`] until P6).
+    /// [`Self::Regex`] without the `ast` feature).
     Auto,
     /// Regex break points only (upstream default).
     #[default]
@@ -591,11 +591,12 @@ pub fn chunk_document<'a>(content: &'a str, options: &CharChunkOptions) -> Vec<C
 }
 
 /// Strategy-dispatched chunking — upstream `chunkDocumentAsync`
-/// (`store.ts:3171-3192`, minus the await).
+/// (`store.ts:3171-3192`, minus the dynamic-import await).
 ///
-/// `Auto` + `filepath` merges AST break points in upstream; the AST
-/// backend arrives in P6, so `Auto` currently produces the same chunks
-/// as `Regex`.
+/// `Auto` + `filepath` merges [`ast::ast_break_points`] into the regex
+/// set via [`merge_break_points`] — only when the AST pass is non-empty
+/// (store.ts:3186-3188); `Regex`, a missing path, an unsupported
+/// extension, or the `ast` feature being off all degrade to plain regex.
 #[must_use]
 pub fn chunk_document_with_strategy<'a>(
     content: &'a str,
@@ -603,11 +604,31 @@ pub fn chunk_document_with_strategy<'a>(
     strategy: ChunkStrategy,
     options: &CharChunkOptions,
 ) -> Vec<Chunk<'a>> {
-    // P6: when `strategy == Auto` and `filepath` maps to a supported
-    // language, merge `ast_break_points(content, filepath)` via
-    // `merge_break_points` before delegating.
-    let _ = (filepath, strategy);
-    chunk_document(content, options)
+    let regex_points = scan_break_points(content);
+    let code_fences = find_code_fences(content);
+
+    #[cfg(feature = "ast")]
+    let break_points = {
+        let mut points = regex_points;
+        // store.ts:3183-3189 — merge only under `auto` + a real path,
+        // and only when the AST pass found something.
+        if strategy == ChunkStrategy::Auto
+            && let Some(path) = filepath
+        {
+            let ast_points = ast::ast_break_points(content, path);
+            if !ast_points.is_empty() {
+                points = merge_break_points(&points, &ast_points);
+            }
+        }
+        points
+    };
+    #[cfg(not(feature = "ast"))]
+    let break_points = {
+        let _ = (filepath, strategy);
+        regex_points
+    };
+
+    chunk_document_with_break_points(content, &break_points, &code_fences, options)
 }
 
 /// `clampOverlapChars` (store.ts:3276-3279).

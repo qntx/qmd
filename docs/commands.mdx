@@ -29,8 +29,8 @@ document of `lex:`/`vec:`/`hyde:`/`intent:`/`expand:` lines — see
 - `--intent <text>` sharpens ranking (overrides a document `intent:` line)
 - `--candidate-limit <n>` caps the per-list candidate pool
 - `--no-rerank` skips the LLM reranking step (faster, lower quality)
-- `--chunk-strategy auto|regex` selects the tokenizer strategy used for
-  hyde/vec text handling (`auto` adds AST breakpoints for code files)
+- `--chunk-strategy auto|regex` selects the document chunking strategy
+  (`auto` merges tree-sitter AST breakpoints for code files)
 
 ### `qmd vsearch`
 

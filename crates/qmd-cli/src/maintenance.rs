@@ -34,10 +34,12 @@ pub(crate) fn init(env: &Environment, io: &mut Io<'_>) -> Result<(), Failure> {
 
 /// `qmd status` — upstream `showStatus` (qmd.ts:521-713).
 ///
-/// Deviations: no MCP-daemon block (the Rust CLI has no daemon), and
-/// the AST Chunking block prints upstream's import-failure branch —
-/// `Status:   not available` — because this port has no tree-sitter
-/// module (the fixture soft-normalizes the line anyway).
+/// The AST Chunking block (qmd.ts:600-626) prints upstream's `active`
+/// branch under the `ast` feature — statically linked grammars are all
+/// `available`, so upstream's `Unavailable:` per-language rows and the
+/// `unavailable` fallback are unreachable and not implemented. Without
+/// the feature the block keeps upstream's import-failure line
+/// (`Status:   not available`).
 pub(crate) fn status(env: &Environment, ctx: &CliContext, io: &mut Io<'_>) -> Result<(), Failure> {
     let c = Palette::new(Palette::enabled(env, io));
     // Upstream `status` deliberately displays the declared YAML models
@@ -113,9 +115,23 @@ pub(crate) fn status(env: &Environment, ctx: &CliContext, io: &mut Io<'_>) -> Re
         );
     }
 
-    // `getASTStatus` import branch — no tree-sitter in this port.
+    // `getASTStatus` (qmd.ts:600-626): statically linked grammars make
+    // every language `available` → the `active` branch verbatim.
     let _ = writeln!(io.out, "\n{}AST Chunking{}", c.bold, c.reset);
-    let _ = writeln!(io.out, "  Status:   {}not available{}", c.dim, c.reset);
+    #[cfg(feature = "ast")]
+    {
+        let _ = writeln!(io.out, "  Status:   {}active{}", c.green, c.reset);
+        let languages = qmd::chunk::ast::Language::ALL
+            .iter()
+            .map(|l| l.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(io.out, "  Languages: {languages}");
+    }
+    #[cfg(not(feature = "ast"))]
+    {
+        let _ = writeln!(io.out, "  Status:   {}not available{}", c.dim, c.reset);
+    }
 
     // Contexts grouped by collection — `listAllContexts` (YAML).
     let mut contexts_by_collection: Vec<(&str, Vec<(&str, &str)>)> = Vec::new();
