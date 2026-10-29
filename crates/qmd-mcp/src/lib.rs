@@ -5,6 +5,30 @@
 //! send namespaced `_meta` and call `server/discover` without one.
 //! Known envelope deviations vs upstream are registered in
 //! `design/parity-matrix.md` §12 (deviations 69+).
+//!
+//! Embedding the HTTP server — upstream's `HttpServerHandle` —
+//! gives the bound port and a caller-controlled shutdown:
+//!
+//! ```no_run
+//! # async fn doc() -> Result<(), Box<dyn std::error::Error>> {
+//! use std::sync::Arc;
+//!
+//! use qmd_mcp::{HttpOptions, HttpServer};
+//!
+//! let qmd = Arc::new(qmd::Qmd::builder("index.sqlite").build()?);
+//! let mut options = HttpOptions::default();
+//! options.port = 0; // ask the OS for a free port
+//! options.quiet = true;
+//! let server = HttpServer::bind(qmd, options).await?;
+//! let port = server.port(); // real port for `port: 0`
+//!
+//! let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+//! let task = tokio::spawn(async move { server.serve(async move { rx.await.ok(); }).await });
+//! tx.send(()).ok(); // shut down when ready
+//! task.await??;
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod daemon;
 mod http;
@@ -18,7 +42,7 @@ mod server;
 mod stdio;
 mod tools;
 
-pub use http::{HttpOptions, serve_http};
+pub use http::{HttpOptions, HttpServer, serve_http};
 pub use server::QmdMcpService;
 pub use stdio::{StdioOptions, serve, serve_stdio};
 

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-26T12:41:44.366Z",
+  "generated": "2026-10-29T10:06:02.844Z",
   "upstream": "tobi/qmd v2.8.3 @ 04e4dbd8",
   "corpus": {
     "files": [
@@ -17,6 +17,11 @@
         "path": "notes/meeting.md",
         "content": "# Meeting\n\nweekly sync notes\n",
         "mtime": 1700000060
+      },
+      {
+        "path": "notes/External Podcast/2023 April - Interview.md",
+        "content": "# Interview\n\npodcast transcript\n",
+        "mtime": 1700000070
       }
     ],
     "config_yaml": "global_context: Spike corpus\ncollections:\n  docs:\n    path: <ROOT>/docs\n    pattern: \"**/*.md\"\n    context:\n      /: Documentation files\n  notes:\n    path: <ROOT>/notes\n    pattern: \"**/*.md\"\n"
@@ -406,6 +411,200 @@
               "maxBytes": "x"
             }
           }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 32,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://notes%2Fmeeting.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 33,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://notes/External%20Podcast/2023%20April%20-%20Interview.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 34,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://notes%252Fmeeting.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 35,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://meeting.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 36,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs%ZZ.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 37,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://docs%2.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 38,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://%FF.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 39,
+          "method": "resources/read",
+          "params": {
+            "uri": "qmd://%E2%82.md"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 40,
+          "method": "tools/call",
+          "params": {
+            "name": "get",
+            "arguments": {
+              "file": "readme.md"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 41,
+          "method": "tools/call",
+          "params": {
+            "name": "get",
+            "arguments": {
+              "file": "readmee.md"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 42,
+          "method": "tools/call",
+          "params": {
+            "name": "multi_get",
+            "arguments": {
+              "pattern": "docs/readme.md,notes/missing.md"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 43,
+          "method": "tools/call",
+          "params": {
+            "name": "multi_get",
+            "arguments": {
+              "pattern": "docs/*.md",
+              "maxBytes": 32
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 44,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": ""
+                }
+              ],
+              "rerank": false
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 45,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": "C++ & \"quotes\" (parens)"
+                }
+              ],
+              "rerank": false
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 46,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": "日本語 café"
+                }
+              ],
+              "rerank": false
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 47,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": "index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index x"
+                }
+              ],
+              "rerank": false
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 48,
+          "method": "tools/call",
+          "params": {
+            "name": "query",
+            "arguments": {
+              "searches": [
+                {
+                  "type": "lex",
+                  "query": "the a an of"
+                }
+              ],
+              "rerank": false
+            }
+          }
         }
       ],
       "responses": {
@@ -424,7 +623,7 @@
               "name": "qmd",
               "version": "2.8.3"
             },
-            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+            "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
           },
           "jsonrpc": "2.0",
           "id": 1
@@ -633,12 +832,12 @@
             "content": [
               {
                 "type": "text",
-                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
               }
             ],
             "structuredContent": {
-              "totalDocuments": 3,
-              "needsEmbedding": 3,
+              "totalDocuments": 4,
+              "needsEmbedding": 4,
               "hasVectorIndex": false,
               "pendingMetadata": 0,
               "collections": [
@@ -646,8 +845,8 @@
                   "name": "notes",
                   "path": "<ROOT>/corpus/notes",
                   "pattern": "**/*.md",
-                  "documents": 1,
-                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:14:30.000Z"
                 },
                 {
                   "name": "docs",
@@ -1056,6 +1255,239 @@
           },
           "jsonrpc": "2.0",
           "id": 31
+        },
+        "32": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://notes%2Fmeeting.md",
+                "name": "notes/meeting.md",
+                "title": "Meeting",
+                "mimeType": "text/markdown",
+                "text": "<!-- Context: Spike corpus -->\n\n1: # Meeting\n2: \n3: weekly sync notes\n4: "
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 32
+        },
+        "33": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://notes/External%20Podcast/2023%20April%20-%20Interview.md",
+                "name": "notes/External Podcast/2023 April - Interview.md",
+                "title": "Interview",
+                "mimeType": "text/markdown",
+                "text": "<!-- Context: Spike corpus -->\n\n1: # Interview\n2: \n3: podcast transcript\n4: "
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 33
+        },
+        "34": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://notes%252Fmeeting.md",
+                "text": "Document not found: notes%2Fmeeting.md"
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 34
+        },
+        "35": {
+          "result": {
+            "contents": [
+              {
+                "uri": "qmd://meeting.md",
+                "name": "notes/meeting.md",
+                "title": "Meeting",
+                "mimeType": "text/markdown",
+                "text": "<!-- Context: Spike corpus -->\n\n1: # Meeting\n2: \n3: weekly sync notes\n4: "
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 35
+        },
+        "36": {
+          "jsonrpc": "2.0",
+          "id": 36,
+          "error": {
+            "code": -32603,
+            "message": "URI error"
+          }
+        },
+        "37": {
+          "jsonrpc": "2.0",
+          "id": 37,
+          "error": {
+            "code": -32603,
+            "message": "URI error"
+          }
+        },
+        "38": {
+          "jsonrpc": "2.0",
+          "id": 38,
+          "error": {
+            "code": -32603,
+            "message": "URI error"
+          }
+        },
+        "39": {
+          "jsonrpc": "2.0",
+          "id": 39,
+          "error": {
+            "code": -32603,
+            "message": "URI error"
+          }
+        },
+        "40": {
+          "result": {
+            "content": [
+              {
+                "type": "resource",
+                "resource": {
+                  "uri": "qmd://docs/readme.md",
+                  "mimeType": "text/markdown",
+                  "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+                }
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 40
+        },
+        "41": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Document not found: readmee.md\n\nDid you mean one of these?\n  - readme.md"
+              }
+            ],
+            "isError": true
+          },
+          "jsonrpc": "2.0",
+          "id": 41
+        },
+        "42": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Errors:\nFile not found: notes/missing.md"
+              },
+              {
+                "type": "resource",
+                "resource": {
+                  "uri": "qmd://docs/readme.md",
+                  "mimeType": "text/markdown",
+                  "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+                }
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 42
+        },
+        "43": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[SKIPPED: docs/install.md - File too large (0KB > 0KB). Use 'qmd_get' with file=\"docs/install.md\" to retrieve.]"
+              },
+              {
+                "type": "resource",
+                "resource": {
+                  "uri": "qmd://docs/readme.md",
+                  "mimeType": "text/markdown",
+                  "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+                }
+              }
+            ]
+          },
+          "jsonrpc": "2.0",
+          "id": 43
+        },
+        "44": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No results found for \"\""
+              }
+            ],
+            "structuredContent": {
+              "results": []
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 44
+        },
+        "45": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No results found for \"C++ & \"quotes\" (parens)\""
+              }
+            ],
+            "structuredContent": {
+              "results": []
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 45
+        },
+        "46": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No results found for \"日本語 café\""
+              }
+            ],
+            "structuredContent": {
+              "results": []
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 46
+        },
+        "47": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No results found for \"index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index index x\""
+              }
+            ],
+            "structuredContent": {
+              "results": []
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 47
+        },
+        "48": {
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "No results found for \"the a an of\""
+              }
+            ],
+            "structuredContent": {
+              "results": []
+            }
+          },
+          "jsonrpc": "2.0",
+          "id": 48
         }
       },
       "stderr": "Shutting down (stdin closed)...\n",
@@ -1107,7 +1539,7 @@
               "name": "qmd",
               "version": "2.8.3"
             },
-            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+            "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
           },
           "jsonrpc": "2.0",
           "id": 1
@@ -1117,12 +1549,12 @@
             "content": [
               {
                 "type": "text",
-                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
               }
             ],
             "structuredContent": {
-              "totalDocuments": 3,
-              "needsEmbedding": 3,
+              "totalDocuments": 4,
+              "needsEmbedding": 4,
               "hasVectorIndex": false,
               "pendingMetadata": 0,
               "collections": [
@@ -1130,8 +1562,8 @@
                   "name": "notes",
                   "path": "<ROOT>/corpus/notes",
                   "pattern": "**/*.md",
-                  "documents": 1,
-                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:14:30.000Z"
                 },
                 {
                   "name": "docs",
@@ -1324,7 +1756,7 @@
                 "listChanged": true
               }
             },
-            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type.",
+            "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type.",
             "resultType": "complete",
             "ttlMs": 60000,
             "cacheScope": "private",
@@ -1529,12 +1961,12 @@
             "content": [
               {
                 "type": "text",
-                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
               }
             ],
             "structuredContent": {
-              "totalDocuments": 3,
-              "needsEmbedding": 3,
+              "totalDocuments": 4,
+              "needsEmbedding": 4,
               "hasVectorIndex": false,
               "pendingMetadata": 0,
               "collections": [
@@ -1542,8 +1974,8 @@
                   "name": "notes",
                   "path": "<ROOT>/corpus/notes",
                   "pattern": "**/*.md",
-                  "documents": 1,
-                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:14:30.000Z"
                 },
                 {
                   "name": "docs",
@@ -1772,7 +2204,7 @@
               "name": "qmd",
               "version": "2.8.3"
             },
-            "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+            "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
           },
           "jsonrpc": "2.0",
           "id": 1
@@ -1959,12 +2391,12 @@
             "content": [
               {
                 "type": "text",
-                "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
               }
             ],
             "structuredContent": {
-              "totalDocuments": 3,
-              "needsEmbedding": 3,
+              "totalDocuments": 4,
+              "needsEmbedding": 4,
               "hasVectorIndex": false,
               "pendingMetadata": 0,
               "collections": [
@@ -1972,8 +2404,8 @@
                   "name": "notes",
                   "path": "<ROOT>/corpus/notes",
                   "pattern": "**/*.md",
-                  "documents": 1,
-                  "lastUpdated": "2023-11-14T22:14:20.000Z"
+                  "documents": 2,
+                  "lastUpdated": "2023-11-14T22:14:30.000Z"
                 },
                 {
                   "name": "docs",
@@ -2085,7 +2517,7 @@
             "connection": "keep-alive",
             "mcp-session-id": null
           },
-          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
+          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 4 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
           "sse": [
             {
               "result": {
@@ -2102,7 +2534,7 @@
                   "name": "qmd",
                   "version": "2.8.3"
                 },
-                "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+                "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
               },
               "jsonrpc": "2.0",
               "id": 1
@@ -2140,7 +2572,7 @@
             "connection": "keep-alive",
             "mcp-session-id": null
           },
-          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
+          "body": "event: message\ndata: {\"result\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"},\"instructions\":\"QMD is your local search engine over 4 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\"},\"jsonrpc\":\"2.0\",\"id\":1}\n\n",
           "sse": [
             {
               "result": {
@@ -2157,7 +2589,7 @@
                   "name": "qmd",
                   "version": "2.8.3"
                 },
-                "instructions": "QMD is your local search engine over 3 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
+                "instructions": "QMD is your local search engine over 4 markdown documents.\nContext: Spike corpus\n\nCollections (scope with `collections` parameter): notes, docs\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\n\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\n\nSearch: Use `query` with sub-queries (lex/vec/hyde):\n  - type:'lex' — BM25 keyword search (exact terms, fast)\n  - type:'vec' — semantic vector search (meaning-based)\n  - type:'hyde' — hypothetical document (write what the answer looks like)\n\n  Always provide `intent` on every search call to disambiguate and improve snippets.\n\nExamples:\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\n\nRetrieval:\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\n\nTips:\n  - File paths in results are relative to their collection.\n  - Use `minScore: 0.5` to filter low-confidence results.\n  - Results include a `context` field describing the content type."
               },
               "jsonrpc": "2.0",
               "id": 1
@@ -2395,19 +2827,19 @@
             "connection": "keep-alive",
             "mcp-session-id": null
           },
-          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":3}\n\n",
+          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 4\\n  Needs embedding: 4\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (2 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":4,\"needsEmbedding\":4,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:14:30.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":3}\n\n",
           "sse": [
             {
               "result": {
                 "content": [
                   {
                     "type": "text",
-                    "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                    "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
                   }
                 ],
                 "structuredContent": {
-                  "totalDocuments": 3,
-                  "needsEmbedding": 3,
+                  "totalDocuments": 4,
+                  "needsEmbedding": 4,
                   "hasVectorIndex": false,
                   "pendingMetadata": 0,
                   "collections": [
@@ -2415,8 +2847,8 @@
                       "name": "notes",
                       "path": "<ROOT>/corpus/notes",
                       "pattern": "**/*.md",
-                      "documents": 1,
-                      "lastUpdated": "2023-11-14T22:14:20.000Z"
+                      "documents": 2,
+                      "lastUpdated": "2023-11-14T22:14:30.000Z"
                     },
                     {
                       "name": "docs",
@@ -2513,7 +2945,7 @@
             "connection": null,
             "mcp-session-id": null
           },
-          "body": "{\"result\":{\"supportedVersions\":[\"2026-07-28\"],\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"instructions\":\"QMD is your local search engine over 3 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\",\"resultType\":\"complete\",\"ttlMs\":60000,\"cacheScope\":\"private\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":6}",
+          "body": "{\"result\":{\"supportedVersions\":[\"2026-07-28\"],\"capabilities\":{\"resources\":{\"listChanged\":true},\"tools\":{\"listChanged\":true}},\"instructions\":\"QMD is your local search engine over 4 markdown documents.\\nContext: Spike corpus\\n\\nCollections (scope with `collections` parameter): notes, docs\\nCall the `status` tool for collection descriptions, paths, and per-collection doc counts.\\n\\nNote: No vector embeddings yet. Run `qmd embed` to enable semantic search (vec/hyde).\\n\\nSearch: Use `query` with sub-queries (lex/vec/hyde):\\n  - type:'lex' — BM25 keyword search (exact terms, fast)\\n  - type:'vec' — semantic vector search (meaning-based)\\n  - type:'hyde' — hypothetical document (write what the answer looks like)\\n\\n  Always provide `intent` on every search call to disambiguate and improve snippets.\\n\\nExamples:\\n  Quick keyword lookup: [{type:'lex', query:'error handling'}]\\n  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]\\n  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]\\n  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'\\n\\nRetrieval:\\n  - `get` — single document by path or docid (#abc123). Supports a line-range suffix: `file.md:100` (from line 100) or `file.md:100:40` (40 lines from line 100).\\n  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`), comma-separated list, or docids (#abc123).\\n\\nTips:\\n  - File paths in results are relative to their collection.\\n  - Use `minScore: 0.5` to filter low-confidence results.\\n  - Results include a `context` field describing the content type.\",\"resultType\":\"complete\",\"ttlMs\":60000,\"cacheScope\":\"private\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":6}",
           "sse": []
         }
       },
@@ -2592,7 +3024,7 @@
             "connection": null,
             "mcp-session-id": null
           },
-          "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]},\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":8}",
+          "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 4\\n  Needs embedding: 4\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (2 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":4,\"needsEmbedding\":4,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:14:30.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]},\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":8}",
           "sse": []
         }
       },
@@ -2643,6 +3075,55 @@
           },
           "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Found 1 result for \\\"index\\\":\\n\\n#f6b585 100% docs/readme.md - Readme\"}],\"structuredContent\":{\"results\":[{\"docid\":\"#f6b585\",\"file\":\"docs/readme.md\",\"title\":\"Readme\",\"score\":1,\"context\":\"Spike corpus\\n\\nDocumentation files\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: index search content\\n6: \"}]},\"resultType\":\"complete\",\"_meta\":{\"io.modelcontextprotocol/serverInfo\":{\"name\":\"qmd\",\"version\":\"2.8.3\"}}},\"jsonrpc\":\"2.0\",\"id\":9}",
           "sse": []
+        }
+      },
+      {
+        "name": "call-get-2025",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": {
+          "Accept": "application/json, text/event-stream"
+        },
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 90,
+          "method": "tools/call",
+          "params": {
+            "name": "get",
+            "arguments": {
+              "file": "docs/readme.md"
+            }
+          }
+        },
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/event-stream",
+            "allow": null,
+            "cache-control": "no-cache, no-transform",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+            "mcp-session-id": null
+          },
+          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"resource\",\"resource\":{\"uri\":\"qmd://docs/readme.md\",\"mimeType\":\"text/markdown\",\"text\":\"<!-- Context: Spike corpus\\n\\nDocumentation files -->\\n\\n1: # Readme\\n2: \\n3: index search content\\n4: \"}}]},\"jsonrpc\":\"2.0\",\"id\":90}\n\n",
+          "sse": [
+            {
+              "result": {
+                "content": [
+                  {
+                    "type": "resource",
+                    "resource": {
+                      "uri": "qmd://docs/readme.md",
+                      "mimeType": "text/markdown",
+                      "text": "<!-- Context: Spike corpus\n\nDocumentation files -->\n\n1: # Readme\n2: \n3: index search content\n4: "
+                    }
+                  }
+                ]
+              },
+              "jsonrpc": "2.0",
+              "id": 90
+            }
+          ]
         }
       },
       {
@@ -3094,19 +3575,19 @@
             "connection": "keep-alive",
             "mcp-session-id": null
           },
-          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 3\\n  Needs embedding: 3\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (1 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":3,\"needsEmbedding\":3,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":1,\"lastUpdated\":\"2023-11-14T22:14:20.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":19}\n\n",
+          "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"QMD Index Status:\\n  Total documents: 4\\n  Needs embedding: 4\\n  Vector index: no\\n  Collections: 2\\n    - notes: <ROOT>/corpus/notes (2 docs)\\n    - docs: <ROOT>/corpus/docs (2 docs)\"}],\"structuredContent\":{\"totalDocuments\":4,\"needsEmbedding\":4,\"hasVectorIndex\":false,\"pendingMetadata\":0,\"collections\":[{\"name\":\"notes\",\"path\":\"<ROOT>/corpus/notes\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:14:30.000Z\"},{\"name\":\"docs\",\"path\":\"<ROOT>/corpus/docs\",\"pattern\":\"**/*.md\",\"documents\":2,\"lastUpdated\":\"2023-11-14T22:13:30.000Z\"}]}},\"jsonrpc\":\"2.0\",\"id\":19}\n\n",
           "sse": [
             {
               "result": {
                 "content": [
                   {
                     "type": "text",
-                    "text": "QMD Index Status:\n  Total documents: 3\n  Needs embedding: 3\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (1 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
+                    "text": "QMD Index Status:\n  Total documents: 4\n  Needs embedding: 4\n  Vector index: no\n  Collections: 2\n    - notes: <ROOT>/corpus/notes (2 docs)\n    - docs: <ROOT>/corpus/docs (2 docs)"
                   }
                 ],
                 "structuredContent": {
-                  "totalDocuments": 3,
-                  "needsEmbedding": 3,
+                  "totalDocuments": 4,
+                  "needsEmbedding": 4,
                   "hasVectorIndex": false,
                   "pendingMetadata": 0,
                   "collections": [
@@ -3114,8 +3595,8 @@
                       "name": "notes",
                       "path": "<ROOT>/corpus/notes",
                       "pattern": "**/*.md",
-                      "documents": 1,
-                      "lastUpdated": "2023-11-14T22:14:20.000Z"
+                      "documents": 2,
+                      "lastUpdated": "2023-11-14T22:14:30.000Z"
                     },
                     {
                       "name": "docs",
@@ -3517,7 +3998,7 @@
             "connection": null,
             "mcp-session-id": null
           },
-          "body": "{\"results\":[]}",
+          "body": "{\"results\":[{\"docid\":\"#601588\",\"file\":\"qmd://notes/External%20Podcast/2023%20April%20-%20Interview.md\",\"title\":\"Interview\",\"score\":1,\"context\":\"Spike corpus\",\"line\":3,\"snippet\":\"3: @@ -2,3 @@ (1 before, 0 after)\\n4: \\n5: podcast transcript\\n6: \"}]}",
           "sse": []
         }
       },
@@ -3924,7 +4405,7 @@
       }
     ],
     "sigterm_stderr": "",
-    "stderr": "responseMode: 'json' drops mid-call notifications. subscriptions/listen streams are always served over SSE regardless; other notifications emitted before a result are dropped.\nQMD MCP server listening on http://localhost:19533/mcp\n12:41:45.109 GET /health (0ms)\n12:41:45.128 POST /mcp initialize (17ms)\n12:41:45.132 POST /mcp initialize (3ms)\n12:41:45.135 POST /mcp tools/list (2ms)\n12:41:45.138 POST /mcp tools/call status (3ms)\n12:41:45.140 POST /mcp resources/read (2ms)\n12:41:45.147 POST /mcp server/discover (6ms)\n12:41:45.151 POST /mcp tools/list (3ms)\n12:41:45.153 POST /mcp tools/call status (2ms)\n12:41:45.158 POST /mcp tools/call query (5ms)\n12:41:45.158 POST /mcp resources/read (0ms)\n12:41:45.158 POST /mcp tools/list (0ms)\n12:41:45.159 POST /mcp tools/list (0ms)\n12:41:45.159 POST /mcp tools/call status (0ms)\n12:41:45.159 POST /mcp tools/call status (0ms)\n12:41:45.161 POST /mcp tools/list (1ms)\n12:41:45.161 POST /mcp tools/list (0ms)\n12:41:45.161 POST /mcp tools/list (0ms)\n12:41:45.162 POST /mcp server/discover (1ms)\n12:41:45.163 POST /mcp notifications/initialized (1ms)\n12:41:45.164 POST /mcp notifications/cancelled (1ms)\n12:41:45.167 POST /mcp POST (2ms)\n12:41:45.168 POST /mcp unknown (1ms)\n12:41:45.169 POST /mcp POST (0ms)\n12:41:45.169 GET /mcp GET (0ms)\n12:41:45.169 DELETE /mcp DELETE (0ms)\n12:41:45.169 PUT /mcp tools/call status (0ms)\n12:41:45.170 POST /mcp tools/call status (0ms)\n12:41:45.171 POST /mcp tools/call status (1ms)\n12:41:45.172 POST /mcp tools/call status (1ms)\n12:41:45.172 POST /mcp tools/call status (0ms)\n12:41:45.173 POST /query 1 queries (1ms)\n12:41:45.174 POST /query 1 queries (1ms)\n12:41:45.174 POST /query 1 queries (0ms)\n12:41:45.174 POST /query 1 queries (0ms)\n12:41:45.175 POST /query 1 queries (1ms)\n12:41:45.175 POST /query 1 queries (0ms)\n12:41:45.176 POST /query 0 queries (0ms)\nHTTP handler error: 1041 |         }\n1042 | \n1043 |         // Map to internal format\n1044 |         const searches = params.searches as RestSearchInput[];\n1045 |         const queries: ExpandedQuery[] = searches.map((s) => ({\n1046 |           type: s.type as 'lex' | 'vec' | 'hyde',\n                       ^\nTypeError: null is not an object (evaluating 's.type')\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1046:17)\n      at map (1:11)\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1045:51)\n\n12:41:45.179 POST /query 403 — Origin not allowed: http://evil.example\n12:41:45.179 POST /query 0 queries (0ms)\n12:41:45.179 POST /query 0 queries (0ms)\n12:41:45.179 POST /query 403 — Host not allowed: evil.example\n12:41:45.179 GET /health (0ms)\nShutting down (SIGTERM)...\n",
+    "stderr": "responseMode: 'json' drops mid-call notifications. subscriptions/listen streams are always served over SSE regardless; other notifications emitted before a result are dropped.\nQMD MCP server listening on http://localhost:18405/mcp\n10:06:03.626 GET /health (1ms)\n10:06:03.641 POST /mcp initialize (14ms)\n10:06:03.643 POST /mcp initialize (1ms)\n10:06:03.646 POST /mcp tools/list (3ms)\n10:06:03.649 POST /mcp tools/call status (3ms)\n10:06:03.654 POST /mcp resources/read (5ms)\n10:06:03.661 POST /mcp server/discover (7ms)\n10:06:03.663 POST /mcp tools/list (2ms)\n10:06:03.665 POST /mcp tools/call status (2ms)\n10:06:03.669 POST /mcp tools/call query (4ms)\n10:06:03.675 POST /mcp tools/call get docs/readme.md (5ms)\n10:06:03.675 POST /mcp resources/read (0ms)\n10:06:03.676 POST /mcp tools/list (1ms)\n10:06:03.676 POST /mcp tools/list (0ms)\n10:06:03.676 POST /mcp tools/call status (0ms)\n10:06:03.677 POST /mcp tools/call status (0ms)\n10:06:03.679 POST /mcp tools/list (2ms)\n10:06:03.679 POST /mcp tools/list (0ms)\n10:06:03.680 POST /mcp tools/list (1ms)\n10:06:03.680 POST /mcp server/discover (0ms)\n10:06:03.682 POST /mcp notifications/initialized (1ms)\n10:06:03.683 POST /mcp notifications/cancelled (1ms)\n10:06:03.685 POST /mcp POST (1ms)\n10:06:03.686 POST /mcp unknown (1ms)\n10:06:03.686 POST /mcp POST (0ms)\n10:06:03.687 GET /mcp GET (0ms)\n10:06:03.687 DELETE /mcp DELETE (0ms)\n10:06:03.687 PUT /mcp tools/call status (0ms)\n10:06:03.688 POST /mcp tools/call status (1ms)\n10:06:03.689 POST /mcp tools/call status (1ms)\n10:06:03.690 POST /mcp tools/call status (1ms)\n10:06:03.691 POST /mcp tools/call status (0ms)\n10:06:03.692 POST /query 1 queries (1ms)\n10:06:03.693 POST /query 1 queries (1ms)\n10:06:03.693 POST /query 1 queries (0ms)\n10:06:03.694 POST /query 1 queries (1ms)\n10:06:03.694 POST /query 1 queries (0ms)\n10:06:03.696 POST /query 1 queries (2ms)\n10:06:03.697 POST /query 0 queries (0ms)\nHTTP handler error: 1041 |         }\n1042 | \n1043 |         // Map to internal format\n1044 |         const searches = params.searches as RestSearchInput[];\n1045 |         const queries: ExpandedQuery[] = searches.map((s) => ({\n1046 |           type: s.type as 'lex' | 'vec' | 'hyde',\n                       ^\nTypeError: null is not an object (evaluating 's.type')\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1046:17)\n      at map (1:11)\n      at <anonymous> (/Users/fjh/code/github/tobi/qmd/src/mcp/server.ts:1045:51)\n\n10:06:03.698 POST /query 403 — Origin not allowed: http://evil.example\n10:06:03.698 POST /query 0 queries (0ms)\n10:06:03.698 POST /query 0 queries (0ms)\n10:06:03.698 POST /query 403 — Host not allowed: evil.example\n10:06:03.699 GET /health (0ms)\nShutting down (SIGTERM)...\n",
     "exit_code": 0
   }
 }
