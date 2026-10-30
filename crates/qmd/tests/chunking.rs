@@ -8,9 +8,11 @@
 //! Chunking", "Token-based Chunking" (fake-tokenizer shape), "Smart
 //! Chunking - Break Point Detection", "Smart Chunking Integration",
 //! "mergeBreakPoints", "chunkDocumentWithBreakPoints",
-//! "AST-aware chunkDocumentAsync" (degraded-auto assertions), "Token
+//! "AST-aware chunkDocumentAsync", "Token
 //! chunking guardrails"; and `test/ast-chunking.test.ts` groups
-//! "mergeBreakPoints" and "chunkDocumentWithBreakPoints equivalence".
+//! "mergeBreakPoints" and "chunkDocumentWithBreakPoints equivalence"
+//! (its "AST vs Regex chunking" and "AST break point scores" groups
+//! live in `tests/ast_chunking.rs`).
 
 #![allow(
     unused_crate_dependencies,
@@ -581,8 +583,8 @@ fn chunk_document_does_not_split_surrogate_pair_at_overlap_start() {
 }
 
 // =============================================================================
-// AST-aware chunkDocumentAsync (degraded Auto) — store.test.ts:1110-1169
-// + ast-chunking.test.ts:113-149
+// AST-aware chunkDocumentAsync — store.test.ts:1110-1169
+// (the ast-chunking.test.ts:59-149 cases live in tests/ast_chunking.rs)
 // =============================================================================
 
 fn ts_code() -> String {
@@ -624,17 +626,10 @@ fn regex_strategy_produces_same_output_as_chunk_document() {
 }
 
 #[test]
-fn auto_strategy_degrades_to_regex_until_p6() {
-    // Auto without an AST backend (P6) is identical to Regex — covers
-    // upstream's "markdown files unchanged in auto mode" and "no filepath
-    // falls back to regex" cases.
+fn auto_without_ast_coverage_falls_back_to_regex() {
+    // Upstream "no filepath falls back to regex-only" — `Auto` with no
+    // path never consults the AST pass even for a code file.
     let content = ts_code();
-    let auto = chunk_document_with_strategy(
-        &content,
-        Some("auth.ts"),
-        ChunkStrategy::Auto,
-        &CharChunkOptions::default(),
-    );
     let no_path = chunk_document_with_strategy(
         &content,
         None,
@@ -642,9 +637,12 @@ fn auto_strategy_degrades_to_regex_until_p6() {
         &CharChunkOptions::default(),
     );
     let regex = chunk_document(&content, &CharChunkOptions::default());
-    assert_eq!(auto, regex);
     assert_eq!(no_path, regex);
 
+    // Upstream "markdown files are unchanged in auto mode" — an
+    // unsupported extension yields no AST break points, so `Auto` is
+    // pure regex. (A supported `.ts` path is NOT identical — the AST
+    // merge is exercised in `tests/ast_chunking.rs`.)
     let md = ("# Heading\n\n".to_owned() + &"Some text. ".repeat(200) + "\n\n").repeat(10);
     let auto_md = chunk_document_with_strategy(
         &md,

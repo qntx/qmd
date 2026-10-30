@@ -65,8 +65,10 @@ parity matrix in `qmd-study`:
   `<db>.embed.lock` instead of upstream's directory-level PID file;
   a busy lock prints `Another embed process is already running.
   Skipping.` and exits 0.
-- **`AST: not available`** in `qmd status`/doctor until the AST chunking
-  pass lands (`--chunk-strategy auto` falls back to regex).
+- **AST grammars are statically linked.** `qmd status` always reports
+  `AST Chunking: active` with the full language list — upstream's
+  grammar-download failure paths (`Unavailable: <lang>` rows, the
+  `unavailable` fallback state) do not exist here.
 - **Unnoted crash paths** (e.g. `skill show`/`--skill` with no skill,
   invalid `--chunk-strategy`) print the upstream message plus the doctor
   hint instead of a Bun stack dump.

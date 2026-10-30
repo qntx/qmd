@@ -91,6 +91,25 @@ fn shows_index_status() {
     assert!(out.stdout.contains("Collection"), "{}", out.stdout);
 }
 
+/// The `AST Chunking` block (qmd.ts:600-626): statically linked
+/// grammars are all `available`, so the `active` branch prints —
+/// upstream's `Unavailable:`/`unavailable` rows are unreachable.
+#[cfg(feature = "ast")]
+#[test]
+fn status_reports_ast_chunking_active() {
+    let env = env_with_fixtures_collection();
+    let out = env.run(&["status"]);
+    assert_eq!(out.exit_code, 0, "stderr: {}", out.stderr);
+    assert!(out.stdout.contains("AST Chunking"), "{}", out.stdout);
+    assert!(out.stdout.contains("Status:   active"), "{}", out.stdout);
+    assert!(
+        out.stdout
+            .contains("Languages: typescript, tsx, javascript, python, go, rust"),
+        "{}",
+        out.stdout
+    );
+}
+
 /// `doctor` owns GPU diagnostics — status stays silent about devices.
 #[test]
 fn status_omits_device_probing_details() {

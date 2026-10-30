@@ -40,6 +40,18 @@ pub enum Language {
 }
 
 impl Language {
+    /// Every supported language in upstream `GRAMMAR_MAP` order
+    /// (ast.ts:66-74) — the `Languages:` list in `qmd status`
+    /// (qmd.ts:610); statically linked grammars are always available.
+    pub const ALL: [Self; 6] = [
+        Self::TypeScript,
+        Self::Tsx,
+        Self::JavaScript,
+        Self::Python,
+        Self::Go,
+        Self::Rust,
+    ];
+
     /// Upstream `SupportedLanguage` string.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

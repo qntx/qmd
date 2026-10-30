@@ -375,7 +375,11 @@ pub struct SearchOptions {
     pub min_score: f64,
     /// Emit per-file score traces on each result.
     pub explain: bool,
-    /// Chunking strategy for best-chunk selection.
+    /// Chunking strategy for best-chunk selection. `Default` is
+    /// [`ChunkStrategy::Regex`] — upstream's `chunkStrategy` is an
+    /// optional field and every function signature defaults to
+    /// `"regex"` (store.ts:3177, 3260, 3357); `"auto"` only when the
+    /// CLI `--chunk-strategy` flag asks for it.
     pub chunk_strategy: ChunkStrategy,
 }
 
@@ -391,7 +395,10 @@ impl Default for SearchOptions {
             candidate_limit: store::hybrid::RERANK_CANDIDATE_LIMIT,
             min_score: 0.0,
             explain: false,
-            chunk_strategy: ChunkStrategy::Auto,
+            // Upstream `chunkStrategy` is an *optional* option — every
+            // function-level default is `"regex"` (store.ts:3177, 3260,
+            // 3357), so callers that omit it get regex.
+            chunk_strategy: ChunkStrategy::Regex,
         }
     }
 }
