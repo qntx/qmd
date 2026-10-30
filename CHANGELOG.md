@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Fixed
 
+- Query expansion generation was ~40–70% slower than upstream (issue #105): the GBNF grammar sat inside the sampler chain, so llama.cpp masked the full ~151k-token vocab for every generated token (~29 ms/token, 97% of generation time). The chain now mirrors upstream `AddonSampler::sample` (node-llama-cpp `llama/addon/AddonSampler.cpp:186-213`) — sample the unconstrained chain first, veto the single token through a one-token grammar apply, and only mask the full candidate set after a rejection before re-sampling. Grammar state still advances via `accept` on the committed token only (skipped for EOG).
 - `paths::config_file` resolves `<config-dir>/<name>.yml` (upstream `getConfigFilePath`, collections.ts:131-133); P1.1 mistakenly emitted `index-<name>.yml`, so named indexes looked up the wrong config file.
 - Whitespace-only file detection during `update` now uses JS `trim()` semantics: a file containing only U+FEFF is skipped while U+0085 (NEL) is indexed, matching upstream `content.trim()`.
 - Model URI resolution treats an empty `models.embed`/`rerank`/`generate` config value as unset and falls through to `QMD_*_MODEL`, matching upstream's `||` chain (previously it skipped the environment variable).
