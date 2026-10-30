@@ -40,6 +40,7 @@ use rusqlite as _;
 // `signal-hook` backs the cursor-restore watcher `run` installs for
 // non-MCP commands once the argv has been parsed.
 mod args;
+mod bench;
 mod collections;
 #[cfg(test)]
 mod commit_stamp;
@@ -77,6 +78,9 @@ pub(crate) enum Failure {
     Reported(u8),
     /// Unhandled error — printed with the doctor hint, exit 1.
     Error(qmd::Error),
+    /// Verbatim user-facing message — printed with the doctor hint,
+    /// exit 1 (upstream `exitWithError` on a `throw`n `Error`).
+    Message(String),
 }
 
 impl From<qmd::Error> for Failure {
@@ -184,6 +188,7 @@ pub fn run(
         args::Command::Doctor => doctor::doctor(&env, &ctx, io),
         args::Command::Skills(skills_args) => skills::run_skills(&env, &ctx, &skills_args, io),
         args::Command::Skill(skill_args) => skills::run_skill(&env, &ctx, &skill_args, io),
+        args::Command::Bench(bench_args) => bench::cmd_bench(&bench_args, &ctx, &env, io),
         #[cfg(feature = "mcp")]
         args::Command::Mcp(mcp_args) => mcp::run(&env, &ctx, &mcp_args, io),
         args::Command::Unknown(unknown) => {
@@ -205,6 +210,11 @@ fn exit_code(result: Result<(), Failure>, io: &mut Io<'_>) -> ExitCode {
         // Upstream `exitWithError` (qmd.ts:4329-4333).
         Err(Failure::Error(err)) => {
             let _ = writeln!(io.err, "{err}");
+            let _ = writeln!(io.err, "{DOCTOR_HINT}");
+            ExitCode::from(1)
+        }
+        Err(Failure::Message(msg)) => {
+            let _ = writeln!(io.err, "{msg}");
             let _ = writeln!(io.err, "{DOCTOR_HINT}");
             ExitCode::from(1)
         }

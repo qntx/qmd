@@ -72,6 +72,8 @@ pub(crate) enum Command {
     Skills(SkillsArgs),
     /// `skill` — print or install the QMD skill (P4.4).
     Skill(SkillArgs),
+    /// `bench` — search-quality benchmark harness (P7.1).
+    Bench(BenchArgs),
     /// `mcp` — stdio MCP server (P5.2).
     #[cfg(feature = "mcp")]
     Mcp(McpArgs),
@@ -432,6 +434,22 @@ pub(crate) struct SkillArgs {
     pub(crate) force: bool,
 }
 
+/// `bench` — the search-quality benchmark harness (P7.1, upstream
+/// `qmd.ts:4788-4810` `case "bench"`). Positional `args[0]` is the
+/// fixture path; extras are ignored like upstream `cli.args`.
+#[derive(Debug, clap::Args)]
+pub(crate) struct BenchArgs {
+    /// Fixture path + ignored extras.
+    pub(crate) args: Vec<String>,
+    /// Emit the machine-readable result envelope (`--json`).
+    #[arg(long)]
+    pub(crate) json: bool,
+    /// Search within this collection; the first value wins (upstream
+    /// `cli.opts.collection[0]`). Overrides `fixture.collection`.
+    #[arg(short = 'c', long = "collection")]
+    pub(crate) collection: Vec<String>,
+}
+
 #[derive(Parser)]
 #[command(
     name = "qmd",
@@ -484,6 +502,7 @@ enum RawCommand {
     Doctor,
     Skills(SkillsArgs),
     Skill(SkillArgs),
+    Bench(BenchArgs),
     /// `mcp` — MCP server (upstream qmd.ts:4811+ `case "mcp"`); the
     /// bare command serves stdio, positionals are rejected for now.
     #[cfg(feature = "mcp")]
@@ -517,6 +536,7 @@ pub(crate) fn parse(argv: &[String]) -> Result<ParsedCli, clap::Error> {
         RawCommand::Doctor => Command::Doctor,
         RawCommand::Skills(skills) => Command::Skills(skills),
         RawCommand::Skill(skill) => Command::Skill(skill),
+        RawCommand::Bench(bench) => Command::Bench(bench),
         #[cfg(feature = "mcp")]
         RawCommand::Mcp(mcp) => Command::Mcp(mcp),
         RawCommand::Other(words) => Command::Unknown(UnknownArgs(words)),

@@ -126,13 +126,28 @@ impl CliContext {
     /// # Errors
     /// [`qmd::Error`] from `Qmd::builder(...).build()`.
     pub(crate) fn open_store(&self, env: &Environment) -> Result<Qmd> {
+        self.open_store_with_models(env, self.config_models_trusted(env))
+    }
+
+    /// `localConfigIsFullyTrusted` (qmd.ts:164) — the runtime gate for
+    /// the config's declared `models:`.
+    fn config_models_trusted(&self, env: &Environment) -> bool {
         let config_path = self.config_path(env);
         // `localConfigIsFullyTrusted` throws upstream only through
         // `loadConfig` — a missing/broken file there lands in getStore's
         // catch and leaves the default models; fail closed the same way.
-        let allow = qmd::config::load(&config_path)
-            .is_ok_and(|config| qmd::trust::local_config_fully_trusted(&config_path, &config, env));
-        self.open_store_with_models(env, allow)
+        qmd::config::load(&config_path)
+            .is_ok_and(|config| qmd::trust::local_config_fully_trusted(&config_path, &config, env))
+    }
+
+    /// Build the `Qmd` handle with the given `use_config_models` gate
+    /// and no side effects on the config file.
+    fn build_store(&self, env: &Environment, allow: bool) -> Result<Qmd> {
+        Qmd::builder(&self.db_path)
+            .environment(env.clone())
+            .config_file(self.config_path(env))
+            .use_config_models(allow)
+            .build()
     }
 
     /// [`open_store`] with an explicit `use_config_models` flag —
@@ -143,12 +158,21 @@ impl CliContext {
     /// # Errors
     /// [`qmd::Error`] from `Qmd::builder(...).build()`.
     pub(crate) fn open_store_with_models(&self, env: &Environment, allow: bool) -> Result<Qmd> {
-        let qmd = Qmd::builder(&self.db_path)
-            .environment(env.clone())
-            .config_file(self.config_path(env))
-            .use_config_models(allow)
-            .build()?;
+        let qmd = self.build_store(env, allow)?;
         let _ = qmd.ensure_models_configured();
         Ok(qmd)
+    }
+
+    /// [`open_store`] minus the `models:` pin — for read-only commands
+    /// like `bench` (upstream's SDK `createStore`, index.ts:385+, never
+    /// writes the config). Keeps the trust gate
+    /// (`use_config_models(allow)` computed identically); a missing
+    /// config file stays missing (`config::load` defaults it, `build`
+    /// only reads).
+    ///
+    /// # Errors
+    /// [`qmd::Error`] from `Qmd::builder(...).build()`.
+    pub(crate) fn open_store_no_models_pin(&self, env: &Environment) -> Result<Qmd> {
+        self.build_store(env, self.config_models_trusted(env))
     }
 }

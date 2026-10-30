@@ -1,0 +1,1006 @@
+{
+  "upstream_commit": "04e4dbd8245c527a88f1a8f0bda547aef9ca81fb",
+  "score": {
+    "results": [
+      {
+        "name": "perfect-all-in-topk",
+        "results": [
+          "docs/a.md",
+          "docs/b.md"
+        ],
+        "expected": [
+          "a.md",
+          "b.md"
+        ],
+        "topK": 2,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 0.5,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 2,
+          "matched_files": [
+            "a.md",
+            "b.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "zero-none-found",
+        "results": [
+          "docs/x.md",
+          "docs/y.md"
+        ],
+        "expected": [
+          "a.md",
+          "b.md"
+        ],
+        "topK": 2,
+        "out": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "a.md",
+            "b.md"
+          ]
+        }
+      },
+      {
+        "name": "found-outside-topk",
+        "results": [
+          "x.md",
+          "y.md",
+          "a.md"
+        ],
+        "expected": [
+          "a.md"
+        ],
+        "topK": 1,
+        "out": {
+          "precision_at_k": 0,
+          "recall": 1,
+          "recall_at_1": 0,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 0.3333333333333333,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [
+            "a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "mrr-rank2",
+        "results": [
+          "x.md",
+          "a.md"
+        ],
+        "expected": [
+          "a.md"
+        ],
+        "topK": 2,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 0,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 0.5,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "recall-at-n-matched",
+        "results": [
+          "x.md",
+          "concepts/a.md",
+          "y.md",
+          "b.md",
+          "z.md"
+        ],
+        "expected": [
+          "concepts/a.md",
+          "b.md"
+        ],
+        "topK": 5,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 0,
+          "recall_at_3": 0.5,
+          "recall_at_5": 1,
+          "mrr": 0.5,
+          "f1": 1,
+          "hits_at_k": 2,
+          "matched_files": [
+            "concepts/a.md",
+            "b.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "qmd-uri-both-sides",
+        "results": [
+          "qmd://col/docs/a.md"
+        ],
+        "expected": [
+          "qmd://other/docs/a.md"
+        ],
+        "topK": 1,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "qmd://other/docs/a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "case-differs",
+        "results": [
+          "Docs/A.md"
+        ],
+        "expected": [
+          "docs/a.md"
+        ],
+        "topK": 1,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "docs/a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "suffix-expected-longer",
+        "results": [
+          "a.md"
+        ],
+        "expected": [
+          "docs/a.md"
+        ],
+        "topK": 1,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "docs/a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "duplicates-in-results",
+        "results": [
+          "a.md",
+          "a.md",
+          "a.md"
+        ],
+        "expected": [
+          "a.md"
+        ],
+        "topK": 2,
+        "out": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "topk-larger-than-results",
+        "results": [
+          "a.md"
+        ],
+        "expected": [
+          "a.md",
+          "b.md"
+        ],
+        "topK": 10,
+        "out": {
+          "precision_at_k": 0.5,
+          "recall": 0.5,
+          "recall_at_1": 0.5,
+          "recall_at_3": 0.5,
+          "recall_at_5": 0.5,
+          "mrr": 1,
+          "f1": 0.5,
+          "hits_at_k": 1,
+          "matched_files": [
+            "a.md"
+          ],
+          "unmatched_expected_files": [
+            "b.md"
+          ]
+        }
+      },
+      {
+        "name": "topk-zero",
+        "results": [
+          "a.md"
+        ],
+        "expected": [
+          "a.md"
+        ],
+        "topK": 0,
+        "out": {
+          "precision_at_k": 0,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [
+            "a.md"
+          ],
+          "unmatched_expected_files": []
+        }
+      },
+      {
+        "name": "empty-expected",
+        "results": [
+          "a.md"
+        ],
+        "expected": [],
+        "topK": 2,
+        "out": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": []
+        }
+      }
+    ],
+    "normalize": [
+      {
+        "in": "Resources/Concepts/Context Engineering.md",
+        "out": "resources/concepts/context engineering.md"
+      },
+      {
+        "in": "qmd://collection/docs/readme.md",
+        "out": "docs/readme.md"
+      },
+      {
+        "in": "/docs/readme.md/",
+        "out": "docs/readme.md"
+      },
+      {
+        "in": "readme.md",
+        "out": "readme.md"
+      }
+    ],
+    "match": [
+      {
+        "a": "docs/readme.md",
+        "b": "docs/readme.md",
+        "out": true
+      },
+      {
+        "a": "Docs/README.md",
+        "b": "docs/readme.md",
+        "out": true
+      },
+      {
+        "a": "/full/path/docs/readme.md",
+        "b": "docs/readme.md",
+        "out": true
+      },
+      {
+        "a": "readme.md",
+        "b": "docs/readme.md",
+        "out": true
+      },
+      {
+        "a": "qmd://col/docs/readme.md",
+        "b": "docs/readme.md",
+        "out": true
+      },
+      {
+        "a": "docs/readme.md",
+        "b": "docs/other.md",
+        "out": false
+      }
+    ]
+  },
+  "runs": [
+    {
+      "name": "example-json",
+      "fixture": "crates/qmd-cli/tests/fixtures/bench/example.json",
+      "json": true,
+      "stdout": "{\n  \"timestamp\": \"<TS>\",\n  \"fixture\": \"crates/qmd-cli/tests/fixtures/bench/example.json\",\n  \"results\": [\n    {\n      \"id\": \"exact-api\",\n      \"query\": \"API versioning\",\n      \"type\": \"exact\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/api-design-principles.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"exact-fundraising\",\n      \"query\": \"Series A fundraising\",\n      \"type\": \"exact\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"startup-fundraising-memo.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/startup-fundraising-memo.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"exact-cap\",\n      \"query\": \"CAP theorem\",\n      \"type\": \"exact\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"distributed-systems-overview.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/distributed-systems-overview.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"semantic-rest\",\n      \"query\": \"how to structure REST endpoints\",\n      \"type\": \"semantic\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"semantic-fundraising\",\n      \"query\": \"raising money for startup\",\n      \"type\": \"semantic\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"startup-fundraising-memo.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/startup-fundraising-memo.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"semantic-overfitting\",\n      \"query\": \"how to prevent models from memorizing data\",\n      \"type\": \"semantic\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"machine-learning-primer.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"topical-launch\",\n      \"query\": \"what went wrong with the product launch\",\n      \"type\": \"topical\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"product-launch-retrospective.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"cross-domain-consistency\",\n      \"query\": \"consistency vs availability tradeoffs\",\n      \"type\": \"cross-domain\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"distributed-systems-overview.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"alias-remote\",\n      \"query\": \"working from home guidelines\",\n      \"type\": \"alias\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"remote-work-policy.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"hard-partial\",\n      \"query\": \"nouns not verbs\",\n      \"type\": \"semantic\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/api-design-principles.md\"\n          ]\n        }\n      }\n    }\n  ],\n  \"summary\": {\n    \"bm25\": {\n      \"avg_precision\": 0.5,\n      \"avg_recall\": 0.5,\n      \"avg_recall_at_1\": 0.5,\n      \"avg_recall_at_3\": 0.5,\n      \"avg_recall_at_5\": 0.5,\n      \"avg_mrr\": 0.5,\n      \"avg_f1\": 0.5,\n      \"avg_latency_ms\": 0\n    }\n  }\n}\n",
+      "stderr": "",
+      "result": {
+        "timestamp": "<TS>",
+        "fixture": "crates/qmd-cli/tests/fixtures/bench/example.json",
+        "results": [
+          {
+            "id": "exact-api",
+            "query": "API versioning",
+            "type": "exact",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "api-design-principles.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/api-design-principles.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "exact-fundraising",
+            "query": "Series A fundraising",
+            "type": "exact",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "startup-fundraising-memo.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/startup-fundraising-memo.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "exact-cap",
+            "query": "CAP theorem",
+            "type": "exact",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "distributed-systems-overview.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/distributed-systems-overview.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "semantic-rest",
+            "query": "how to structure REST endpoints",
+            "type": "semantic",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "api-design-principles.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "semantic-fundraising",
+            "query": "raising money for startup",
+            "type": "semantic",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "startup-fundraising-memo.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/startup-fundraising-memo.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "semantic-overfitting",
+            "query": "how to prevent models from memorizing data",
+            "type": "semantic",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "machine-learning-primer.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "topical-launch",
+            "query": "what went wrong with the product launch",
+            "type": "topical",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "product-launch-retrospective.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "cross-domain-consistency",
+            "query": "consistency vs availability tradeoffs",
+            "type": "cross-domain",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "distributed-systems-overview.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "alias-remote",
+            "query": "working from home guidelines",
+            "type": "alias",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "remote-work-policy.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "hard-partial",
+            "query": "nouns not verbs",
+            "type": "semantic",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "api-design-principles.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/api-design-principles.md"
+                ]
+              }
+            }
+          }
+        ],
+        "summary": {
+          "bm25": {
+            "avg_precision": 0.5,
+            "avg_recall": 0.5,
+            "avg_recall_at_1": 0.5,
+            "avg_recall_at_3": 0.5,
+            "avg_recall_at_5": 0.5,
+            "avg_mrr": 0.5,
+            "avg_f1": 0.5,
+            "avg_latency_ms": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "example-text",
+      "fixture": "crates/qmd-cli/tests/fixtures/bench/example.json",
+      "json": false,
+      "stdout": "\nQuery                     Backend  P@k    R@1    R@3    R@5    MRR    F1     ms      \n----------------------------------------------------------------------------------------\nexact-api                 bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nexact-fundraising         bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nexact-cap                 bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nsemantic-rest             bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nsemantic-fundraising      bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nsemantic-overfitting      bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\ntopical-launch            bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\ncross-domain-consistency  bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nalias-remote              bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nhard-partial              bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nSummary:\n----------------------------------------------------------------------\n  bm25     P@k= 0.500 R@1= 0.500 R@3= 0.500 R@5= 0.500 MRR= 0.500 F1= 0.500 Avg= NNNms\n",
+      "stderr": "  exact-api / bm25...  NNNms\n  exact-fundraising / bm25...  NNNms\n  exact-cap / bm25...  NNNms\n  semantic-rest / bm25...  NNNms\n  semantic-fundraising / bm25...  NNNms\n  semantic-overfitting / bm25...  NNNms\n  topical-launch / bm25...  NNNms\n  cross-domain-consistency / bm25...  NNNms\n  alias-remote / bm25...  NNNms\n  hard-partial / bm25...  NNNms\n"
+    },
+    {
+      "name": "edge-json",
+      "fixture": "crates/qmd-cli/tests/fixtures/bench/edge.json",
+      "json": true,
+      "stdout": "{\n  \"timestamp\": \"<TS>\",\n  \"fixture\": \"crates/qmd-cli/tests/fixtures/bench/edge.json\",\n  \"results\": [\n    {\n      \"id\": \"lex-only\",\n      \"query\": \"lex: versioning\\nlex: fundraising\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/api-design-principles.md\",\n            \"qmd://eval-docs/startup-fundraising-memo.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"vec-only-empty-bm25\",\n      \"query\": \"vec: startup capital\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"startup-fundraising-memo.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"mixed-intent\",\n      \"query\": \"lex: theorem\\nintent: distributed systems\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"distributed-systems-overview.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/distributed-systems-overview.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"expand-plain\",\n      \"query\": \"expand: ignored by bench\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 0,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    },\n    {\n      \"id\": \"intent-alone-error\",\n      \"query\": \"intent: only an intent\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [],\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"api-design-principles.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"unprefixed-multiline-error\",\n      \"query\": \"lex: versioning\\nbare line\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [],\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"api-design-principles.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"cjk-日本語-🚀-长id-over-twentyfive-units-here\",\n      \"query\": \"API versioning\",\n      \"type\": \"exact\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/api-design-principles.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"no-type\",\n      \"query\": \"CAP theorem\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"distributed-systems-overview.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/distributed-systems-overview.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"empty-expected\",\n      \"query\": \"machine learning\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 0,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/machine-learning-primer.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"big-topk\",\n      \"query\": \"work\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 1,\n          \"recall\": 1,\n          \"recall_at_1\": 1,\n          \"recall_at_3\": 1,\n          \"recall_at_5\": 1,\n          \"mrr\": 1,\n          \"f1\": 1,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"remote-work-policy.md\"\n          ],\n          \"unmatched_expected_files\": [],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/remote-work-policy.md\",\n            \"qmd://eval-docs/product-launch-retrospective.md\",\n            \"qmd://eval-docs/machine-learning-primer.md\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"tie-125\",\n      \"query\": \"API versioning\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0.125,\n          \"recall\": 0.125,\n          \"recall_at_1\": 0.125,\n          \"recall_at_3\": 0.125,\n          \"recall_at_5\": 0.125,\n          \"mrr\": 1,\n          \"f1\": 0.125,\n          \"hits_at_k\": 1,\n          \"matched_files\": [\n            \"api-design-principles.md\"\n          ],\n          \"unmatched_expected_files\": [\n            \"fa.md\",\n            \"fb.md\",\n            \"fc.md\",\n            \"fd.md\",\n            \"fe.md\",\n            \"ff.md\",\n            \"fg.md\"\n          ],\n          \"total_expected\": 8,\n          \"latency_ms\": 0,\n          \"top_files\": [\n            \"qmd://eval-docs/api-design-principles.md\"\n          ]\n        }\n      }\n    }\n  ],\n  \"summary\": {\n    \"bm25\": {\n      \"avg_precision\": 0.4659090909090909,\n      \"avg_recall\": 0.4659090909090909,\n      \"avg_recall_at_1\": 0.4659090909090909,\n      \"avg_recall_at_3\": 0.4659090909090909,\n      \"avg_recall_at_5\": 0.4659090909090909,\n      \"avg_mrr\": 0.5454545454545454,\n      \"avg_f1\": 0.4659090909090909,\n      \"avg_latency_ms\": 0\n    }\n  }\n}\n",
+      "stderr": "",
+      "result": {
+        "timestamp": "<TS>",
+        "fixture": "crates/qmd-cli/tests/fixtures/bench/edge.json",
+        "results": [
+          {
+            "id": "lex-only",
+            "query": "lex: versioning\nlex: fundraising",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "api-design-principles.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/api-design-principles.md",
+                  "qmd://eval-docs/startup-fundraising-memo.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "vec-only-empty-bm25",
+            "query": "vec: startup capital",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "startup-fundraising-memo.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "mixed-intent",
+            "query": "lex: theorem\nintent: distributed systems",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "distributed-systems-overview.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/distributed-systems-overview.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "expand-plain",
+            "query": "expand: ignored by bench",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [],
+                "total_expected": 0,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          },
+          {
+            "id": "intent-alone-error",
+            "query": "intent: only an intent",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [],
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "api-design-principles.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "unprefixed-multiline-error",
+            "query": "lex: versioning\nbare line",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [],
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "api-design-principles.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "cjk-日本語-🚀-长id-over-twentyfive-units-here",
+            "query": "API versioning",
+            "type": "exact",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "api-design-principles.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/api-design-principles.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "no-type",
+            "query": "CAP theorem",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "distributed-systems-overview.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/distributed-systems-overview.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "empty-expected",
+            "query": "machine learning",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [],
+                "total_expected": 0,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/machine-learning-primer.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "big-topk",
+            "query": "work",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 1,
+                "recall": 1,
+                "recall_at_1": 1,
+                "recall_at_3": 1,
+                "recall_at_5": 1,
+                "mrr": 1,
+                "f1": 1,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "remote-work-policy.md"
+                ],
+                "unmatched_expected_files": [],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/remote-work-policy.md",
+                  "qmd://eval-docs/product-launch-retrospective.md",
+                  "qmd://eval-docs/machine-learning-primer.md"
+                ]
+              }
+            }
+          },
+          {
+            "id": "tie-125",
+            "query": "API versioning",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0.125,
+                "recall": 0.125,
+                "recall_at_1": 0.125,
+                "recall_at_3": 0.125,
+                "recall_at_5": 0.125,
+                "mrr": 1,
+                "f1": 0.125,
+                "hits_at_k": 1,
+                "matched_files": [
+                  "api-design-principles.md"
+                ],
+                "unmatched_expected_files": [
+                  "fa.md",
+                  "fb.md",
+                  "fc.md",
+                  "fd.md",
+                  "fe.md",
+                  "ff.md",
+                  "fg.md"
+                ],
+                "total_expected": 8,
+                "latency_ms": 0,
+                "top_files": [
+                  "qmd://eval-docs/api-design-principles.md"
+                ]
+              }
+            }
+          }
+        ],
+        "summary": {
+          "bm25": {
+            "avg_precision": 0.4659090909090909,
+            "avg_recall": 0.4659090909090909,
+            "avg_recall_at_1": 0.4659090909090909,
+            "avg_recall_at_3": 0.4659090909090909,
+            "avg_recall_at_5": 0.4659090909090909,
+            "avg_mrr": 0.5454545454545454,
+            "avg_f1": 0.4659090909090909,
+            "avg_latency_ms": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "edge-text",
+      "fixture": "crates/qmd-cli/tests/fixtures/bench/edge.json",
+      "json": false,
+      "stdout": "\nQuery                     Backend  P@k    R@1    R@3    R@5    MRR    F1     ms      \n----------------------------------------------------------------------------------------\nlex-only                  bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nvec-only-empty-bm25       bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nmixed-intent              bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nexpand-plain              bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nintent-alone-error        bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nunprefixed-multiline-erro bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\ncjk-日本語-🚀-长id-over-twent bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nno-type                   bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\nempty-expected            bm25      0.00  0.00  0.00  0.00  0.00  0.00        NNNms\n\nbig-topk                  bm25      1.00  1.00  1.00  1.00  1.00  1.00        NNNms\n\ntie-125                   bm25      0.13  0.13  0.13  0.13  1.00  0.13        NNNms\n\nSummary:\n----------------------------------------------------------------------\n  bm25     P@k= 0.466 R@1= 0.466 R@3= 0.466 R@5= 0.466 MRR= 0.545 F1= 0.466 Avg= NNNms\n",
+      "stderr": "  lex-only / bm25...  NNNms\n  vec-only-empty-bm25 / bm25...  NNNms\n  mixed-intent / bm25...  NNNms\n  expand-plain / bm25...  NNNms\n  intent-alone-error / bm25...  NNNms\n  unprefixed-multiline-error / bm25...  NNNms\n  cjk-日本語-🚀-长id-over-twentyfive-units-here / bm25...  NNNms\n  no-type / bm25...  NNNms\n  empty-expected / bm25...  NNNms\n  big-topk / bm25...  NNNms\n  tie-125 / bm25...  NNNms\n"
+    },
+    {
+      "name": "allzero-json",
+      "fixture": "crates/qmd-cli/tests/fixtures/bench/zero.json",
+      "json": true,
+      "stdout": "{\n  \"timestamp\": \"<TS>\",\n  \"fixture\": \"crates/qmd-cli/tests/fixtures/bench/zero.json\",\n  \"results\": [\n    {\n      \"id\": \"zero\",\n      \"query\": \"zzz-no-such-term-qqq\",\n      \"backends\": {\n        \"bm25\": {\n          \"precision_at_k\": 0,\n          \"recall\": 0,\n          \"recall_at_1\": 0,\n          \"recall_at_3\": 0,\n          \"recall_at_5\": 0,\n          \"mrr\": 0,\n          \"f1\": 0,\n          \"hits_at_k\": 0,\n          \"matched_files\": [],\n          \"unmatched_expected_files\": [\n            \"missing.md\"\n          ],\n          \"total_expected\": 1,\n          \"latency_ms\": 0,\n          \"top_files\": []\n        }\n      }\n    }\n  ],\n  \"summary\": {\n    \"bm25\": {\n      \"avg_precision\": 0,\n      \"avg_recall\": 0,\n      \"avg_recall_at_1\": 0,\n      \"avg_recall_at_3\": 0,\n      \"avg_recall_at_5\": 0,\n      \"avg_mrr\": 0,\n      \"avg_f1\": 0,\n      \"avg_latency_ms\": 0\n    }\n  }\n}\n",
+      "stderr": "\nAll benchmark scores were 0.00 — the collection is likely unindexed or the fixture's expected files are missing. Check with 'qmd ls eval-docs'.\n",
+      "result": {
+        "timestamp": "<TS>",
+        "fixture": "crates/qmd-cli/tests/fixtures/bench/zero.json",
+        "results": [
+          {
+            "id": "zero",
+            "query": "zzz-no-such-term-qqq",
+            "backends": {
+              "bm25": {
+                "precision_at_k": 0,
+                "recall": 0,
+                "recall_at_1": 0,
+                "recall_at_3": 0,
+                "recall_at_5": 0,
+                "mrr": 0,
+                "f1": 0,
+                "hits_at_k": 0,
+                "matched_files": [],
+                "unmatched_expected_files": [
+                  "missing.md"
+                ],
+                "total_expected": 1,
+                "latency_ms": 0,
+                "top_files": []
+              }
+            }
+          }
+        ],
+        "summary": {
+          "bm25": {
+            "avg_precision": 0,
+            "avg_recall": 0,
+            "avg_recall_at_1": 0,
+            "avg_recall_at_3": 0,
+            "avg_recall_at_5": 0,
+            "avg_mrr": 0,
+            "avg_f1": 0,
+            "avg_latency_ms": 0
+          }
+        }
+      }
+    }
+  ],
+  "guard": {
+    "missing": "Collection not found: eval-docs\nAvailable: other. Run 'qmd ls' to inspect.",
+    "missingNoOthers": "Collection not found: eval-docs\nRun 'qmd ls' to see available collections.",
+    "empty": "Collection 'eval-docs' has no indexed documents.\nRun 'qmd update', then 'qmd ls eval-docs' to confirm files are indexed before bench.",
+    "nothing": "No indexed documents found.\nIndex a collection with 'qmd collection add' / 'qmd update' before running bench."
+  }
+}

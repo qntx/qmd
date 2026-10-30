@@ -1,0 +1,1018 @@
+{
+  "timestamp": "2026-09-24T0825",
+  "fixture": "src/bench/fixtures/example.json",
+  "results": [
+    {
+      "id": "exact-api",
+      "query": "API versioning",
+      "type": "exact",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md"
+          ]
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1559,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 105235,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 45019,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "exact-fundraising",
+      "query": "Series A fundraising",
+      "type": "exact",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "vector": {
+          "precision_at_k": 0,
+          "recall": 1,
+          "recall_at_1": 0,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 0.3333333333333333,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 189,
+          "top_files": [
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1863,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2490,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "exact-cap",
+      "query": "CAP theorem",
+      "type": "exact",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md"
+          ]
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 26,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1182,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2475,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "semantic-rest",
+      "query": "how to structure REST endpoints",
+      "type": "semantic",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "api-design-principles.md"
+          ],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": []
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 29,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2062,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2487,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "semantic-fundraising",
+      "query": "raising money for startup",
+      "type": "semantic",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 0,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 0.3333333333333333,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 20,
+          "top_files": [
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1347,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "startup-fundraising-memo.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2514,
+          "top_files": [
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "semantic-overfitting",
+      "query": "how to prevent models from memorizing data",
+      "type": "semantic",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "machine-learning-primer.md"
+          ],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": []
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "machine-learning-primer.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 29,
+          "top_files": [
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "machine-learning-primer.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1310,
+          "top_files": [
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "machine-learning-primer.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2501,
+          "top_files": [
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "topical-launch",
+      "query": "what went wrong with the product launch",
+      "type": "topical",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "product-launch-retrospective.md"
+          ],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": []
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "product-launch-retrospective.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 22,
+          "top_files": [
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "product-launch-retrospective.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1393,
+          "top_files": [
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "product-launch-retrospective.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2480,
+          "top_files": [
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "cross-domain-consistency",
+      "query": "consistency vs availability tradeoffs",
+      "type": "cross-domain",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "distributed-systems-overview.md"
+          ],
+          "total_expected": 1,
+          "latency_ms": 1,
+          "top_files": []
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 23,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1388,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "distributed-systems-overview.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2491,
+          "top_files": [
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "alias-remote",
+      "query": "working from home guidelines",
+      "type": "alias",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 0,
+          "recall": 0,
+          "recall_at_1": 0,
+          "recall_at_3": 0,
+          "recall_at_5": 0,
+          "mrr": 0,
+          "f1": 0,
+          "hits_at_k": 0,
+          "matched_files": [],
+          "unmatched_expected_files": [
+            "remote-work-policy.md"
+          ],
+          "total_expected": 1,
+          "latency_ms": 0,
+          "top_files": []
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "remote-work-policy.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 23,
+          "top_files": [
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/product-launch-retrospective.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "remote-work-policy.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1664,
+          "top_files": [
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "remote-work-policy.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2491,
+          "top_files": [
+            "qmd://eval-docs/remote-work-policy.md",
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/startup-fundraising-memo.md"
+          ]
+        }
+      }
+    },
+    {
+      "id": "hard-partial",
+      "query": "nouns not verbs",
+      "type": "semantic",
+      "backends": {
+        "bm25": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 0,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md"
+          ]
+        },
+        "vector": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 17,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        },
+        "hybrid": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 1061,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        },
+        "full": {
+          "precision_at_k": 1,
+          "recall": 1,
+          "recall_at_1": 1,
+          "recall_at_3": 1,
+          "recall_at_5": 1,
+          "mrr": 1,
+          "f1": 1,
+          "hits_at_k": 1,
+          "matched_files": [
+            "api-design-principles.md"
+          ],
+          "unmatched_expected_files": [],
+          "total_expected": 1,
+          "latency_ms": 2480,
+          "top_files": [
+            "qmd://eval-docs/api-design-principles.md",
+            "qmd://eval-docs/distributed-systems-overview.md",
+            "qmd://eval-docs/startup-fundraising-memo.md",
+            "qmd://eval-docs/machine-learning-primer.md",
+            "qmd://eval-docs/product-launch-retrospective.md",
+            "qmd://eval-docs/remote-work-policy.md"
+          ]
+        }
+      }
+    }
+  ],
+  "summary": {
+    "bm25": {
+      "avg_precision": 0.5,
+      "avg_recall": 0.5,
+      "avg_recall_at_1": 0.5,
+      "avg_recall_at_3": 0.5,
+      "avg_recall_at_5": 0.5,
+      "avg_mrr": 0.5,
+      "avg_f1": 0.5,
+      "avg_latency_ms": 0.9
+    },
+    "vector": {
+      "avg_precision": 0.9,
+      "avg_recall": 1,
+      "avg_recall_at_1": 0.8,
+      "avg_recall_at_3": 1,
+      "avg_recall_at_5": 1,
+      "avg_mrr": 0.8666666666666666,
+      "avg_f1": 0.9,
+      "avg_latency_ms": 193.7
+    },
+    "hybrid": {
+      "avg_precision": 1,
+      "avg_recall": 1,
+      "avg_recall_at_1": 1,
+      "avg_recall_at_3": 1,
+      "avg_recall_at_5": 1,
+      "avg_mrr": 1,
+      "avg_f1": 1,
+      "avg_latency_ms": 11850.5
+    },
+    "full": {
+      "avg_precision": 1,
+      "avg_recall": 1,
+      "avg_recall_at_1": 1,
+      "avg_recall_at_3": 1,
+      "avg_recall_at_5": 1,
+      "avg_mrr": 1,
+      "avg_f1": 1,
+      "avg_latency_ms": 6742.8
+    }
+  }
+}

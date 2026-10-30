@@ -1076,9 +1076,10 @@ fn write_body(out: &mut dyn Write, content: &str) {
     }
 }
 
-/// `String.prototype.trim()` — the JS `\s` set (includes U+FEFF).
+/// `String.prototype.trim()` — the JS `\s` set (includes U+FEFF);
+/// delegates to the shared [`qmd::js::js_trim`].
 fn js_trim(text: &str) -> &str {
-    text.trim_matches(is_js_ws)
+    qmd::js::js_trim(text)
 }
 
 /// `name.padEnd(maxName)` — pad with spaces to `target` UTF-16 units.
