@@ -1229,6 +1229,7 @@ dependencies = [
  "qmd-mcp",
  "regex",
  "rusqlite",
+ "serde",
  "serde_json",
  "signal-hook",
  "tempfile",

@@ -10,6 +10,12 @@
 
 pub use crate::chunk::is_js_ws;
 
+/// `String.prototype.trim()` — the JS `\s` set (includes U+FEFF).
+#[must_use]
+pub fn js_trim(text: &str) -> &str {
+    text.trim_matches(is_js_ws)
+}
+
 /// ECMAScript `Number::toString` (radix 10).
 ///
 /// Used for `JSON.stringify` numbers and `String(key)` on numeric keys:

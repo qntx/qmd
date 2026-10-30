@@ -16,7 +16,12 @@ pub(crate) fn show(io: &mut Io<'_>, ctx: &CliContext) {
         io,
         &["  qmd mcp                       - Start the MCP server (stdio transport for AI agents)"],
     );
-    // Upstream's `qmd bench` line follows (qmd.ts:3651); bench is not ported.
+    // Upstream's `qmd bench` line (qmd.ts:3651) follows `mcp`
+    // unconditionally — it exists with or without the mcp feature.
+    print(
+        io,
+        &["  qmd bench <fixture.json>      - Run search quality benchmarks against a fixture file"],
+    );
     print(io, MIDDLE);
     #[cfg(feature = "mcp")]
     print(

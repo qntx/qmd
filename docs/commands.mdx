@@ -96,6 +96,27 @@ Model selection order, like upstream: `models:` pinned in `index.yml` >
 accepted as model URIs (handy for air-gapped setups); anything starting
 with `hf:` resolves through the Hugging Face cache layout.
 
+### `qmd bench`
+
+Runs search-quality benchmarks: each fixture query is scored through
+the `bm25`, `vector`, `hybrid` and `full` backends and compared
+against its `expected_files` (precision@k, recall@1/3/5, MRR, F1,
+latency).
+
+```bash
+qmd bench <fixture.json> [--json] [-c collection]
+```
+
+The fixture is a JSON object with a `queries` array; each query has
+`id`, `query` (plain text or `lex:`/`vec:`/`hyde:`/`intent:`-prefixed
+lines), optional `type`, `expected_files` and `expected_in_top_k`.
+`-c` overrides the fixture's `collection`. In text mode a padded
+results table and a per-backend `Summary:` go to stdout; `--json`
+emits the full result envelope (`timestamp`, `fixture`, `results`,
+`summary`). A bench where every backend scores 0.00 prints a warning
+pointing at `qmd ls`; a missing or empty collection fails before any
+query runs. See `crates/qmd-cli/tests/fixtures/bench/example.json` for the format.
+
 ## Diagnostics
 
 ### `qmd doctor`

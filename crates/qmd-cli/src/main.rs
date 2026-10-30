@@ -16,9 +16,10 @@ use qmd_mcp as _;
 use regex as _;
 #[cfg(test)]
 use rusqlite as _;
-use serde_json as _;
 // Used by the lib's cursor-restore watcher; the bin itself never
 // references it, but the lint counts dependencies per target.
+use serde as _;
+use serde_json as _;
 use signal_hook as _;
 #[cfg(test)]
 use tempfile as _;

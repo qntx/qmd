@@ -1,0 +1,97 @@
+{
+  "collection": "eval-docs",
+  "queries": [
+    {
+      "id": "lex-only",
+      "query": "lex: versioning\nlex: fundraising",
+      "expected_files": [
+        "api-design-principles.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "vec-only-empty-bm25",
+      "query": "vec: startup capital",
+      "expected_files": [
+        "startup-fundraising-memo.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "mixed-intent",
+      "query": "lex: theorem\nintent: distributed systems",
+      "expected_files": [
+        "distributed-systems-overview.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "expand-plain",
+      "query": "expand: ignored by bench",
+      "expected_files": [],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "intent-alone-error",
+      "query": "intent: only an intent",
+      "expected_files": [
+        "api-design-principles.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "unprefixed-multiline-error",
+      "query": "lex: versioning\nbare line",
+      "expected_files": [
+        "api-design-principles.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "cjk-日本語-🚀-长id-over-twentyfive-units-here",
+      "query": "API versioning",
+      "type": "exact",
+      "expected_files": [
+        "api-design-principles.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "no-type",
+      "query": "CAP theorem",
+      "expected_files": [
+        "distributed-systems-overview.md"
+      ],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "empty-expected",
+      "query": "machine learning",
+      "expected_files": [],
+      "expected_in_top_k": 1
+    },
+    {
+      "id": "big-topk",
+      "query": "work",
+      "expected_files": [
+        "remote-work-policy.md"
+      ],
+      "expected_in_top_k": 15
+    },
+    {
+      "id": "tie-125",
+      "query": "API versioning",
+      "expected_files": [
+        "api-design-principles.md",
+        "fa.md",
+        "fb.md",
+        "fc.md",
+        "fd.md",
+        "fe.md",
+        "ff.md",
+        "fg.md"
+      ],
+      "expected_in_top_k": 8
+    }
+  ]
+}
