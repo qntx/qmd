@@ -23,8 +23,10 @@
 //!   `pooling = Rank`, doc budget `ctx - 512 - queryTokens`, dedup of
 //!   effective texts.
 //! - generate: Qwen3 chat rendering (verified byte-identical to upstream's
-//!   `QwenChatWrapper`), GBNF grammar, `top_k 20 / top_p 0.8 / temp 0.7`,
-//!   max 600 generated tokens, fresh context per call.
+//!   `QwenChatWrapper`), `top_k 20 / top_p 0.8 / temp 0.7` with the GBNF
+//!   grammar applied upstream-style — speculative single-token veto, not
+//!   a chained O(vocab) mask (`AddonSampler::sample`), max 600 generated
+//!   tokens, fresh context per call.
 
 use std::num::NonZeroU32;
 use std::path::Path;
@@ -40,6 +42,8 @@ use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{LlamaChatMessage, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::token::LlamaToken;
+use llama_cpp_2::token::data::LlamaTokenData;
+use llama_cpp_2::token::data_array::LlamaTokenDataArray;
 use llama_cpp_2::{LlamaBackendDevice, LlamaBackendDeviceType, LogOptions};
 
 use crate::CancelToken;
@@ -1527,11 +1531,15 @@ fn run_expansion(
     let prompt_tokens = vocab.tokenize(rendered.as_bytes(), false, true);
     decode_all(&mut ctx, &prompt_tokens, true)?;
     // Upstream's presencePenalty is a no-op (AddonSampler only builds the
-    // penalties sampler when penalty != 1, and qmd never sets it), so the
-    // chain is grammar → top_k → top_p → temp → dist.
-    let mut sampler = LlamaSampler::chain_simple([
-        LlamaSampler::grammar(model, EXPANSION_GRAMMAR, "root")
-            .map_err(|e| InferenceError::Backend(e.to_string()))?,
+    // penalties sampler when penalty != 1, and qmd never sets it).
+    // Grammar stays OUT of the chain: upstream `AddonSampler::sample`
+    // (node-llama-cpp llama/addon/AddonSampler.cpp:186-213) samples the
+    // unconstrained chain first, vetoes the single token via a one-token
+    // grammar apply, and only masks the full ~151k-vocab candidate set
+    // after a rejection — chaining the grammar costs O(vocab) per token.
+    let mut grammar = LlamaSampler::grammar(model, EXPANSION_GRAMMAR, "root")
+        .map_err(|e| InferenceError::Backend(e.to_string()))?;
+    let mut chain = LlamaSampler::chain_simple([
         LlamaSampler::top_k(20),
         LlamaSampler::top_p(0.8, 1),
         LlamaSampler::temp(0.7),
@@ -1544,11 +1552,36 @@ fn run_expansion(
     // `token_to_piece` splits multi-byte UTF-8 chars across tokens and
     // produces replacement characters (upstream detokenizes the stream).
     let mut out: Vec<LlamaToken> = Vec::new();
+    // Batch logit index of the token the next sample reads — the Rust
+    // wrapper rejects -1 (unlike the C API): the prompt's last logit
+    // sits at `(len-1) % UPSTREAM_UBATCH` after `decode_all`, each
+    // single-token generation decode at 0 (upstream `batchLogitIndex`).
+    let ubatch = usize::try_from(UPSTREAM_UBATCH).unwrap_or(usize::MAX);
+    let mut logit_idx = i32::try_from(prompt_tokens.len().saturating_sub(1) % ubatch)
+        .map_err(|_| InferenceError::Backend("logit index overflow".to_owned()))?;
     for pos in start..end {
-        let tok = sampler.sample(&ctx, -1);
+        let mut tok = chain.sample(&ctx, logit_idx);
+        let mut veto = LlamaTokenDataArray::new(vec![LlamaTokenData::new(tok, 1.0, 0.0)], false);
+        grammar.apply(&mut veto);
+        if veto
+            .data
+            .first()
+            .is_some_and(|d| d.logit() == f32::NEG_INFINITY)
+        {
+            // Rejected — mirrors upstream's slow path: mask the full
+            // candidate set, then re-apply the chain (the dist draw is
+            // re-consumed upstream too).
+            let mut candidates = ctx.token_data_array_ith(logit_idx);
+            grammar.apply(&mut candidates);
+            chain.apply(&mut candidates);
+            tok = candidates.selected_token().unwrap_or(tok);
+        }
         if vocab.is_eog(tok) {
             break;
         }
+        // Upstream `AddonSampler::acceptToken` advances the grammar
+        // state with the committed token (skipped for EOG).
+        grammar.accept(tok);
         out.push(tok);
         let mut batch = LlamaBatch::new(1, 1);
         batch
@@ -1556,6 +1589,7 @@ fn run_expansion(
             .map_err(|e| InferenceError::Backend(e.to_string()))?;
         ctx.decode(&mut batch)
             .map_err(|e| InferenceError::Backend(e.to_string()))?;
+        logit_idx = 0;
     }
     Ok(String::from_utf8_lossy(&vocab.detokenize(&out, true, false)).into_owned())
 }
