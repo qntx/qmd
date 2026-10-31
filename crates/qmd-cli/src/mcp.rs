@@ -217,14 +217,24 @@ fn spawn_daemon(
         if let Some(h) = host {
             argv.extend(["--host".into(), h.into()]);
         }
-        let child = std::process::Command::new(std::env::current_exe()?)
-            .args(argv)
+        let mut cmd = std::process::Command::new(std::env::current_exe()?);
+        cmd.args(argv)
             .stdin(std::process::Stdio::null())
             .stdout(log)
             .stderr(err_log)
             .env("INDEX_PATH", ctx.db_path())
-            .env(daemon::DAEMON_CHILD_ENV, "1")
-            .spawn()?;
+            .env(daemon::DAEMON_CHILD_ENV, "1");
+        // Windows equivalent of Node's `detached: true`: no console
+        // attachment and a new process group, so the daemon outlives
+        // the parent's console and ignores its Ctrl-C (§2.4-6, §4-6).
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt as _;
+            const DETACHED_PROCESS: u32 = 0x0000_0008;
+            const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+            cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
+        }
+        let child = cmd.spawn()?;
         // `child.unref()` — nothing waits on the daemon from here.
         std::fs::write(&daemon.pid_path, child.id().to_string())?;
         Ok(child.id())

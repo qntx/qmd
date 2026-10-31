@@ -56,7 +56,9 @@ impl CliEnv {
     /// XDG/tmp dirs created.
     pub(crate) fn new() -> Self {
         let top = tempfile::tempdir().unwrap();
-        let root = top.path().canonicalize().unwrap();
+        // Same canonicalizer the CLI uses — verbatim `\\?\` prefixes
+        // must not diverge from what gets written into configs.
+        let root = qmd::paths::canonicalize(top.path()).unwrap();
         for dir in [
             "config",
             "fixtures",

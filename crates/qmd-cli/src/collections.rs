@@ -266,7 +266,7 @@ fn add(
     let resolved = if pwd == "." {
         qmd::paths::pwd(env)
     } else {
-        lexical.canonicalize().unwrap_or(lexical)
+        qmd::paths::canonicalize(&lexical).unwrap_or(lexical)
     };
     // `collectionGlobFromCli` (qmd.ts:1822-1827): --mask wins, then
     // --glob, each only when non-empty.

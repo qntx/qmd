@@ -10,16 +10,19 @@ use std::process::ExitCode;
 
 // The bin uses only `qmd_cli::run`; these are lib-facing dependencies.
 use clap as _;
+// Used by the lib's cursor-restore watcher; the bin itself never
+// references it, but the lint counts dependencies per target.
+#[cfg(windows)]
+use ctrlc as _;
 #[cfg(feature = "mcp")]
 use qmd_mcp as _;
 #[cfg(test)]
 use regex as _;
 #[cfg(test)]
 use rusqlite as _;
-// Used by the lib's cursor-restore watcher; the bin itself never
-// references it, but the lint counts dependencies per target.
 use serde as _;
 use serde_json as _;
+#[cfg(unix)]
 use signal_hook as _;
 #[cfg(test)]
 use tempfile as _;

@@ -579,7 +579,7 @@ fn reindex_locked(
 /// both realpaths exist but differ, upstream does *not* fall back —
 /// two resolvable paths are simply different directories.
 fn same_directory(a: &Path, b: &Path, env: &Environment) -> bool {
-    if let (Ok(ra), Ok(rb)) = (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+    if let (Ok(ra), Ok(rb)) = (crate::paths::canonicalize(a), crate::paths::canonicalize(b)) {
         return ra == rb;
     }
     let base = crate::paths::pwd(env);
@@ -1383,17 +1383,14 @@ impl Qmd {
     pub fn detect_collection(&self, fs_path: &Path) -> Result<Option<CollectionPath>> {
         let guard = lock(&self.config);
         let config = self.load_config(&guard)?;
-        let real = fs_path
-            .canonicalize()
-            .unwrap_or_else(|_| fs_path.to_path_buf());
+        let real = crate::paths::canonicalize(fs_path).unwrap_or_else(|_| fs_path.to_path_buf());
         let mut best: Option<CollectionPath> = None;
         let mut best_len = 0usize;
         for (name, coll) in &config.collections {
             // Canonicalize both sides so collections stored under a
             // symlinked path (e.g. macOS /var -> /private/var) still
             // match — upstream realpaths only the file side and misses.
-            let root_path = Path::new(&coll.path)
-                .canonicalize()
+            let root_path = crate::paths::canonicalize(Path::new(&coll.path))
                 .unwrap_or_else(|_| PathBuf::from(&coll.path));
             let root_owned = root_path.to_string_lossy().into_owned();
             let root = root_owned.trim_end_matches('/');

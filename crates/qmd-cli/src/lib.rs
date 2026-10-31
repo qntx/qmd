@@ -37,8 +37,8 @@ use regex as _;
 // `content_vectors` rows; the lib never touches it.
 #[cfg(test)]
 use rusqlite as _;
-// `signal-hook` backs the cursor-restore watcher `run` installs for
-// non-MCP commands once the argv has been parsed.
+// `signal-hook` (unix) / `ctrlc` (windows) backs the cursor-restore
+// watcher `run` installs for non-MCP commands once argv is parsed.
 mod args;
 mod bench;
 mod collections;
@@ -245,6 +245,7 @@ fn version_string() -> String {
 /// `process.stderr.write`. `std::process::exit` runs from that thread,
 /// so destructors — including the llama.cpp Metal teardown upstream
 /// avoids via `process.exit` (qmd.ts:285-303) — never run.
+#[cfg(unix)]
 #[allow(
     clippy::exit,
     clippy::disallowed_methods,
@@ -274,3 +275,33 @@ fn install_signal_handlers() {
             }),
     );
 }
+
+/// Windows counterpart of the unix handler above: `ctrlc`'s handler
+/// runs on its own thread, so the same cursor-show + `exit(130)`
+/// applies (it also fires on Ctrl-Break — Node maps that to SIGBREAK
+/// with a terminate default, so exiting 130 is the same outcome).
+/// Windows raises no SIGTERM, so upstream's 143 branch is
+/// unreachable.
+#[cfg(windows)]
+#[allow(
+    clippy::exit,
+    clippy::disallowed_methods,
+    reason = "signal termination cannot return an ExitCode and cannot surface \
+              a write error; mirrors upstream process.exit(130) and an \
+              unconditional process.stderr.write"
+)]
+fn install_signal_handlers() {
+    use std::io::Write as _;
+
+    // Registration failure only loses the cursor restore; the console
+    // default action still applies.
+    drop(ctrlc::set_handler(move || {
+        let _ = std::io::stderr().write_all(b"\x1b[?25h");
+        std::process::exit(130);
+    }));
+}
+
+/// Other platforms have no console signal path to mirror — the
+/// handler is optional anyway (it only restores the cursor).
+#[cfg(not(any(unix, windows)))]
+fn install_signal_handlers() {}
