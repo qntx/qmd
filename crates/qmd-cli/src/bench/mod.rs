@@ -72,7 +72,8 @@ fn load_fixture(path: &str) -> Result<Fixture, Failure> {
 
 /// JS `String(value)` for fixture scalars (bench.ts:344 `??` keeps
 /// the raw value; the guard's template coerces it): numbers and bools
-/// stringify, arrays join with `,`, objects are `[object Object]`.
+/// stringify, arrays join with `,`, objects are `[object Object]`
+/// (upstream-quirks.md Q37).
 fn js_string(v: &serde_json::Value) -> String {
     match v {
         serde_json::Value::String(s) => s.clone(),

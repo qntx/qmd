@@ -136,7 +136,9 @@ pub fn read_process_cmdline(pid: i64) -> Option<String> {
 }
 
 /// Non-unix fallback — upstream's `ps`/`/proc` probes would all fail,
-/// landing on the same `null` → "treated as stale" verdict.
+/// landing on the same `null` → "treated as stale" verdict
+/// (upstream-quirks.md Q38: on Windows a daemon can never be stopped
+/// via `mcp stop`, identical to upstream).
 #[cfg(not(unix))]
 #[must_use]
 pub fn read_process_cmdline(_pid: i64) -> Option<String> {
