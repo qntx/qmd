@@ -329,10 +329,14 @@ mod tests {
     #[test]
     fn live_qmd_named_process_passes_identity_check() {
         // Upstream can't force a matching cmdline in vitest; we can —
-        // symlink `sleep` as `qmd` so the cmdline matches the regex.
+        // symlink a shell as `qmd` so the cmdline matches the regex.
+        // Not `sleep`: on the CI image it is a uutils multicall binary
+        // that refuses a renamed argv[0] (`Security violation`). The
+        // `& wait` compound stops the shell exec-optimizing `-c` away
+        // and losing the `qmd` argv line.
         let dir = tempfile::tempdir().unwrap();
         let qmd_link = dir.path().join("qmd");
-        std::os::unix::fs::symlink("/bin/sleep", &qmd_link).unwrap();
+        std::os::unix::fs::symlink("/bin/sh", &qmd_link).unwrap();
         let mut ok = false;
         let mut last_cmdline = None;
         // Loaded CI runners can kill a spawned child before `ps`/`/proc`
@@ -340,7 +344,7 @@ mod tests {
         // respawn instead of polling a corpse, bounded.
         for _ in 0..3 {
             let mut child = std::process::Command::new(&qmd_link)
-                .arg("30")
+                .args(["-c", "sleep 30 & wait"])
                 .spawn()
                 .unwrap();
             let pid = i64::from(child.id());
@@ -348,7 +352,7 @@ mod tests {
             if ok {
                 assert_eq!(
                     read_process_cmdline(pid).as_deref(),
-                    Some(format!("{} 30", qmd_link.display()).as_str())
+                    Some(format!("{} -c sleep 30 & wait", qmd_link.display()).as_str())
                 );
             } else {
                 last_cmdline = read_process_cmdline(pid);
