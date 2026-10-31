@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    uses: qntx/workflows/.github/workflows/release-rust.yml@v2
+    permissions:
+      contents: write
+    with:
+      bin: qmd
+      package: qmd-cli
+      # D2: aarch64-pc-windows-msvc excluded — MSVC cannot compile ARM
+      # ggml (ggml-cpu CMakeLists.txt:107-108). Deferred in the design docs.
+      targets: >-
+        x86_64-unknown-linux-gnu
+        aarch64-unknown-linux-gnu
+        aarch64-apple-darwin
+        x86_64-pc-windows-msvc
+      # g++ required for the llama.cpp C++ cross-compile (S1 rehearsal).
+      cross-packages: 'gcc-aarch64-linux-gnu g++-aarch64-linux-gnu'

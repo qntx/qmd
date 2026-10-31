@@ -6,12 +6,42 @@ Rust port of [tobi/qmd](https://github.com/tobi/qmd) (v2.8.3) — search
 local markdown knowledge bases with BM25, vector similarity and hybrid
 query expansion, from a single binary.
 
-> **Status:** rewrite in progress. Indexing, retrieval, collections,
-> contexts, models, diagnostics, the skills commands and the MCP server
-> (stdio, HTTP, daemon lifecycle) are implemented; `qmd bench` is not
-> yet ported.
+> **Status:** port complete — indexing, retrieval, collections,
+> contexts, models, diagnostics, the skills commands, `qmd bench` and
+> the MCP server (stdio, HTTP, daemon lifecycle) are implemented.
+> v0.6.0 is the first release of the Rust port (supersedes the
+> pre-rewrite 0.3.2 on crates.io).
 
 See [docs/](docs/) for the full reference.
+
+## Install
+
+Prebuilt binaries are attached to each
+[GitHub Release](https://github.com/qntx/qmd/releases):
+
+| Target | Notes |
+| --- | --- |
+| `x86_64-unknown-linux-gnu` | glibc ≥ 2.39 (Ubuntu 24.04+, Debian 13+); x86 CPU needs AVX2 (Haswell 2013 or newer) |
+| `aarch64-unknown-linux-gnu` | same glibc ≥ 2.39 baseline |
+| `aarch64-apple-darwin` | Apple Silicon; Metal acceleration built in |
+| `x86_64-pc-windows-msvc` | Windows x64 — second-tier support: builds and ships, release-smoke verified, but the test suite is Unix-oriented and `qmd mcp stop` cannot kill a live daemon (same as upstream; use `taskkill`). ARM64 Windows is not built — MSVC cannot compile llama.cpp's ARM kernels |
+
+Older Linux systems (glibc < 2.39, pre-AVX2 CPUs) can still build from
+source:
+
+```text
+cargo install qmd-cli          # crates.io
+# or from a checkout:
+cargo install --path crates/qmd-cli
+```
+
+The default `llama` feature compiles llama.cpp with cmake and runs
+bindgen, so the build needs `cmake`, a C/C++ toolchain and `clang`/
+`libclang` (on Windows: MSVC Build Tools, CMake and LLVM). GPU
+backends are opt-in passthrough features — Metal is built on Apple
+targets regardless; add `--features cuda` or `--features vulkan` for
+the matching toolchain (CUDA verified on real hardware — RTX 5060 Ti,
+Windows; Vulkan build-verified only).
 
 ## CLI
 
@@ -27,6 +57,7 @@ qmd get <file|#docid>       # fetch a document (line-numbered)
 qmd multi-get <pattern>     # batch fetch by glob or comma list
 qmd status / doctor         # index health and diagnostics
 qmd pull                    # download configured models
+qmd bench <fixture.json>    # search-quality benchmark (P/R, MRR, F1)
 qmd skills list|get|path    # inspect bundled skills
 qmd skill show|install      # print or install the QMD skill
 qmd mcp                     # MCP server over stdio for agents/IDEs
@@ -76,11 +107,28 @@ parity matrix in `qmd-study`:
   over stdio and HTTP (`--http`, `--daemon`, `stop`), but
   `qmd mcp <anything>` other than `stop` exits 1 instead of silently
   starting a server, and a checked-in `.qmd` config's models go through
-  the trust gate like every other command. `qmd bench` is not yet
-  ported; `--help` omits it.
+  the trust gate like every other command.
 - The embedded `SKILL.md` still mentions `npm install -g @tobilu/qmd`
   (kept verbatim for parity); install this port via cargo or a release
   binary instead.
+
+## Models
+
+`qmd` fetches GGUF models on demand (`qmd pull`, or lazily the first
+time a search path needs them); nothing is bundled into the binary.
+The upstream defaults are:
+
+| Role | Model (GGUF) | License |
+| --- | --- | --- |
+| Embedding | [embeddinggemma-300M](https://huggingface.co/ggml-org/embeddinggemma-300M-GGUF) (Q8_0, Google's EmbeddingGemma) | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) |
+| Reranking | [Qwen3-Reranker-0.6B](https://huggingface.co/ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF) (Q8_0) | Apache-2.0 |
+| Query expansion | [qmd-query-expansion-1.7B](https://huggingface.co/tobil/qmd-query-expansion-1.7B-gguf) (Qwen3-1.7B fine-tune) | MIT |
+
+Set `HF_ENDPOINT=https://hf-mirror.com` to download through the
+mirror. A project's `.qmd/index.y{a,}ml` may declare different
+`models:` entries — they only take effect in trusted directories, and
+their licenses are the user's responsibility (this project only
+fetches the files you configure).
 
 ## Development
 
