@@ -217,10 +217,8 @@ pub(crate) fn to_qmd_path(display_path: &str, index_name: &str) -> String {
 /// cwd, absolute realpath otherwise; `None` never happens here — the
 /// caller falls back to `qmd://`.
 pub(crate) fn render_full_path(absolute: &Path, cwd: &Path) -> String {
-    let real = absolute
-        .canonicalize()
-        .unwrap_or_else(|_| absolute.to_path_buf());
-    let cwd_real = cwd.canonicalize().unwrap_or_else(|_| cwd.to_path_buf());
+    let real = qmd::paths::canonicalize(absolute).unwrap_or_else(|_| absolute.to_path_buf());
+    let cwd_real = qmd::paths::canonicalize(cwd).unwrap_or_else(|_| cwd.to_path_buf());
     if real == cwd_real {
         return "./".to_owned();
     }

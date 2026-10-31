@@ -16,17 +16,29 @@ rustdoc-args = ["--cfg", "docsrs"]
 [lints]
 workspace = true
 
+[features]
+# GPU backend passthroughs (D9) — same caveats as the `qmd` crate
+# features; opt-in per machine.
+metal  = ["qmd/metal"]
+cuda   = ["qmd/cuda"]
+vulkan = ["qmd/vulkan"]
+
 [dependencies]
 axum       = { version = "0.8.9" }
 qmd        = { version = "0.6.0", path = "../qmd", default-features = false, features = ["llama"] }
 regex      = { version = "1.13.1" }
 rmcp       = { version = "3.5.1", features = ["server", "transport-io"] }
-rustix     = { version = "1.1.5", features = ["process"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror  = "2.0.21"
 time       = { version = "0.3.36" }
 tokio      = { version = "1.53.3", features = ["io-std", "io-util", "macros", "rt-multi-thread", "signal", "sync", "time"] }
 url        = { version = "2.5.8" }
+
+# rustix is only referenced by the `cfg(unix)` daemon paths
+# (sigterm/setsid); declaring it per-target silences the Windows
+# `unused_crate_dependencies` warning (S1 finding, P7.2).
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1.5", features = ["process"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

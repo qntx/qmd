@@ -38,6 +38,21 @@ pub fn pwd(env: &Environment) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("/"))
 }
 
+/// Node `fs.realpathSync` semantics for canonicalization.
+///
+/// `std::fs::canonicalize` returns verbatim `\\?\`-prefixed paths on
+/// Windows while Node's realpath does not — those prefixes would end
+/// up written into collection YAML and break comparisons against
+/// non-canonical paths (`dunce::canonicalize` only strips the prefix
+/// when the path is representable without it, so long/UNC paths keep
+/// it). Identical to `std::fs::canonicalize` off Windows.
+///
+/// # Errors
+/// Same as `std::fs::canonicalize`.
+pub fn canonicalize(path: impl AsRef<Path>) -> std::io::Result<PathBuf> {
+    dunce::canonicalize(path)
+}
+
 /// Upstream `getConfigDir()`: `QMD_CONFIG_DIR` -> `XDG_CONFIG_HOME/qmd` ->
 /// `~/.config/qmd`.
 #[must_use]
@@ -244,8 +259,8 @@ pub fn expand_home(path: &str, env: &Environment) -> PathBuf {
 /// lexical comparison so a mode-0 file inside the collection is not
 /// treated as an escape.
 pub(crate) fn is_path_inside_dir(dir: &Path, target: &Path) -> bool {
-    let real_dir = std::fs::canonicalize(dir).unwrap_or_else(|_| lexical_normalize(dir));
-    std::fs::canonicalize(target).map_or_else(
+    let real_dir = canonicalize(dir).unwrap_or_else(|_| lexical_normalize(dir));
+    canonicalize(target).map_or_else(
         // Mirror upstream's catch branch: the dir side is *not*
         // canonicalized here — `resolve(dir)` is lexical only.
         |_| {

@@ -202,9 +202,10 @@ pub fn detach_daemon_child() -> std::io::Result<()> {
         .map_err(|e| std::io::Error::from_raw_os_error(e.raw_os_error()))
 }
 
-/// Non-unix fallback — there is no session to leave; upstream's
-/// `detached` is also a no-op semantically here (console attachment
-/// stays, but the daemon contract is unix-shaped anyway).
+/// Non-unix fallback — there is no session to leave. On Windows the
+/// detach already happened at spawn time (`DETACHED_PROCESS |
+/// CREATE_NEW_PROCESS_GROUP` in `qmd-cli`'s `spawn_daemon`), mirroring
+/// Node's `detached: true` console semantics.
 ///
 /// # Errors
 /// Never fails.

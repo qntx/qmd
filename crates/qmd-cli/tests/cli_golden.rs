@@ -409,7 +409,12 @@ fn apply_mutations(root: &Path, corpus: &Path, scenario: &Value) {
     for link in scenario["links"].as_array().map_or(&[][..], Vec::as_slice) {
         let path = root.join(link["path"].as_str().unwrap());
         fs::create_dir_all(path.parent().unwrap()).unwrap();
+        #[cfg(unix)]
         std::os::unix::fs::symlink(link["target"].as_str().unwrap(), &path).unwrap();
+        // Symlink fixtures are a unix-only skills scenario; on Windows
+        // fail loudly rather than emit a confusing state mismatch.
+        #[cfg(not(unix))]
+        unimplemented!("symlink fixtures are a unix-only skills scenario");
     }
 }
 
@@ -455,8 +460,9 @@ fn state_problems(
 fn cli_golden_replay() {
     let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
     let top = tempfile::tempdir().unwrap();
-    // macOS /tmp is /private/tmp — upstream prints realpaths.
-    let top = top.path().canonicalize().unwrap();
+    // macOS /tmp is /private/tmp — upstream prints realpaths; the
+    // dunce helper keeps Windows off `\\?\` forms the goldens lack.
+    let top = qmd::paths::canonicalize(top.path()).unwrap();
     let home = top.join("home");
     let outside = top.join("outside");
     fs::create_dir_all(&home).unwrap();

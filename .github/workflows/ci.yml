@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,3 +24,76 @@ jobs:
       # llama-cpp-sys-2 builds llama.cpp with cmake and runs bindgen against
       # libclang. The image ships both; pin them anyway against label drift.
       apt-packages: 'cmake clang libclang-dev'
+
+  # D5: Windows regression gate. The reusable workflow needs
+  # `contents: write`, so it cannot run on PRs — main pushes and
+  # manual dispatches only.
+  windows-build:
+    if: github.event_name != 'pull_request'
+    uses: qntx/workflows/.github/workflows/release-rust.yml@v2
+    permissions:
+      contents: write
+    with:
+      bin: qmd
+      package: qmd-cli
+      targets: x86_64-pc-windows-msvc
+
+  # Handwritten smoke on the produced binary (deviation from the
+  # call-only-@v2 convention, registered in p7 D5). Verifies the
+  # artifact runs and that D10 removed the VCOMP140 OpenMP import.
+  windows-smoke:
+    needs: windows-build
+    if: always() && github.event_name != 'pull_request'
+    runs-on: windows-latest
+    env:
+      NO_COLOR: '1'
+      QMD_DOCTOR_DEVICE_PROBE: '0'
+    steps:
+      - name: checkout (vendored corpus)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: download artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist-x86_64-pc-windows-msvc
+          path: ${{ runner.temp }}/dist
+
+      - name: extract binary
+        shell: bash
+        run: |
+          cd "${{ runner.temp }}/dist"
+          archive=$(ls qmd-*.zip)
+          unzip -o "$archive" -d "${{ runner.temp }}"
+          find "${{ runner.temp }}" -name 'qmd*' -type f | head -5
+
+      - name: smoke run
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/qmd-home
+          USERPROFILE: ${{ runner.temp }}/qmd-home
+          XDG_CONFIG_HOME: ${{ runner.temp }}/qmd-home/xdg-config
+          XDG_CACHE_HOME: ${{ runner.temp }}/qmd-home/xdg-cache
+          QMD_CONFIG_DIR: ${{ runner.temp }}/qmd-home/qmdcfg
+        run: |
+          set -x
+          mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$QMD_CONFIG_DIR"
+          QMD="${{ runner.temp }}/qmd.exe"
+          CORPUS="$(pwd)/crates/qmd/tests/fixtures/eval-docs"
+          "$QMD" --version
+          "$QMD" collection add "$CORPUS" --name eval-docs
+          "$QMD" search "API versioning"
+          "$QMD" status
+
+      - name: dll dependents
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## windows dll dependents'
+            echo '```'
+            llvm-objdump -p "${{ runner.temp }}/qmd.exe" | grep 'DLL Name' || \
+              dumpbin /dependents "${{ runner.temp }}/qmd.exe"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

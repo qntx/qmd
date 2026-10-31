@@ -284,7 +284,7 @@ pub fn resolve_config_collection_path(
 /// `realpathSync(path)` with `resolve(path)` fallback — upstream
 /// `realOrResolve` (trust.ts:113-119).
 fn real_or_resolve(path: &str, env: &Environment) -> PathBuf {
-    std::fs::canonicalize(path).unwrap_or_else(|_| resolve_lexical(&pwd(env), path))
+    crate::paths::canonicalize(path).unwrap_or_else(|_| resolve_lexical(&pwd(env), path))
 }
 
 /// Node `path.relative(from, to)` as path segments — both inputs are
