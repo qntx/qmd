@@ -308,6 +308,23 @@ mod tests {
         assert_eq!(read_pidfile(&path), None, "NaN upstream");
     }
 
+    /// Poll `is_qmd_mcp_pid` for up to ~1s — `ps`/`/proc` visibility is
+    /// not instantaneous — stopping early when the child exits, so a
+    /// killed spawn reports `false` instead of polling a corpse.
+    #[cfg(unix)]
+    fn poll_until_visible(child: &mut std::process::Child, pid: i64) -> bool {
+        for _ in 0..50 {
+            if is_qmd_mcp_pid(pid) {
+                return true;
+            }
+            if child.try_wait().unwrap().is_some() {
+                return false;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        false
+    }
+
     #[cfg(unix)]
     #[test]
     fn live_qmd_named_process_passes_identity_check() {
@@ -316,27 +333,36 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let qmd_link = dir.path().join("qmd");
         std::os::unix::fs::symlink("/bin/sleep", &qmd_link).unwrap();
-        let mut child = std::process::Command::new(&qmd_link)
-            .arg("30")
-            .spawn()
-            .unwrap();
-        let pid = i64::from(child.id());
-        // `ps`/proc visibility is not instantaneous — retry briefly.
         let mut ok = false;
-        for _ in 0..50 {
-            if is_qmd_mcp_pid(pid) {
-                ok = true;
+        let mut last_cmdline = None;
+        // Loaded CI runners can kill a spawned child before `ps`/`/proc`
+        // reports it (`[qmd] <defunct>` seen on the Linux runner) —
+        // respawn instead of polling a corpse, bounded.
+        for _ in 0..3 {
+            let mut child = std::process::Command::new(&qmd_link)
+                .arg("30")
+                .spawn()
+                .unwrap();
+            let pid = i64::from(child.id());
+            ok = poll_until_visible(&mut child, pid);
+            if ok {
+                assert_eq!(
+                    read_process_cmdline(pid).as_deref(),
+                    Some(format!("{} 30", qmd_link.display()).as_str())
+                );
+            } else {
+                last_cmdline = read_process_cmdline(pid);
+            }
+            drop(child.kill());
+            drop(child.wait());
+            if ok {
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_millis(20));
         }
-        assert!(ok, "cmdline: {:?}", read_process_cmdline(pid));
-        assert_eq!(
-            read_process_cmdline(pid).as_deref(),
-            Some(format!("{} 30", qmd_link.display()).as_str())
+        assert!(
+            ok,
+            "spawned child died or stayed invisible; cmdline: {last_cmdline:?}"
         );
-        drop(child.kill());
-        drop(child.wait());
     }
 
     #[cfg(unix)]
