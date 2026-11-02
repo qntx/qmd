@@ -62,7 +62,7 @@ time          = { version = "0.3.36", features = ["formatting", "macros", "parsi
 llama-cpp-2   = { version = "=0.1.158", optional = true, default-features = false, features = ["common"] }
 ureq          = { version = "3.4.2", optional = true }
 tracing       = "0.1.44"
-tree-sitter   = { version = "0.26.13", optional = true }
+tree-sitter   = { version = "0.27.1", optional = true }
 # Grammar crates pinned `=` to the exact upstream versions
 # (p6-ast.md §2.2). JavaScript intentionally absent — upstream reuses
 # the TypeScript grammar for `.js` (ast.ts:69).
