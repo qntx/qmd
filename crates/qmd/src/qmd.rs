@@ -1760,6 +1760,14 @@ impl Qmd {
     /// Re-running after interruption resumes where it stopped:
     /// `content_vectors` completeness determines the pending set.
     ///
+    /// The connection lock is held for the whole run, inference included:
+    /// other calls on the same handle (searches, `status`, `get`) wait until
+    /// embedding finishes. Upstream's single-threaded async runtime lets
+    /// queries interleave with an in-flight embed; to embed and query
+    /// concurrently, open a second [`Qmd`] on the same database — the store
+    /// runs in WAL mode with a busy timeout, so readers proceed between
+    /// embed batches (deviation 87).
+    ///
     /// # Errors
     /// [`Error::NoBackend`] without an embedder, [`Error::InvalidInput`]
     /// on non-positive batch options (upstream `validatePositiveInteger`
