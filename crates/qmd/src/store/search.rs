@@ -6,6 +6,8 @@
 //! - `body_length` counts bytes (`String::len`); upstream uses JS string
 //!   length (UTF-16 code units). Equal for ASCII and BMP text.
 
+use std::path::Path;
+
 use rusqlite::{Connection, OptionalExtension, params_from_iter};
 
 use super::collections::{DbCollection, get_store_collections, get_store_global_context};
@@ -106,13 +108,10 @@ pub(crate) fn get_context_for_file(
             if coll.path.is_empty() {
                 continue;
             }
-            let prefix = format!("{}/", coll.path);
-            if filepath == coll.path {
-                found = Some((coll.name.clone(), String::new()));
-                break;
-            }
-            if filepath.starts_with(&prefix) {
-                found = Some((coll.name.clone(), filepath[prefix.len()..].to_owned()));
+            if let Some(rel) =
+                crate::paths::relative_slash_path(Path::new(&coll.path), Path::new(filepath))
+            {
+                found = Some((coll.name.clone(), rel));
                 break;
             }
         }

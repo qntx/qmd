@@ -1392,19 +1392,19 @@ impl Qmd {
             // match — upstream realpaths only the file side and misses.
             let root_path = crate::paths::canonicalize(Path::new(&coll.path))
                 .unwrap_or_else(|_| PathBuf::from(&coll.path));
-            let root_owned = root_path.to_string_lossy().into_owned();
-            let root = root_owned.trim_end_matches('/');
-            if root.is_empty() {
+            if root_path.parent().is_none() {
+                // A filesystem-root collection — the old
+                // `root.trim_end('/')` empties to `""`; skip it.
                 continue;
             }
-            let prefix = format!("{root}/");
-            let real_str = real.to_string_lossy();
-            if !real_str.starts_with(&prefix) && real_str != root {
+            // Component-wise containment — upstream's `root + "/"`
+            // string prefix never matches Windows separators
+            // (deviation 86).
+            let Some(relative) = crate::paths::relative_slash_path(&root_path, &real) else {
                 continue;
-            }
-            if root.len() > best_len {
-                best_len = root.len();
-                let relative = real_str.strip_prefix(&prefix).unwrap_or("").to_owned();
+            };
+            if root_path.as_os_str().len() > best_len {
+                best_len = root_path.as_os_str().len();
                 best = Some(CollectionPath {
                     name: name.clone(),
                     relative_path: relative,

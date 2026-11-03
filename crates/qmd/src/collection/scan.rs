@@ -16,6 +16,7 @@ use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use walkdir::{DirEntry, WalkDir};
 
 use crate::error::{Error, Result};
+use crate::paths::to_slash_path;
 
 /// Directories never descended into (upstream `excludeDirs`,
 /// store.ts:1627). A *file* carrying one of these names is still a
@@ -132,13 +133,6 @@ fn is_file_candidate(entry: &DirEntry) -> bool {
         return true;
     }
     ft.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_file())
-}
-
-fn to_slash_path(path: &Path) -> String {
-    path.components()
-        .map(|c| c.as_os_str().to_string_lossy().into_owned())
-        .collect::<Vec<_>>()
-        .join("/")
 }
 
 /// Scan `root` for files matching `mask` minus `ignore` patterns.

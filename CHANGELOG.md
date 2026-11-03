@@ -63,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 - `qmd collection add` / `qmd collection update-cmd` no longer record trust for an untrusted project config: they re-record only when the config was already trusted (or had no gated items) before the edit, so a checkout's pre-existing `update:` hooks, out-of-project paths or custom models can no longer ride along on the user's own change (deviation 85; upstream re-records unconditionally, upstream-quirks Q39).
 - Crate packages and release archives now carry the license texts, including upstream tobi/qmd's MIT notice (`LICENSE-UPSTREAM`); docs.rs builds use default features instead of `all-features`, whose GPU passthroughs need toolkits docs.rs lacks.
+- Filesystem paths now map to their collection by path components instead of a `root + "/"` string prefix, so on Windows `qmd context add/rm <path>`, `qmd get <path>` (including the "Folder Context" lookup) and ignore checks work with `D:\...` paths (deviation 86; upstream hardcodes `/` the same way).
 
 ### Changed
 
