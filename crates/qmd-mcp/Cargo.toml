@@ -9,8 +9,8 @@ description            = "MCP server for qmd."
 keywords               = ["mcp", "search", "markdown", "rag"]
 categories             = ["network-programming"]
 
+# Default features only: the GPU passthroughs need toolkits docs.rs lacks (audit G-1).
 [package.metadata.docs.rs]
-all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]

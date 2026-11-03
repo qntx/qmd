@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Upgrading from 0.3.x
+
+0.6.0 is a ground-up rewrite as a port of tobi/qmd v2.8.3; nothing from the 0.3.x implementation carries over.
+
+- The `qmd-mcp` crate is now a library only — the old `qmd-mcp` binary is gone. Install `qmd-cli` and run `qmd mcp` (stdio) or `qmd mcp --http` instead.
+- Indexes are not reused: 0.3.x wrote `~/.cache/qmd/<name>.sqlite`, 0.6.0 uses `~/.cache/qmd/<name>-rs.sqlite`. Collections defined in `~/.config/qmd/index.yml` keep working (the 0.3.x schema is a subset of the current one); run `qmd update` and then `qmd embed` to rebuild the index and its vectors.
+
 ### Added
 
 - Release pipeline (P7.3): `release.yml` builds the 4 release targets through the org `release-rust.yml@v2` (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu` cross-compiled with `gcc-aarch64-linux-gnu`/`g++-aarch64-linux-gnu`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`; `aarch64-pc-windows-msvc` stays out — MSVC cannot compile ARM ggml); `publish.yml` publishes `qmd qmd-mcp qmd-cli` to crates.io in dependency order through `publish-crates.yml@v2` (90 min timeout, cmake/clang/libclang apt deps). Both trigger on `v*.*.*` tags and accept `workflow_dispatch` — `release.yml` dispatches rehearse the 4-target build without producing a Release (the reusable release job is tag-gated), and `publish.yml`'s `dry-run` input defaults to true so a manual dispatch runs `cargo publish --dry-run` only. README gains an Install section (prebuilt binaries + `cargo install qmd-cli` with cmake/clang prerequisites), the measured platform matrix (glibc ≥ 2.39, AVX2/Haswell x86 baseline, Windows x64 second-tier), GPU feature notes (`metal` on Apple by default, `cuda`/`vulkan` opt-in) and a Models section with the three default GGUFs and their licenses (EmbeddingGemma = Gemma Terms of Use, Qwen3-Reranker = Apache-2.0, qmd-query-expansion = MIT).
@@ -55,6 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Cached models are no longer deleted when Hugging Face is unreachable. The lazy embed/generate/rerank backends resolved models through `pull_models`, whose etag HEAD ran on every first use; a failed HEAD triggered a refresh that removed the cached GGUF and then could not re-download it (offline `embed`/`query`/`qmd mcp` destroyed working models). Runtime loading now goes through the new `download::resolve_model` — upstream's `resolveModel`/`resolveModelFile`: a cached file is used without any network call, only a missing one is downloaded. `pull` keeps its etag refresh but sweeps the cache only on `--refresh`, a confirmed etag mismatch or an empty cache — upstream's delete-on-failed-HEAD stays unreplicated (parity-matrix §8). Every Hub request now has 30 s DNS/connect/send/response-header timeouts instead of hanging forever on a stalled connection.
 
 - `qmd collection add` / `qmd collection update-cmd` no longer record trust for an untrusted project config: they re-record only when the config was already trusted (or had no gated items) before the edit, so a checkout's pre-existing `update:` hooks, out-of-project paths or custom models can no longer ride along on the user's own change (deviation 85; upstream re-records unconditionally, upstream-quirks Q39).
+- Crate packages and release archives now carry the license texts, including upstream tobi/qmd's MIT notice (`LICENSE-UPSTREAM`); docs.rs builds use default features instead of `all-features`, whose GPU passthroughs need toolkits docs.rs lacks.
 
 ### Changed
 
