@@ -157,7 +157,10 @@ pub(crate) fn resolve_local_config_trust(
 /// config's current gated set as approved — a no-op for non-local
 /// configs. Called after the user explicitly mutates a gated field
 /// (`collection add`, `collection update-cmd`), so the new state needs
-/// no separate approval (#886/#889).
+/// no separate approval (tobi/qmd#886/tobi/qmd#889). Callers invoke it
+/// only when the config was fully trusted before their mutation —
+/// re-recording an untrusted config would launder its pre-existing
+/// gated items (deviation 85, upstream-quirks.md Q39).
 ///
 /// # Errors
 /// [`qmd::Error`] when the config cannot be loaded or the trust store

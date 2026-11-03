@@ -347,6 +347,9 @@ fn add(
         return Err(Failure::Reported(1));
     }
 
+    // Read before `open_store` pins `models:` into the config file —
+    // the pin would flip the trust question.
+    let was_trusted = ctx.config_fully_trusted(env);
     let qmd = ctx.open_store(env)?;
     match qmd.add_collection(&name, &spec) {
         Ok(()) => {}
@@ -379,8 +382,12 @@ fn add(
         }
         Err(err) => return Err(err.into()),
     }
-    // The user just typed this path — no separate approval (#889).
-    gate::trust_current_config(env, ctx)?;
+    // Upstream re-records unconditionally (tobi/qmd#889); only
+    // re-record trust that already held, or a checkout's pre-existing
+    // gated items would ride along (deviation 85, upstream-quirks Q39).
+    if was_trusted {
+        gate::trust_current_config(env, ctx)?;
+    }
 
     let _ = writeln!(io.out, "Creating collection '{name}'...");
     index_and_report(&qmd, &resolved, &glob, &name, io)?;
@@ -584,7 +591,8 @@ fn rename(
 /// `updateCollectionSettings` write are pure YAML
 /// (collections.ts:244-311), so this never opens the database.
 /// `trustCurrentConfig` runs after the save because the user typed the
-/// hook.
+/// hook — re-records only when the config was trusted before the edit
+/// (deviation 85).
 fn update_cmd(
     env: &Environment,
     ctx: &CliContext,
@@ -593,6 +601,9 @@ fn update_cmd(
     io: &mut Io<'_>,
 ) -> Result<(), Failure> {
     let config_path = ctx.config_path(env);
+    // Before the save — the pre-edit trust decides whether the new hook
+    // set may be re-recorded (deviation 85).
+    let was_trusted = ctx.config_fully_trusted(env);
     let mut cfg = qmd::config::load(&config_path)?;
     let Some(coll) = cfg.collections.get_mut(name) else {
         let _ = writeln!(io.err, "Collection not found: {name}");
@@ -606,8 +617,12 @@ fn update_cmd(
     // serde so clearing removes it rather than writing an empty value.
     coll.update = cmd;
     qmd::config::save(&config_path, &cfg)?;
-    // Re-record so the digest covers the new hook set (#886).
-    gate::trust_current_config(env, ctx)?;
+    // Upstream re-records unconditionally (tobi/qmd#886); only
+    // re-record trust that already held, or a checkout's pre-existing
+    // gated items would ride along (deviation 85, upstream-quirks Q39).
+    if was_trusted {
+        gate::trust_current_config(env, ctx)?;
+    }
     let _ = writeln!(io.out, "{message}");
     Ok(())
 }

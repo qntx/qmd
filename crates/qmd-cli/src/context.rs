@@ -126,12 +126,14 @@ impl CliContext {
     /// # Errors
     /// [`qmd::Error`] from `Qmd::builder(...).build()`.
     pub(crate) fn open_store(&self, env: &Environment) -> Result<Qmd> {
-        self.open_store_with_models(env, self.config_models_trusted(env))
+        self.open_store_with_models(env, self.config_fully_trusted(env))
     }
 
-    /// `localConfigIsFullyTrusted` (qmd.ts:164) — the runtime gate for
-    /// the config's declared `models:`.
-    fn config_models_trusted(&self, env: &Environment) -> bool {
+    /// `localConfigIsFullyTrusted` (qmd.ts:759-767) — the runtime gate for
+    /// the config's declared `models:`, and the pre-mutation check that
+    /// decides whether `collection add`/`update-cmd` may re-record trust
+    /// (deviation 85).
+    pub(crate) fn config_fully_trusted(&self, env: &Environment) -> bool {
         let config_path = self.config_path(env);
         // `localConfigIsFullyTrusted` throws upstream only through
         // `loadConfig` — a missing/broken file there lands in getStore's
@@ -173,6 +175,6 @@ impl CliContext {
     /// # Errors
     /// [`qmd::Error`] from `Qmd::builder(...).build()`.
     pub(crate) fn open_store_no_models_pin(&self, env: &Environment) -> Result<Qmd> {
-        self.build_store(env, self.config_models_trusted(env))
+        self.build_store(env, self.config_fully_trusted(env))
     }
 }
