@@ -242,13 +242,15 @@ fn version_string() -> String {
 /// OS handler only writes a self-pipe), so the cursor write below is
 /// ordinary stderr output — a lock wait on an in-flight `writeln!` is a
 /// bounded stall, matching upstream's unconditional
-/// `process.stderr.write`. `std::process::exit` runs from that thread,
-/// so destructors — including the llama.cpp Metal teardown upstream
-/// avoids via `process.exit` (qmd.ts:285-303) — never run.
+/// `process.stderr.write`. The exit itself is
+/// `signal_hook::low_level::exit` (`_exit`): neither Rust destructors
+/// nor libc at-exit hooks / C++ static destructors run.
+/// `std::process::exit` would run ggml-metal's static teardown while
+/// llama contexts are still alive and abort on its residency-set
+/// assertion (exit 134 instead of 130/143 — deviation 47, audit C-2);
+/// the exit code stays upstream's 130/143.
 #[cfg(unix)]
 #[allow(
-    clippy::exit,
-    clippy::disallowed_methods,
     clippy::let_underscore_must_use,
     reason = "signal termination cannot return an ExitCode and cannot surface \
               a write error; mirrors upstream process.exit(130|143) and an \
@@ -270,7 +272,7 @@ fn install_signal_handlers() {
                 // The process is gone after the first signal.
                 if let Some(sig) = signals.forever().next() {
                     let _ = std::io::stderr().write_all(b"\x1b[?25h");
-                    std::process::exit(if sig == SIGTERM { 143 } else { 130 });
+                    signal_hook::low_level::exit(if sig == SIGTERM { 143 } else { 130 });
                 }
             }),
     );
