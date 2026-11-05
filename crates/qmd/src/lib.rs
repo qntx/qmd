@@ -40,8 +40,9 @@
 //!
 //! Drop every `Qmd` handle (and backend `Arc`s) before the process
 //! exits — llama.cpp's Metal static destructor asserts while contexts
-//! are alive; a signal handler should use `_exit`, not
-//! `std::process::exit` (deviation 47, audit C-2).
+//! are alive, so a signal handler should exit through `_exit` (e.g.
+//! `signal_hook::low_level::exit`), not `std::process::exit`, whose
+//! libc `exit` runs that destructor and aborts.
 //!
 //! # API stability
 //!
