@@ -32,6 +32,13 @@ update:
 test:
     cargo test --workspace {{FEATURES}}
 
+# Real-model tests (`#[ignore]`): need the three default GGUFs in the model
+# cache (`qmd pull`); `config_interop_upstream_round_trip` also needs bun
+# and QMD_UPSTREAM pointing at an upstream tobi/qmd checkout. Run before
+# every release (audit F-2).
+test-models:
+    cargo test --workspace {{FEATURES}} -- --ignored
+
 bench:
     cargo bench {{FEATURES}}
 
