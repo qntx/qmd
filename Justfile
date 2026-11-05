@@ -41,6 +41,8 @@ clippy:
         --all-targets \
         {{FEATURES}} \
         -- -D warnings
+    # Storage/BM25-only embedders build qmd without llama.cpp (audit D-4).
+    cargo +nightly clippy -p qmd --all-targets --no-default-features --features testing -- -D warnings
 
 # Prerequisites: `rustup toolchain install nightly --component clippy`
 clippy-fix:

@@ -895,6 +895,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_embedder(&self, _config: &Config) -> Result<Arc<dyn Embedder>> {
         Err(Error::NoBackend {
             capability: Capability::Embed,
@@ -969,6 +973,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_reranker(&self, _config: &Config) -> Result<Arc<dyn Reranker>> {
         Err(Error::NoBackend {
             capability: Capability::Rerank,
@@ -991,6 +999,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_generator(&self, _config: &Config) -> Result<Arc<dyn Generator>> {
         Err(Error::NoBackend {
             capability: Capability::Generate,
