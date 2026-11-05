@@ -224,7 +224,7 @@ fn exit_code(result: Result<(), Failure>, io: &mut Io<'_>) -> ExitCode {
 
 /// `qmd <version>[ (<commit>)]` — upstream `showVersion` (qmd.ts:4347-4358).
 /// The commit is the build-time stamp from build.rs (P4-D6); a foreign
-/// or absent checkout stamps nothing, matching `resolveCommit`'s #787
+/// or absent checkout stamps nothing, matching `resolveCommit`'s tobi/qmd#787
 /// guard.
 fn version_string() -> String {
     match option_env!("QMD_CLI_COMMIT") {

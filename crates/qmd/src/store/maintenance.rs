@@ -111,7 +111,7 @@ pub(crate) fn vacuum_database(conn: &Connection) -> Result<()> {
 }
 
 /// Upstream `optimizeDocumentsFts` (store.ts:2858-2866): merge FTS5
-/// b-trees so hard-deleted rows leave `documents_fts_data` (#550).
+/// b-trees so hard-deleted rows leave `documents_fts_data` (tobi/qmd#550).
 /// A missing `documents_fts` table degrades to a no-op, as upstream.
 pub(crate) fn optimize_documents_fts(conn: &Connection) -> Result<()> {
     match conn.execute_batch("INSERT INTO documents_fts(documents_fts) VALUES('optimize')") {

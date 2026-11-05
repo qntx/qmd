@@ -4,7 +4,7 @@
 //!
 //! Ported upstream coverage: `test/store.test.ts` "Reindex Collection"
 //! and "Document Helpers" groups, `test/path-fidelity.test.ts` (store
-//! level, incl. the #717 separator conflict), `splitGlobMask`, and the
+//! level, incl. the tobi/qmd#717 separator conflict), `splitGlobMask`, and the
 //! `update` parts of `test/sdk.test.ts`.
 
 #![allow(
@@ -368,7 +368,7 @@ fn dir_glob_ignore_pattern_prunes_subtree() {
 
 #[test]
 fn separator_conflict_files_both_indexed() {
-    // Upstream path-fidelity #717: literal paths mean "a b.md" and
+    // Upstream path-fidelity tobi/qmd#717: literal paths mean "a b.md" and
     // "a_b.md" stay distinct documents.
     let tmp = tempfile::tempdir().unwrap();
     let docs = tmp.path().join("docs");

@@ -248,7 +248,7 @@ pub(crate) fn rerank(
     docs: &[(String, String)],
 ) -> Result<Vec<(String, f64)>> {
     let rerank_query = intent.map_or_else(|| query.to_owned(), |i| format!("{i}\n\n{query}"));
-    // `llm.rerankModelName ?? model` — the resolved URI (#764).
+    // `llm.rerankModelName ?? model` — the resolved URI (tobi/qmd#764).
     let reranker = (ctx.backends.reranker)()?;
     let cache_model = reranker.model_id().to_owned();
 

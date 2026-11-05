@@ -443,7 +443,7 @@ fn rpc_error(
 }
 
 /// Middleware: origin guard ahead of routing so REST is covered too
-/// (server.ts:984-1001, upstream tobi/qmd#881), then the per-request log.
+/// (server.ts:984-1001, tobi/qmd#881), then the per-request log.
 async fn guard_and_log(State(state): State<Arc<AppState>>, req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_owned();

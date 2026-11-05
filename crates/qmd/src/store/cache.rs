@@ -28,7 +28,7 @@ const PRUNE_KEEP: i64 = 1000;
 /// object literals upstream builds (`{query, model}` for expansion,
 /// `{query, model, chunk}` for rerank). The legacy `{query, file,
 /// model, chunk}` rerank key is not emitted — D2 registers that
-/// pre-#764 entries are simply missed (and lazily replaced).
+/// pre-tobi/qmd#764 entries are simply missed (and lazily replaced).
 #[derive(Serialize)]
 pub(crate) struct CacheKeyBody<'a> {
     /// Query text (expansion query, or `"{intent}\n\n{query}"` for rerank).

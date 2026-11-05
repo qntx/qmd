@@ -512,7 +512,7 @@ fn finish_comma_resolve(
 
 /// Upstream `resolveCommaListName` (store.ts:5086-5129): docid or
 /// `qmd://` (exact), then exact `collection/path`, exact `d.path`, then
-/// path-boundary suffix `%/name` — never an unanchored LIKE (#759).
+/// path-boundary suffix `%/name` — never an unanchored LIKE (tobi/qmd#759).
 fn resolve_comma_list_name(conn: &Connection, name: &str) -> Result<CommaMatch> {
     let trimmed = name.trim();
     if trimmed.is_empty() {

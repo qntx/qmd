@@ -779,7 +779,7 @@ struct CachedModelInspection {
 
 /// `findCachedModelInspection` (cli/qmd.ts:3810-3835): `hf:` URIs probe
 /// the model cache for `.gguf` blobs containing the filename (the
-/// `.etag` sidecar is excluded by the `.gguf` suffix, #812); other URIs
+/// `.etag` sidecar is excluded by the `.gguf` suffix, tobi/qmd#812); other URIs
 /// are inspected as plain files.
 #[allow(
     clippy::case_sensitive_file_extension_comparisons,

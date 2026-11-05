@@ -178,7 +178,7 @@ pub(crate) fn get_context_for_file(
 /// filtered queries (17s → 8ms). `LIMIT*10` over-fetch happens when a
 /// collection or metadata filter is set. Multiple collections are
 /// queried separately and merged by score so a large unrelated
-/// collection cannot starve the smaller ones (upstream #775).
+/// collection cannot starve the smaller ones (tobi/qmd#775).
 ///
 /// With a metadata `filter`, only documents with a current-version,
 /// error-free extraction can match — an unprocessed document must not
@@ -470,12 +470,12 @@ pub(crate) fn embed_query(
 /// [`embed_query`].
 ///
 /// Two-step shape is load-bearing: sqlite-vec virtual tables hang on a
-/// `JOIN` in the same query (upstream PR #23) — the vec step never
+/// `JOIN` in the same query (tobi/qmd#23) — the vec step never
 /// joins, the document lookup never touches `vectors_vec`.
 ///
 /// With a collection or metadata `filter` the eligible `hash_seq` set is
 /// computed first: small sets exact-scan (global ANN would starve them,
-/// upstream #791/#803), large sets fall back to capped ANN. The filter
+/// tobi/qmd#791/#803), large sets fall back to capped ANN. The filter
 /// is re-applied at the document join because vectors are content-scoped
 /// — one hash can back both matching and non-matching documents
 /// (store.ts:4339-4345).

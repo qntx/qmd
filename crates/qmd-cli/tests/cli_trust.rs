@@ -1,5 +1,5 @@
-//! Ports of upstream `test/local-config-trust-cli.test.ts` (#889) and
-//! `test/update-hook-trust-cli.test.ts` (#886), plus the CLI test of
+//! Ports of upstream `test/local-config-trust-cli.test.ts` (tobi/qmd#889) and
+//! `test/update-hook-trust-cli.test.ts` (tobi/qmd#886), plus the CLI test of
 //! `test/local-config.test.ts`.
 //!
 //! Each fixture plays a freshly cloned repository shipping its own

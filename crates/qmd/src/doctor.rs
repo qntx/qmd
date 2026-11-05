@@ -134,7 +134,7 @@ pub fn current_embed_fingerprint(qmd: &Qmd) -> Result<String> {
 /// `getHashesNeedingEmbedding(db, undefined, model)` (cli/qmd.ts:4253,
 /// calling store.ts:2546-2566). `qmd doctor` passes the *declared*
 /// model — the `resolveModelsForCli` triple, not the trust-gated
-/// runtime one — matching upstream's display semantics (#889).
+/// runtime one — matching upstream's display semantics (tobi/qmd#889).
 ///
 /// # Errors
 /// [`crate::Error::Db`] on query failure.

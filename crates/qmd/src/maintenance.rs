@@ -71,7 +71,7 @@ impl Maintenance<'_> {
     }
 
     /// Compact the FTS5 index so deleted rows leave
-    /// `documents_fts_data` (upstream `optimizeFts`, #550).
+    /// `documents_fts_data` (upstream `optimizeFts`, tobi/qmd#550).
     ///
     /// # Errors
     /// [`crate::Error::Db`] on SQLite failure.

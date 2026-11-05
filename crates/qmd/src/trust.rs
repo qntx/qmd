@@ -6,11 +6,11 @@
 //! inside the tree. Three fields in that file can reach outside the
 //! project:
 //!
-//! - `update:` — a shell command run by `qmd update` (upstream #886)
+//! - `update:` — a shell command run by `qmd update` (tobi/qmd#886)
 //! - `collections.*.path` — any directory the process can read (upstream
-//!   #889)
+//!   tobi/qmd#889)
 //! - `models.embed` / `models.rerank` / `models.generate` — any `hf:` repo
-//!   or local GGUF path (upstream #889)
+//!   or local GGUF path (tobi/qmd#889)
 //!
 //! Global `~/.config/qmd` is never gated. In-project collection paths and
 //! the built-in default model URIs are also allowed without approval:

@@ -194,7 +194,7 @@ fn doctor_identifies_cached_non_gguf_model_files() {
 
 #[test]
 fn doctor_ignores_etag_sidecars_beside_valid_cached_model() {
-    // Upstream #812: `<file>.gguf.etag` sorts before the blob but only
+    // tobi/qmd#812: `<file>.gguf.etag` sorts before the blob but only
     // real `.gguf` files may be inspected.
     let env = CliEnv::new();
     let model = "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";

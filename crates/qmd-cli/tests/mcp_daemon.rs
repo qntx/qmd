@@ -311,7 +311,7 @@ fn mcp_stop_never_signals_foreign_process() {
     drop(sleeper.wait());
 }
 
-/// `--index <name>` scopes the state files (upstream #772): a named
+/// `--index <name>` scopes the state files (tobi/qmd#772): a named
 /// daemon writes `mcp-<name>.pid`, leaves `mcp.pid` absent, serves the
 /// named index, and `mcp stop` under the same `--index` kills it.
 #[allow(

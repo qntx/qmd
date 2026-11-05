@@ -207,7 +207,7 @@ pub struct LexOptions {
     pub limit: Option<usize>,
     /// Restrict the search to these collection names; `None` or empty
     /// searches all collections. Several names are queried separately
-    /// and merged by score (upstream #775).
+    /// and merged by score (tobi/qmd#775).
     pub collections: Option<Vec<String>>,
     /// Metadata filter — every returned result satisfies it (upstream
     /// `LexSearchOptions.filter`, index.ts:211). Build one with

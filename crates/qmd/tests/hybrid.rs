@@ -668,7 +668,7 @@ fn hybrid_expansion_cache_warms_second_search() {
 fn hybrid_dud_expansion_is_evicted_and_regenerated() {
     let tmp = tempfile::tempdir().unwrap();
     // Expansion parses (`alphaqqq` embeds the term "alpha") but its
-    // FTS search matches nothing — a runnable dud (upstream #818
+    // FTS search matches nothing — a runnable dud (tobi/qmd#818
     // eviction); vec/hyde entries would not count on an FTS-only store.
     let g = Arc::new(ScriptedGenerator::output("m-gen", "lex: alphaqqq"));
     let g_calls = Arc::clone(&g);
@@ -1626,12 +1626,12 @@ fn structured_line_zero_is_not_a_source_line() {
     assert!(!msg.contains("Line 0"), "{msg}");
 }
 
-// ── rerank cache keyed by reranker model (T7 / #764) ──
+// ── rerank cache keyed by reranker model (T7 / tobi/qmd#764) ──
 
 #[test]
 fn rerank_cache_key_includes_reranker_model_id() {
     // store.test.ts "rerank cache key includes the resolved rerank
-    // model" (#764): same database, a different `model_id` must not
+    // model" (tobi/qmd#764): same database, a different `model_id` must not
     // reuse another model's cached scores.
     let tmp = tempfile::tempdir().unwrap();
     let docs_dir = tmp.path().join("docs");
