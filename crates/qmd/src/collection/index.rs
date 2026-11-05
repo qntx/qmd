@@ -170,7 +170,7 @@ pub(crate) fn reindex_collection(
         // upstream keeps the previous document active, and `processed`
         // increments without an `onProgress` call — the only file class
         // that ticks the counter silently (store.ts:1685-1687).
-        if crate::chunk::js_trim(&content).is_empty() {
+        if crate::js::js_trim(&content).is_empty() {
             processed += 1;
             continue;
         }

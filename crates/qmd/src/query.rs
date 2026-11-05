@@ -22,8 +22,9 @@ fn compile_regex(pattern: &str) -> Regex {
     Regex::new(pattern).expect("static pattern must compile")
 }
 
-use crate::chunk::{is_js_ws, js_trim, utf16_len};
+use crate::chunk::{is_js_ws, utf16_len};
 use crate::error::{Error, Result};
+use crate::js::js_trim;
 
 /// Expanded sub-query kind — upstream `ExpandedQuery["type"]`
 /// (store.ts:440-445), plus `Original` used by ranked-list metadata to

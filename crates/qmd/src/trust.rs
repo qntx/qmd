@@ -271,7 +271,7 @@ pub fn resolve_config_collection_path(
     env: &Environment,
 ) -> String {
     // `String(rawPath ?? "").trim()` — JS trim, then `~` expansion.
-    let expanded = expand_user_path(crate::chunk::js_trim(raw_path), env);
+    let expanded = expand_user_path(crate::js::js_trim(raw_path), env);
     if expanded.is_empty() {
         return project_root_from_config(config_path, env);
     }
@@ -587,7 +587,7 @@ fn is_truthy_env(value: Option<&str>) -> bool {
         return false;
     }
     !matches!(
-        crate::chunk::js_trim(v).to_lowercase().as_str(),
+        crate::js::js_trim(v).to_lowercase().as_str(),
         "0" | "false" | "off" | "no" | "none"
     )
 }

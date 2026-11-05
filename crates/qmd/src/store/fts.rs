@@ -14,8 +14,9 @@ use std::sync::LazyLock;
 use regex::Regex;
 use rusqlite::{Connection, OptionalExtension, params};
 
-use crate::chunk::{JS_WS, is_js_ws, js_trim};
+use crate::chunk::{JS_WS, is_js_ws};
 use crate::error::{DbError, Result};
+use crate::js::js_trim;
 
 /// Upstream `CJK_RUN_PATTERN` (store.ts:871): runs of Han, Hiragana,
 /// Katakana or Hangul characters.

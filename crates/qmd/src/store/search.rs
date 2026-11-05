@@ -195,7 +195,7 @@ pub(crate) fn search_fts(
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| crate::chunk::js_trim(&n).to_owned())
+            .map(|n| crate::js::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });
@@ -489,7 +489,7 @@ pub(crate) fn search_vec_with_embedding(
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| crate::chunk::js_trim(&n).to_owned())
+            .map(|n| crate::js::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });
