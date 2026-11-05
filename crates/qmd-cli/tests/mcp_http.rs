@@ -68,9 +68,20 @@ struct Server {
 }
 
 impl Server {
-    /// Spawn `qmd <args>` and block until the listening line or a
-    /// 30-second deadline.
-    fn spawn(env: &CliEnv, args: &[&str], index_path: bool, extra: &[(&str, &str)]) -> Self {
+    /// Spawn `qmd <args>` and block until the listening line, or return
+    /// the captured stderr if the child exits first (e.g. a port-in-use
+    /// error). `spawn` keeps the panicking behavior; the retry helper
+    /// below uses the `Err` arm.
+    #[allow(
+        clippy::unwrap_in_result,
+        reason = "a spawn failure is a hard panic for the test, not a retryable exit"
+    )]
+    fn try_spawn(
+        env: &CliEnv,
+        args: &[&str],
+        index_path: bool,
+        extra: &[(&str, &str)],
+    ) -> Result<Self, String> {
         let mut child = env.qmd_command(args, index_path, extra).spawn().unwrap();
         let (tx, rx) = channel::<String>();
         let pipe = child.stderr.take().unwrap();
@@ -84,22 +95,60 @@ impl Server {
         let deadline = Instant::now() + Duration::from_secs(30);
         let mut seen = String::new();
         let port = loop {
-            let line = rx
-                .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                .unwrap_or_else(|e| {
-                    panic!("server never printed its listening line ({e}); stderr:\n{seen}")
-                });
+            let Ok(line) = rx.recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            else {
+                // The channel closed (child exited) or the deadline hit
+                // before the listening line — reap the child (`kill` is a
+                // no-op if it already exited), then hand back the stderr.
+                child.kill().ok();
+                child.wait().ok();
+                return Err(seen);
+            };
             seen.push_str(&line);
             if let Some(p) = listening_port(&line) {
                 break p;
             }
         };
-        Self {
+        Ok(Self {
             child: Some(child),
             rx,
             seen,
             port,
+        })
+    }
+
+    /// `try_spawn` that panics — the common case for tests that do not
+    /// tolerate a spawn failure.
+    fn spawn(env: &CliEnv, args: &[&str], index_path: bool, extra: &[(&str, &str)]) -> Self {
+        match Self::try_spawn(env, args, index_path, extra) {
+            Ok(s) => s,
+            Err(seen) => panic!("server never printed its listening line; stderr:\n{seen}"),
         }
+    }
+
+    /// Spawn on a probed-free port, retrying on a fresh port up to 3
+    /// attempts if the child exits with the port-in-use error — the
+    /// probe-then-bind window is a TOCTOU race a parallel process can
+    /// win (audit F-1). Any other early exit panics immediately.
+    fn spawn_on_free_port(
+        env: &CliEnv,
+        args: &[&str],
+        index_path: bool,
+        extra: &[(&str, &str)],
+    ) -> Self {
+        for _ in 0..3 {
+            let port = common::free_port().to_string();
+            let mut a: Vec<&str> = args.to_vec();
+            a.extend(["--port", port.as_str()]);
+            match Self::try_spawn(env, &a, index_path, extra) {
+                Ok(s) => return s,
+                Err(seen) if !seen.contains("already in use") => {
+                    panic!("server never printed its listening line; stderr:\n{seen}");
+                }
+                Err(_) => {}
+            }
+        }
+        panic!("server port never free after 3 attempts");
     }
 
     fn id(&self) -> u32 {
@@ -205,8 +254,7 @@ fn http_unknown_subcommand_rejected() {
 #[test]
 fn http_sigint_shuts_down_cleanly() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     signal(server.id(), "-INT");
     let (status, err) = server.wait();
     assert_eq!(status.code(), Some(0), "exit: {status}");
@@ -252,13 +300,8 @@ fn http_index_prefixed_mcp_stays_http() {
 #[test]
 fn http_custom_host_and_port() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(
-        &env,
-        &["mcp", "--http", "--host", "127.0.0.1", "--port", &port],
-        true,
-        &[],
-    );
+    let server =
+        Server::spawn_on_free_port(&env, &["mcp", "--http", "--host", "127.0.0.1"], true, &[]);
     assert!(
         server.seen.contains(&format!(
             "QMD MCP server listening on http://127.0.0.1:{}/mcp",
@@ -286,13 +329,8 @@ fn http_custom_host_and_port() {
 #[test]
 fn http_qmd_host_env_var() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(
-        &env,
-        &["mcp", "--http", "--port", &port],
-        true,
-        &[("QMD_HOST", "127.0.0.1")],
-    );
+    let server =
+        Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[("QMD_HOST", "127.0.0.1")]);
     assert!(
         server.seen.contains("http://127.0.0.1:"),
         "stderr: {}",
@@ -310,13 +348,8 @@ fn http_qmd_host_env_var() {
 #[test]
 fn http_wildcard_bind_warns_and_skips_host_check() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(
-        &env,
-        &["mcp", "--http", "--host", "0.0.0.0", "--port", &port],
-        true,
-        &[],
-    );
+    let server =
+        Server::spawn_on_free_port(&env, &["mcp", "--http", "--host", "0.0.0.0"], true, &[]);
     std::thread::sleep(Duration::from_millis(300));
     assert!(
         server.drain().contains(
@@ -341,8 +374,7 @@ fn http_wildcard_bind_warns_and_skips_host_check() {
 #[test]
 fn http_concurrent_requests_all_succeed() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let bound = server.port;
     let mut handles = Vec::new();
     for i in 0..8 {
@@ -383,8 +415,7 @@ fn http_concurrent_requests_all_succeed() {
 #[test]
 fn http_rest_filter_null_is_a_400() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let reply = common::http_request(
         server.port,
         "POST",
@@ -410,8 +441,7 @@ fn http_rest_filter_null_is_a_400() {
 #[test]
 fn http_rest_error_locations_match_upstream() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let newline = common::http_request(
         server.port,
         "POST",
@@ -445,8 +475,7 @@ fn http_rest_error_locations_match_upstream() {
 #[test]
 fn http_get_mcp_ignores_body() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let big = "x".repeat(5 * 1024 * 1024);
     let reply = common::http_request(server.port, "GET", "/mcp", &hdrs(&[]), Some(big.as_str()));
     assert_eq!(reply.status, 405, "body: {}", reply.body);
@@ -462,8 +491,7 @@ fn http_get_mcp_ignores_body() {
 #[test]
 fn http_rest_body_cap_matches_mcp() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let mut body = String::from(r#"{"searches":[{"type":"lex","query":""#);
     body.push_str(&"x".repeat(5 * 1024 * 1024));
     body.push_str(r#""}]}"#);
@@ -485,8 +513,7 @@ fn http_rest_body_cap_matches_mcp() {
 #[test]
 fn http_bogus_version_header_stays_legacy() {
     let env = indexed_env();
-    let port = common::free_port().to_string();
-    let server = Server::spawn(&env, &["mcp", "--http", "--port", &port], true, &[]);
+    let server = Server::spawn_on_free_port(&env, &["mcp", "--http"], true, &[]);
     let reply = common::http_request(
         server.port,
         "POST",
