@@ -63,25 +63,14 @@ fn load_fixture(path: &str) -> Result<Fixture, Failure> {
     let collection = value
         .get("collection")
         .filter(|c| !c.is_null())
-        .map(js_string);
+        // JS `String(value)` for fixture scalars — the guard's template
+        // coerces it (numbers/bools stringify, arrays `,`-join, null
+        // items → empty; upstream-quirks.md Q37).
+        .map(js::js_string);
     Ok(Fixture {
         collection,
         queries: out,
     })
-}
-
-/// JS `String(value)` for fixture scalars (bench.ts:344 `??` keeps
-/// the raw value; the guard's template coerces it): numbers and bools
-/// stringify, arrays join with `,`, objects are `[object Object]`.
-fn js_string(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::Bool(b) => b.to_string(),
-        serde_json::Value::Null => "null".to_owned(),
-        serde_json::Value::Array(a) => a.iter().map(js_string).collect::<Vec<_>>().join(","),
-        serde_json::Value::Object(_) => "[object Object]".to_owned(),
-    }
 }
 
 /// A parsed structured query — the `{searches, intent}` pair upstream

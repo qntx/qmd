@@ -6,6 +6,8 @@
 //! - `body_length` counts bytes (`String::len`); upstream uses JS string
 //!   length (UTF-16 code units). Equal for ASCII and BMP text.
 
+use std::path::Path;
+
 use rusqlite::{Connection, OptionalExtension, params_from_iter};
 
 use super::collections::{DbCollection, get_store_collections, get_store_global_context};
@@ -106,13 +108,10 @@ pub(crate) fn get_context_for_file(
             if coll.path.is_empty() {
                 continue;
             }
-            let prefix = format!("{}/", coll.path);
-            if filepath == coll.path {
-                found = Some((coll.name.clone(), String::new()));
-                break;
-            }
-            if filepath.starts_with(&prefix) {
-                found = Some((coll.name.clone(), filepath[prefix.len()..].to_owned()));
+            if let Some(rel) =
+                crate::paths::relative_slash_path(Path::new(&coll.path), Path::new(filepath))
+            {
+                found = Some((coll.name.clone(), rel));
                 break;
             }
         }
@@ -179,7 +178,7 @@ pub(crate) fn get_context_for_file(
 /// filtered queries (17s → 8ms). `LIMIT*10` over-fetch happens when a
 /// collection or metadata filter is set. Multiple collections are
 /// queried separately and merged by score so a large unrelated
-/// collection cannot starve the smaller ones (upstream #775).
+/// collection cannot starve the smaller ones (tobi/qmd#775).
 ///
 /// With a metadata `filter`, only documents with a current-version,
 /// error-free extraction can match — an unprocessed document must not
@@ -196,7 +195,7 @@ pub(crate) fn search_fts(
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| crate::chunk::js_trim(&n).to_owned())
+            .map(|n| crate::js::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });
@@ -471,12 +470,12 @@ pub(crate) fn embed_query(
 /// [`embed_query`].
 ///
 /// Two-step shape is load-bearing: sqlite-vec virtual tables hang on a
-/// `JOIN` in the same query (upstream PR #23) — the vec step never
+/// `JOIN` in the same query (tobi/qmd#23) — the vec step never
 /// joins, the document lookup never touches `vectors_vec`.
 ///
 /// With a collection or metadata `filter` the eligible `hash_seq` set is
 /// computed first: small sets exact-scan (global ANN would starve them,
-/// upstream #791/#803), large sets fall back to capped ANN. The filter
+/// tobi/qmd#791/#803), large sets fall back to capped ANN. The filter
 /// is re-applied at the document join because vectors are content-scoped
 /// — one hash can back both matching and non-matching documents
 /// (store.ts:4339-4345).
@@ -490,7 +489,7 @@ pub(crate) fn search_vec_with_embedding(
     let names = collection_scope.map(|scope| {
         scope
             .into_iter()
-            .map(|n| crate::chunk::js_trim(&n).to_owned())
+            .map(|n| crate::js::js_trim(&n).to_owned())
             .filter(|n| !n.is_empty())
             .collect::<Vec<_>>()
     });

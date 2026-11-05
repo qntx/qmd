@@ -207,7 +207,7 @@ pub struct LexOptions {
     pub limit: Option<usize>,
     /// Restrict the search to these collection names; `None` or empty
     /// searches all collections. Several names are queried separately
-    /// and merged by score (upstream #775).
+    /// and merged by score (tobi/qmd#775).
     pub collections: Option<Vec<String>>,
     /// Metadata filter — every returned result satisfies it (upstream
     /// `LexSearchOptions.filter`, index.ts:211). Build one with
@@ -895,6 +895,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_embedder(&self, _config: &Config) -> Result<Arc<dyn Embedder>> {
         Err(Error::NoBackend {
             capability: Capability::Embed,
@@ -969,6 +973,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_reranker(&self, _config: &Config) -> Result<Arc<dyn Reranker>> {
         Err(Error::NoBackend {
             capability: Capability::Rerank,
@@ -991,6 +999,10 @@ impl Qmd {
 
     /// Without `llama` there is no default backend to build.
     #[cfg(not(feature = "llama"))]
+    #[allow(
+        clippy::unused_self,
+        reason = "`self` is only read when the llama backend is compiled in"
+    )]
     fn build_default_generator(&self, _config: &Config) -> Result<Arc<dyn Generator>> {
         Err(Error::NoBackend {
             capability: Capability::Generate,
@@ -1392,19 +1404,19 @@ impl Qmd {
             // match — upstream realpaths only the file side and misses.
             let root_path = crate::paths::canonicalize(Path::new(&coll.path))
                 .unwrap_or_else(|_| PathBuf::from(&coll.path));
-            let root_owned = root_path.to_string_lossy().into_owned();
-            let root = root_owned.trim_end_matches('/');
-            if root.is_empty() {
+            if root_path.parent().is_none() {
+                // A filesystem-root collection — the old
+                // `root.trim_end('/')` empties to `""`; skip it.
                 continue;
             }
-            let prefix = format!("{root}/");
-            let real_str = real.to_string_lossy();
-            if !real_str.starts_with(&prefix) && real_str != root {
+            // Component-wise containment — upstream's `root + "/"`
+            // string prefix never matches Windows separators
+            // (deviation 86).
+            let Some(relative) = crate::paths::relative_slash_path(&root_path, &real) else {
                 continue;
-            }
-            if root.len() > best_len {
-                best_len = root.len();
-                let relative = real_str.strip_prefix(&prefix).unwrap_or("").to_owned();
+            };
+            if root_path.as_os_str().len() > best_len {
+                best_len = root_path.as_os_str().len();
                 best = Some(CollectionPath {
                     name: name.clone(),
                     relative_path: relative,
@@ -1759,6 +1771,14 @@ impl Qmd {
     ///
     /// Re-running after interruption resumes where it stopped:
     /// `content_vectors` completeness determines the pending set.
+    ///
+    /// The connection lock is held for the whole run, inference included:
+    /// other calls on the same handle (searches, `status`, `get`) wait until
+    /// embedding finishes. Upstream's single-threaded async runtime lets
+    /// queries interleave with an in-flight embed; to embed and query
+    /// concurrently, open a second [`Qmd`] on the same database — the store
+    /// runs in WAL mode with a busy timeout, so readers proceed between
+    /// embed batches (deviation 87).
     ///
     /// # Errors
     /// [`Error::NoBackend`] without an embedder, [`Error::InvalidInput`]

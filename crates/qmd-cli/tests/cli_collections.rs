@@ -61,7 +61,7 @@ fn adds_files_from_current_directory() {
     );
 }
 
-/// #684 — a bare `collection add` must not silently index CWD.
+/// tobi/qmd#684 — a bare `collection add` must not silently index CWD.
 #[test]
 fn requires_a_path_argument() {
     let env = isolated_env();
@@ -198,7 +198,7 @@ fn adds_files_with_custom_glob_pattern() {
     assert!(out.stdout.contains("notes/*.md"), "{}", out.stdout);
 }
 
-/// #536 — `--glob` aliases `--mask`; same path with a different pattern
+/// tobi/qmd#536 — `--glob` aliases `--mask`; same path with a different pattern
 /// is a different collection.
 #[test]
 fn accepts_glob_alias_for_same_path_collections() {
@@ -237,7 +237,7 @@ fn accepts_glob_alias_for_same_path_collections() {
     assert!(list.stdout.contains("memory.md"), "{}", list.stdout);
 }
 
-/// #557 — a comma-separated mask is a union of patterns.
+/// tobi/qmd#557 — a comma-separated mask is a union of patterns.
 #[test]
 fn indexes_comma_separated_mask_patterns_as_union() {
     let env = isolated_env();
@@ -261,7 +261,7 @@ fn indexes_comma_separated_mask_patterns_as_union() {
     assert!(out.stdout.contains("Indexed: 2 new"), "{}", out.stdout);
 }
 
-/// #557 — brace expansion still works alongside comma masks.
+/// tobi/qmd#557 — brace expansion still works alongside comma masks.
 #[test]
 fn still_accepts_brace_expansion_mask() {
     let env = isolated_env();
@@ -284,7 +284,7 @@ fn still_accepts_brace_expansion_mask() {
     assert!(out.stdout.contains("Indexed: 2 new"), "{}", out.stdout);
 }
 
-/// #460 — an unreadable file warns on stderr and indexing continues.
+/// tobi/qmd#460 — an unreadable file warns on stderr and indexing continues.
 #[test]
 #[cfg(unix)]
 fn warns_and_continues_when_a_file_is_unreadable() {

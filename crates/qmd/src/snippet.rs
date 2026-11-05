@@ -7,7 +7,8 @@
 //! character — upstream could emit a lone surrogate, we always emit
 //! valid UTF-8 (identical output except at astral boundaries).
 
-use crate::chunk::{CHUNK_SIZE_CHARS, is_js_ws, js_trim, utf16_len, utf16_to_byte_offset};
+use crate::chunk::{CHUNK_SIZE_CHARS, is_js_ws, utf16_len, utf16_to_byte_offset};
+use crate::js::js_trim;
 use crate::query::{INTENT_WEIGHT_SNIPPET, extract_intent_terms};
 
 /// Upstream `SnippetResult` (store.ts:5290-5296).

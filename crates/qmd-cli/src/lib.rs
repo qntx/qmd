@@ -1,20 +1,21 @@
-//! `qmd` command-line interface (P4.1).
+//! `qmd` command-line interface.
 //!
 //! Ports upstream `tobi/qmd` `src/cli/qmd.ts` dispatch (qmd.ts:4361-5032)
-//! and the read-only commands `search` (with its `outputResults`
-//! renderers, qmd.ts:2388-2704), `get`, `multi-get`, `ls` and the
-//! `skills`/`skill`/`--skill` surface (P4.4). The crate
-//! is a library plus a thin `qmd` binary: `main` only assembles the
-//! real process environment and calls [`run`], so tests drive the CLI
-//! in-process or through `CARGO_BIN_EXE_qmd` (P4-D1).
+//! and every command it serves — `search`/`query`, `get`, `multi-get`,
+//! `ls`, `collection`, `context`, `update`, `embed`, `status`, `doctor`,
+//! `trust`, `bench`, the `skills`/`skill`/`--skill` surface and `mcp` —
+//! through [`run`]. The crate is a library plus a thin `qmd` binary:
+//! `main` only assembles the real process environment and calls
+//! [`run`], so tests drive the CLI in-process or through
+//! `CARGO_BIN_EXE_qmd`.
 //!
 //! All output goes through the [`Io`] writers (the workspace forbids
 //! `print_stdout`/`print_stderr`), and every path returns an
-//! [`ExitCode`] instead of `process.exit` (P4-D2/T3). The
+//! [`ExitCode`] instead of `process.exit`. The
 //! [`qmd::Qmd`] handle must not outlive `main` — llama.cpp asserts in a static
 //! destructor on macOS when Metal resources outlive the process — so
 //! commands hold it in a local that drops before `run` returns
-//! (parity-matrix §12 #47).
+//! (deviation 47).
 
 // Writes into `Io` go to stdout/stderr (or test buffers); upstream's
 // console.log/console.error cannot surface short-write errors either,
@@ -223,7 +224,7 @@ fn exit_code(result: Result<(), Failure>, io: &mut Io<'_>) -> ExitCode {
 
 /// `qmd <version>[ (<commit>)]` — upstream `showVersion` (qmd.ts:4347-4358).
 /// The commit is the build-time stamp from build.rs (P4-D6); a foreign
-/// or absent checkout stamps nothing, matching `resolveCommit`'s #787
+/// or absent checkout stamps nothing, matching `resolveCommit`'s tobi/qmd#787
 /// guard.
 fn version_string() -> String {
     match option_env!("QMD_CLI_COMMIT") {
@@ -242,13 +243,15 @@ fn version_string() -> String {
 /// OS handler only writes a self-pipe), so the cursor write below is
 /// ordinary stderr output — a lock wait on an in-flight `writeln!` is a
 /// bounded stall, matching upstream's unconditional
-/// `process.stderr.write`. `std::process::exit` runs from that thread,
-/// so destructors — including the llama.cpp Metal teardown upstream
-/// avoids via `process.exit` (qmd.ts:285-303) — never run.
+/// `process.stderr.write`. The exit itself is
+/// `signal_hook::low_level::exit` (`_exit`): neither Rust destructors
+/// nor libc at-exit hooks / C++ static destructors run.
+/// `std::process::exit` would run ggml-metal's static teardown while
+/// llama contexts are still alive and abort on its residency-set
+/// assertion (exit 134 instead of 130/143 — deviation 47, audit C-2);
+/// the exit code stays upstream's 130/143.
 #[cfg(unix)]
 #[allow(
-    clippy::exit,
-    clippy::disallowed_methods,
     clippy::let_underscore_must_use,
     reason = "signal termination cannot return an ExitCode and cannot surface \
               a write error; mirrors upstream process.exit(130|143) and an \
@@ -270,7 +273,7 @@ fn install_signal_handlers() {
                 // The process is gone after the first signal.
                 if let Some(sig) = signals.forever().next() {
                     let _ = std::io::stderr().write_all(b"\x1b[?25h");
-                    std::process::exit(if sig == SIGTERM { 143 } else { 130 });
+                    signal_hook::low_level::exit(if sig == SIGTERM { 143 } else { 130 });
                 }
             }),
     );

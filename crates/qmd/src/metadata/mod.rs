@@ -17,7 +17,8 @@ mod yaml;
 
 use indexmap::IndexMap;
 
-use crate::chunk::{is_js_ws, js_trim, utf16_len};
+use crate::chunk::{is_js_ws, utf16_len};
+use crate::js::js_trim;
 
 /// Upstream `METADATA_EXTRACTION_VERSION` (metadata.ts:61). Bump when
 /// extraction semantics change so stored rows are re-extracted.

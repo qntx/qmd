@@ -9,10 +9,11 @@ description            = "On-device hybrid search for markdown: BM25, vectors an
 keywords               = ["search", "markdown", "embedding", "fts5", "rag"]
 categories             = ["text-processing", "database"]
 
+# Default features (llama + ast) plus `testing`; GPU passthroughs stay off —
+# docs.rs has no CUDA/Vulkan toolkits (audit G-1).
 [package.metadata.docs.rs]
-no-default-features = true
-features            = ["testing"]
-rustdoc-args        = ["--cfg", "docsrs"]
+features     = ["testing"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["llama", "ast"]

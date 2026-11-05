@@ -271,3 +271,74 @@ pub(crate) fn is_path_inside_dir(dir: &Path, target: &Path) -> bool {
         |real| real == real_dir || real.starts_with(&real_dir),
     )
 }
+
+/// `path`'s components joined with `/` — the separator-free relative
+/// form stored for indexed files and matched against globs.
+pub(crate) fn to_slash_path(path: &Path) -> String {
+    path.components()
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+/// `path` relative to `root`, `/`-joined — compared by path components,
+/// so Windows `D:\proj\docs\a.md` under `D:\proj\docs` maps to `a.md`
+/// (and `D:/proj/docs/a.md` too). `None` when `path` is not under
+/// `root`, `Some("")` when both name the same directory.
+///
+/// Upstream compares `startsWith(root + "/")` strings, which never
+/// matches Windows separators (deviation 86).
+pub(crate) fn relative_slash_path(root: &Path, path: &Path) -> Option<String> {
+    path.strip_prefix(root).ok().map(to_slash_path)
+}
+
+#[cfg(test)]
+mod slash_path_tests {
+    use std::path::Path;
+
+    use super::relative_slash_path;
+
+    #[test]
+    #[cfg(unix)]
+    fn relative_slash_path_unix() {
+        assert_eq!(
+            relative_slash_path(Path::new("/a/docs"), Path::new("/a/docs/x/y.md")),
+            Some("x/y.md".to_owned())
+        );
+        assert_eq!(
+            relative_slash_path(Path::new("/a/docs"), Path::new("/a/docs")),
+            Some(String::new())
+        );
+        assert_eq!(
+            relative_slash_path(Path::new("/a/docs"), Path::new("/a/docs2/x.md")),
+            None
+        );
+        assert_eq!(
+            relative_slash_path(Path::new("/a/docs/sub"), Path::new("/a/docs/x.md")),
+            None
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn relative_slash_path_windows() {
+        assert_eq!(
+            relative_slash_path(
+                Path::new("D:\\proj\\docs"),
+                Path::new("D:\\proj\\docs\\sub\\a.md")
+            ),
+            Some("sub/a.md".to_owned())
+        );
+        assert_eq!(
+            relative_slash_path(Path::new("D:\\proj\\docs"), Path::new("D:/proj/docs/a.md")),
+            Some("a.md".to_owned())
+        );
+        assert_eq!(
+            relative_slash_path(
+                Path::new("D:\\proj\\docs"),
+                Path::new("D:\\proj\\docs2\\a.md")
+            ),
+            None
+        );
+    }
+}

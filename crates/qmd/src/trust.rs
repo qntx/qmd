@@ -6,11 +6,11 @@
 //! inside the tree. Three fields in that file can reach outside the
 //! project:
 //!
-//! - `update:` — a shell command run by `qmd update` (upstream #886)
+//! - `update:` — a shell command run by `qmd update` (tobi/qmd#886)
 //! - `collections.*.path` — any directory the process can read (upstream
-//!   #889)
+//!   tobi/qmd#889)
 //! - `models.embed` / `models.rerank` / `models.generate` — any `hf:` repo
-//!   or local GGUF path (upstream #889)
+//!   or local GGUF path (tobi/qmd#889)
 //!
 //! Global `~/.config/qmd` is never gated. In-project collection paths and
 //! the built-in default model URIs are also allowed without approval:
@@ -271,7 +271,7 @@ pub fn resolve_config_collection_path(
     env: &Environment,
 ) -> String {
     // `String(rawPath ?? "").trim()` — JS trim, then `~` expansion.
-    let expanded = expand_user_path(crate::chunk::js_trim(raw_path), env);
+    let expanded = expand_user_path(crate::js::js_trim(raw_path), env);
     if expanded.is_empty() {
         return project_root_from_config(config_path, env);
     }
@@ -587,7 +587,7 @@ fn is_truthy_env(value: Option<&str>) -> bool {
         return false;
     }
     !matches!(
-        crate::chunk::js_trim(v).to_lowercase().as_str(),
+        crate::js::js_trim(v).to_lowercase().as_str(),
         "0" | "false" | "off" | "no" | "none"
     )
 }

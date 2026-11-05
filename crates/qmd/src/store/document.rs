@@ -15,7 +15,7 @@
 //! - A missing `vectors_vec`/`content` row cannot occur: every lookup
 //!   goes through `JOIN content`.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OptionalExtension, params_from_iter};
 
@@ -233,9 +233,12 @@ fn get_ignored_lookup_match(
                 continue;
             }
             candidates.push(vp.path.clone());
-        } else if let Some(rel) = normalized.strip_prefix(&format!("{}/", coll.path)) {
-            candidates.push(rel.to_owned());
-        } else if !normalized.starts_with('/') {
+        } else if let Some(rel) =
+            crate::paths::relative_slash_path(Path::new(&coll.path), Path::new(&normalized))
+                .filter(|r| !r.is_empty())
+        {
+            candidates.push(rel);
+        } else if !Path::new(&normalized).is_absolute() {
             let prefix = format!("{}/", coll.name);
             if let Some(rel) = normalized.strip_prefix(&prefix) {
                 candidates.push(rel.to_owned());
@@ -338,10 +341,10 @@ pub(crate) fn find_document(
     // 3. Absolute or collection-relative filesystem path.
     if doc.is_none() && !filepath.starts_with("qmd://") {
         for coll in get_store_collections(conn)? {
-            let relative: Option<String> = filepath
-                .strip_prefix(&format!("{}/", coll.path))
-                .map(str::to_owned)
-                .or_else(|| (!filepath.starts_with('/')).then(|| filepath.clone()));
+            let relative: Option<String> =
+                crate::paths::relative_slash_path(Path::new(&coll.path), Path::new(&filepath))
+                    .filter(|r| !r.is_empty())
+                    .or_else(|| (!Path::new(&filepath).is_absolute()).then(|| filepath.clone()));
             let Some(rel) = relative else { continue };
             doc = row(
                 "WHERE d.collection = ? AND d.path = ? AND d.active = 1",
@@ -509,7 +512,7 @@ fn finish_comma_resolve(
 
 /// Upstream `resolveCommaListName` (store.ts:5086-5129): docid or
 /// `qmd://` (exact), then exact `collection/path`, exact `d.path`, then
-/// path-boundary suffix `%/name` — never an unanchored LIKE (#759).
+/// path-boundary suffix `%/name` — never an unanchored LIKE (tobi/qmd#759).
 fn resolve_comma_list_name(conn: &Connection, name: &str) -> Result<CommaMatch> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -777,8 +780,8 @@ pub(crate) fn resolve_virtual_path(conn: &Connection, uri: &str) -> Result<Optio
     else {
         return Ok(None);
     };
-    let resolved = resolve_lexical(std::path::Path::new(&coll.path), &parsed.path);
-    if !is_path_inside_dir(std::path::Path::new(&coll.path), &resolved) {
+    let resolved = resolve_lexical(Path::new(&coll.path), &parsed.path);
+    if !is_path_inside_dir(Path::new(&coll.path), &resolved) {
         return Ok(None);
     }
     Ok(Some(resolved))

@@ -9,8 +9,8 @@ description            = "Command-line interface for qmd."
 keywords               = ["search", "markdown", "cli", "rag"]
 categories             = ["command-line-utilities"]
 
+# Default features only: the GPU passthroughs need toolkits docs.rs lacks (audit G-1).
 [package.metadata.docs.rs]
-all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[bin]]

@@ -47,9 +47,10 @@ use llama_cpp_2::token::data_array::LlamaTokenDataArray;
 use llama_cpp_2::{LlamaBackendDevice, LlamaBackendDeviceType, LogOptions};
 
 use crate::CancelToken;
-use crate::chunk::{is_js_ws, js_trim};
+use crate::chunk::is_js_ws;
 use crate::env::Environment;
 use crate::error::{Error, Result};
+use crate::js::js_trim;
 use crate::llm::{Embedder, Generator, InferenceError, Reranker};
 
 /// Upstream `EMBED_CONTEXT_SIZE` default (`llm.ts:1346`).

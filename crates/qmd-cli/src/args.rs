@@ -349,7 +349,7 @@ pub(crate) struct CollectionArgs {
     /// qmd.ts:1824-1827).
     #[arg(long)]
     pub(crate) mask: Option<String>,
-    /// `--glob <glob>` — `--mask` alias (upstream #536).
+    /// `--glob <glob>` — `--mask` alias (tobi/qmd#536).
     #[arg(long)]
     pub(crate) glob: Option<String>,
 }

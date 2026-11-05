@@ -1,5 +1,5 @@
-//! Ports of upstream `test/local-config-trust-cli.test.ts` (#889) and
-//! `test/update-hook-trust-cli.test.ts` (#886), plus the CLI test of
+//! Ports of upstream `test/local-config-trust-cli.test.ts` (tobi/qmd#889) and
+//! `test/update-hook-trust-cli.test.ts` (tobi/qmd#886), plus the CLI test of
 //! `test/local-config.test.ts`.
 //!
 //! Each fixture plays a freshly cloned repository shipping its own
@@ -364,6 +364,109 @@ fn qmd_trust_update_hooks_env_opts_unattended_runs_back_in() {
         out.stdout
     );
     assert!(p.marker().exists());
+}
+
+// ── trust laundering (deviation 85, upstream-quirks.md Q39) ─────────
+
+#[test]
+fn collection_add_does_not_launder_a_checked_in_hook() {
+    // A checked-in `.qmd/index.yml` carrying a gated `update:` hook:
+    // the user's unrelated `collection add` must not re-record trust,
+    // or the hook would run on the next `qmd update`.
+    let p = ProjEnv::new();
+    p.write_local_config(&hook_config("echo ran > hook-ran.txt"));
+    fs::create_dir_all(p.proj.join("notes")).unwrap();
+    fs::write(p.proj.join("notes/n.md"), "# Notes\n").unwrap();
+
+    let add = p.run(&["collection", "add", "./notes", "--name", "notes"]);
+    assert_eq!(add.exit_code, 0, "stderr: {}", add.stderr);
+
+    let out = p.run(&["update"]);
+    assert!(!p.marker().exists());
+    assert!(
+        out.stdout.contains("defines update commands"),
+        "{}",
+        out.stdout
+    );
+}
+
+#[test]
+fn update_cmd_does_not_launder_other_checked_in_hooks() {
+    // The edited collection (`notes`) has no hook; `docs`'s checked-in
+    // hook must stay gated through the user's `update-cmd`.
+    let p = ProjEnv::new();
+    fs::create_dir_all(p.proj.join("notes")).unwrap();
+    fs::write(p.proj.join("notes/n.md"), "# Notes\n").unwrap();
+    p.write_local_config(
+        "collections:\n  docs:\n    path: ./docs\n    pattern: \"**/*.md\"\n    update: \"echo ran > hook-ran.txt\"\n  notes:\n    path: ./notes\n    pattern: \"**/*.md\"\n",
+    );
+
+    let set = p.run(&["collection", "update-cmd", "notes", "echo mine"]);
+    assert_eq!(set.exit_code, 0, "stderr: {}", set.stderr);
+
+    let out = p.run(&["update"]);
+    assert!(!p.marker().exists());
+    assert!(
+        out.stdout.contains("defines update commands"),
+        "{}",
+        out.stdout
+    );
+}
+
+#[test]
+fn update_cmd_on_a_trusted_config_stays_trusted() {
+    // Keeps the tobi/qmd#886 intent: a config already trusted re-records
+    // its digest across the user's own hook edit.
+    let p = ProjEnv::new();
+    p.write_local_config(&hook_config("echo ran > hook-ran.txt"));
+    let trust = p.run(&["trust"]);
+    assert!(trust.stdout.contains("Trusted"), "{}", trust.stdout);
+
+    let set = p.run(&[
+        "collection",
+        "update-cmd",
+        "docs",
+        "echo again > hook-ran.txt",
+    ]);
+    assert_eq!(set.exit_code, 0, "stderr: {}", set.stderr);
+
+    let out = p.run(&["update"]);
+    assert!(
+        out.stdout.contains("Running update command"),
+        "{}",
+        out.stdout
+    );
+    assert!(p.marker().exists());
+}
+
+#[test]
+fn collection_add_in_an_ungated_project_still_auto_trusts() {
+    // Keeps the tobi/qmd#889 intent: adding an out-of-project path the
+    // user just typed to a config with no gated items re-records
+    // trust, so `update` indexes it without warnings.
+    let p = ProjEnv::new();
+    p.write_local_config("collections:\n  docs:\n    path: ./docs\n    pattern: \"**/*.md\"\n");
+
+    let add = p.run(&[
+        "collection",
+        "add",
+        &p.outside.to_string_lossy(),
+        "--name",
+        "outside",
+    ]);
+    assert_eq!(add.exit_code, 0, "stderr: {}", add.stderr);
+
+    let out = p.run(&["update"]);
+    assert!(
+        !out.stdout.contains("Collection paths outside this project"),
+        "{}",
+        out.stdout
+    );
+    assert!(
+        !out.stdout.contains("Skipping collection 'outside'"),
+        "{}",
+        out.stdout
+    );
 }
 
 // ── local .qmd project config (local-config.test.ts) ───────────────

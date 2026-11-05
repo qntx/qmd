@@ -920,19 +920,19 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
     let mut index = 0;
     while let Some(line) = lines.get(index).copied() {
         if let Some(rest) = line.strip_prefix("name:") {
-            js_trim(rest).clone_into(&mut name);
+            qmd::js::js_trim(rest).clone_into(&mut name);
         } else if let Some(rest) = line.strip_prefix("description:") {
-            let mut parts = vec![js_trim(rest).to_owned()];
+            let mut parts = vec![qmd::js::js_trim(rest).to_owned()];
             // `while (i + 1 < lines.length && /^\s+\S/.test(lines[i+1])) { i++; parts.push(lines[i].trim()) }`
             while let Some(next) = lines.get(index + 1).copied()
                 && is_continuation(next)
             {
                 index += 1;
-                parts.push(js_trim(next).to_owned());
+                parts.push(qmd::js::js_trim(next).to_owned());
             }
             description = parts.join(" ");
         } else if let Some(rest) = line.strip_prefix("hidden:") {
-            let value = js_trim(rest).to_lowercase();
+            let value = qmd::js::js_trim(rest).to_lowercase();
             hidden = value == "true" || value == "yes";
         }
         index += 1;
@@ -951,7 +951,7 @@ fn parse_skill_frontmatter(content: &str) -> Option<SkillFrontmatter> {
 /// Upstream's `/^\s+\S/` continuation test: at least one whitespace
 /// char, then a non-whitespace char somewhere after it.
 fn is_continuation(line: &str) -> bool {
-    line.chars().next().is_some_and(is_js_ws) && !js_trim(line).is_empty()
+    line.chars().next().is_some_and(is_js_ws) && !qmd::js::js_trim(line).is_empty()
 }
 
 /// `copyDirectoryContents` (qmd.ts:3393-3405): recursive copy of a
@@ -1074,12 +1074,6 @@ fn write_body(out: &mut dyn Write, content: &str) {
     } else {
         let _ = writeln!(out, "{content}");
     }
-}
-
-/// `String.prototype.trim()` — the JS `\s` set (includes U+FEFF);
-/// delegates to the shared [`qmd::js::js_trim`].
-fn js_trim(text: &str) -> &str {
-    qmd::js::js_trim(text)
 }
 
 /// `name.padEnd(maxName)` — pad with spaces to `target` UTF-16 units.

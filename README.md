@@ -43,6 +43,9 @@ targets regardless; add `--features cuda` or `--features vulkan` for
 the matching toolchain (CUDA verified on real hardware — RTX 5060 Ti,
 Windows; Vulkan build-verified only).
 
+Upgrading from the pre-rewrite 0.3.x releases? See *Upgrading from
+0.3.x* in [CHANGELOG.md](CHANGELOG.md).
+
 ## CLI
 
 ```text
@@ -74,7 +77,7 @@ qmd mcp stop                # stop the daemon
 `--full-path`, `--intent`; `query` also takes `--explain`, `--no-rerank`
 and `-C/--candidate-limit`.
 
-The index lives at `~/.cache/qmd/<index>.sqlite` (global) or
+The index lives at `~/.cache/qmd/<index>-rs.sqlite` (global) or
 `.qmd/index-rs.sqlite` next to a project-local `.qmd/index.y{a,}ml`.
 `--index <name>` switches indexes; `INDEX_PATH` overrides the db path.
 
@@ -89,9 +92,9 @@ parity matrix in `qmd-study`:
   or `skill install` needs a real path. `QMD_SKILLS_DIR` still overrides
   discovery wholesale. Upstream's `skills/release` maintainer skill is
   not ported, so `skills list`/`get --all` show `qmd` only.
-- **Project-local index naming.** Local databases are
-  `.qmd/index-rs.sqlite` so a Rust and an upstream index can coexist in
-  the same project without clobbering `index.sqlite`.
+- **Index naming.** Databases are `~/.cache/qmd/<index>-rs.sqlite`
+  (global) and `.qmd/index-rs.sqlite` (project-local), so a Rust and
+  an upstream index can coexist without clobbering each other.
 - **Embed locking.** `qmd embed` takes an OS `try_lock` on
   `<db>.embed.lock` instead of upstream's directory-level PID file;
   a busy lock prints `Another embed process is already running.
@@ -159,7 +162,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ## Acknowledgements
 
-This project is a Rust port of [tobi/qmd](https://github.com/tobi/qmd) by Tobi Lutke, used under the MIT License (Copyright (c) 2024-2026 Tobi Lutke).
+This project is a Rust port of [tobi/qmd](https://github.com/tobi/qmd) by Tobi Lutke, used under the MIT License (Copyright (c) 2024-2026 Tobi Lutke). Its license text ships as [LICENSE-UPSTREAM](LICENSE-UPSTREAM) in the repository, every crate and every release archive.
 
 ---
 

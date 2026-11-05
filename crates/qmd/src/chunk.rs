@@ -330,11 +330,6 @@ pub const fn is_js_ws(c: char) -> bool {
         | '\u{205f}' | '\u{3000}' | '\u{feff}')
 }
 
-/// JS `String.prototype.trim()` — trims the `\s` set.
-pub(crate) fn js_trim(s: &str) -> &str {
-    s.trim_matches(is_js_ws)
-}
-
 #[allow(
     clippy::expect_used,
     reason = "the break-point patterns are fixed literals; a failure is a compile-time bug"

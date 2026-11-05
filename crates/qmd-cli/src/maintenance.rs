@@ -319,7 +319,7 @@ fn status_tips(
 pub(crate) fn update(env: &Environment, ctx: &CliContext, io: &mut Io<'_>) -> Result<(), Failure> {
     let c = Palette::new(Palette::enabled(env, io));
     // Prompt before opening the store so an approval is visible to
-    // getStore (#889).
+    // getStore (tobi/qmd#889).
     let allowed = gate::resolve_local_config_trust(env, ctx, io)?;
     let qmd = ctx.open_store(env)?;
     let collections = qmd.collections()?;

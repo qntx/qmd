@@ -28,7 +28,7 @@ pub const DAEMON_CHILD_ENV: &str = "QMD_MCP_DAEMON_CHILD";
 ///
 /// The default index keeps `mcp.pid`/`mcp.log` for compatibility;
 /// named indexes are scoped `mcp-<name>.{pid,log}` so a named daemon
-/// can run alongside the default (#772).
+/// can run alongside the default (tobi/qmd#772).
 #[must_use]
 pub fn daemon_state_files(index_name: &str) -> (String, String) {
     let suffix = if index_name.is_empty() || index_name == "index" {
@@ -136,7 +136,9 @@ pub fn read_process_cmdline(pid: i64) -> Option<String> {
 }
 
 /// Non-unix fallback — upstream's `ps`/`/proc` probes would all fail,
-/// landing on the same `null` → "treated as stale" verdict.
+/// landing on the same `null` → "treated as stale" verdict
+/// (upstream-quirks.md Q38: on Windows a daemon can never be stopped
+/// via `mcp stop`, identical to upstream).
 #[cfg(not(unix))]
 #[must_use]
 pub fn read_process_cmdline(_pid: i64) -> Option<String> {
@@ -278,7 +280,7 @@ mod tests {
 
     #[test]
     fn named_indexes_get_scoped_state_files() {
-        // #772.
+        // tobi/qmd#772.
         assert_eq!(
             daemon_state_files("hsm-public-repro"),
             (

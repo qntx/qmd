@@ -443,7 +443,7 @@ fn rpc_error(
 }
 
 /// Middleware: origin guard ahead of routing so REST is covered too
-/// (server.ts:984-1001, upstream tobi/qmd#881), then the per-request log.
+/// (server.ts:984-1001, tobi/qmd#881), then the per-request log.
 async fn guard_and_log(State(state): State<Arc<AppState>>, req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_owned();
@@ -497,14 +497,14 @@ fn describe_request(body: &Value) -> String {
     let params = body.get("params");
     let tool = params
         .and_then(|p| p.get("name"))
-        .map_or_else(|| "?".to_owned(), crate::js::js_string);
+        .map_or_else(|| "?".to_owned(), qmd::js::js_string);
     if let Some(args) = params
         .and_then(|p| p.get("arguments"))
         .filter(|a| a.is_object())
     {
         for key in ["query", "file", "path", "pattern"] {
-            if let Some(v) = args.get(key).filter(|v| crate::js::is_truthy(v)) {
-                return tool_arg_label(&tool, key, &crate::js::js_string(v));
+            if let Some(v) = args.get(key).filter(|v| qmd::js::is_truthy(v)) {
+                return tool_arg_label(&tool, key, &qmd::js::js_string(v));
             }
         }
     }
@@ -654,7 +654,7 @@ fn name_header_check(el: &Value, headers: &HeaderMap, id: &Value) -> Option<Resp
     // Messages quote `JSON.stringify(value)` and `JSON.stringify(header)`;
     // the comparison is `String(value)`.
     let display_v = serde_json::to_string(value).unwrap_or_default();
-    let expected = crate::js::js_string(value);
+    let expected = qmd::js::js_string(value);
     let detail = match header(headers, HDR_NAME) {
         None => format!(
             "the body carries params.{key}={display_v} but the required Mcp-Name header is absent"

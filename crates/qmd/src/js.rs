@@ -7,8 +7,57 @@
 //! formatting and parsing differ (ties-to-even rounding, `1.0`
 //! suffixes, `e` notation, whole-string parsing), so the rules live
 //! here for the library, the CLI and the MCP server to share.
+//!
+//! [`js_string`]/[`is_truthy`] are the JSON-side `String(v)` and `||`
+//! coercions the bench guard and MCP server share (upstream server.ts /
+//! bench.ts).
+
+use serde_json::Value;
 
 pub use crate::chunk::is_js_ws;
+
+/// JS truthiness for a JSON value (falsy: null, false, 0, NaN, "").
+#[must_use]
+pub fn is_truthy(v: &Value) -> bool {
+    match v {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => n.as_f64().is_some_and(|f| f != 0.0),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+/// `String(v || "")` — falsy values give `""`, else [`js_string`].
+#[must_use]
+pub fn js_string_or_empty(v: &Value) -> String {
+    if is_truthy(v) {
+        js_string(v)
+    } else {
+        String::new()
+    }
+}
+
+/// JS `String(v)`: number/bool/array (`,`-joined, null→empty)/object
+/// (`"[object Object]"`)/string itself.
+#[must_use]
+pub fn js_string(v: &Value) -> String {
+    match v {
+        Value::Null => "null".to_owned(),
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => number_to_string(n.as_f64().unwrap_or(f64::NAN)),
+        Value::String(s) => s.clone(),
+        Value::Array(items) => items
+            .iter()
+            .map(|i| match i {
+                Value::Null => String::new(),
+                other => js_string(other),
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".to_owned(),
+    }
+}
 
 /// `String.prototype.trim()` — the JS `\s` set (includes U+FEFF).
 #[must_use]
@@ -484,6 +533,34 @@ mod tests {
         assert_eq!(number("-0x10"), None);
         assert_eq!(number("1_000"), None);
         assert_eq!(number("."), None);
+    }
+
+    #[test]
+    fn js_string_coerces_like_string() {
+        use serde_json::json;
+
+        assert_eq!(js_string(&json!(1.0)), "1");
+        assert_eq!(js_string(&json!(1e21)), "1e+21");
+        assert_eq!(js_string(&json!(-0.0)), "0");
+        assert_eq!(js_string(&json!(0.5)), "0.5");
+        assert_eq!(js_string(&json!([1, Value::Null, "a"])), "1,,a");
+        assert_eq!(js_string(&json!([[1, 2], 3])), "1,2,3");
+        assert_eq!(js_string(&json!({})), "[object Object]");
+        assert_eq!(js_string(&Value::Null), "null");
+        assert_eq!(js_string(&json!(true)), "true");
+        assert_eq!(js_string(&json!("x")), "x");
+    }
+
+    #[test]
+    fn is_truthy_matches_js() {
+        use serde_json::json;
+
+        for v in [json!(0), json!(""), json!(false), Value::Null] {
+            assert!(!is_truthy(&v), "{v:?}");
+        }
+        for v in [json!([]), json!({}), json!("0"), json!(1)] {
+            assert!(is_truthy(&v), "{v:?}");
+        }
     }
 
     #[test]
