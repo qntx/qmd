@@ -65,6 +65,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Crate packages and release archives now carry the license texts, including upstream tobi/qmd's MIT notice (`LICENSE-UPSTREAM`); docs.rs builds use default features instead of `all-features`, whose GPU passthroughs need toolkits docs.rs lacks.
 - Filesystem paths now map to their collection by path components instead of a `root + "/"` string prefix, so on Windows `qmd context add/rm <path>`, `qmd get <path>` (including the "Folder Context" lookup) and ignore checks work with `D:\...` paths (deviation 86; upstream hardcodes `/` the same way).
 - Ctrl-C / SIGTERM during inference no longer aborts on macOS: the CLI signal handler exits through `_exit` (`signal_hook::low_level::exit`) instead of `std::process::exit`, so ggml-metal's C++ static destructors never run against live llama contexts (they tripped `GGML_ASSERT([rsets->data count] == 0)` → SIGABRT/exit 134); the exit code is upstream's 130/143 again.
+- `qmd bench` coerces non-string fixture `collection` values with JavaScript `String()` semantics (`1.0` → `1`, `null` array items → empty), matching upstream's error text; the coercion is now the shared `qmd::js::js_string` used by the MCP server too.
 
 ### Changed
 
