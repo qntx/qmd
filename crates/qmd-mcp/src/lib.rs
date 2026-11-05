@@ -3,8 +3,8 @@
 //! Dual-era protocol over stdio and HTTP (`serve_stdio`/`serve_http`):
 //! 2025-era clients use the initialize handshake; 2026-07-28 clients
 //! send namespaced `_meta` and call `server/discover` without one.
-//! Known envelope deviations vs upstream are registered in
-//! `design/parity-matrix.md` §12 (deviations 69+).
+//! Known envelope deviations vs upstream are listed in the repository
+//! README's "Notable upstream differences" section and `CHANGELOG.md`.
 //!
 //! Embedding the HTTP server — upstream's `HttpServerHandle` —
 //! gives the bound port and a caller-controlled shutdown:

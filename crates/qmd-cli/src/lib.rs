@@ -1,20 +1,21 @@
-//! `qmd` command-line interface (P4.1).
+//! `qmd` command-line interface.
 //!
 //! Ports upstream `tobi/qmd` `src/cli/qmd.ts` dispatch (qmd.ts:4361-5032)
-//! and the read-only commands `search` (with its `outputResults`
-//! renderers, qmd.ts:2388-2704), `get`, `multi-get`, `ls` and the
-//! `skills`/`skill`/`--skill` surface (P4.4). The crate
-//! is a library plus a thin `qmd` binary: `main` only assembles the
-//! real process environment and calls [`run`], so tests drive the CLI
-//! in-process or through `CARGO_BIN_EXE_qmd` (P4-D1).
+//! and every command it serves — `search`/`query`, `get`, `multi-get`,
+//! `ls`, `collection`, `context`, `update`, `embed`, `status`, `doctor`,
+//! `trust`, `bench`, the `skills`/`skill`/`--skill` surface and `mcp` —
+//! through [`run`]. The crate is a library plus a thin `qmd` binary:
+//! `main` only assembles the real process environment and calls
+//! [`run`], so tests drive the CLI in-process or through
+//! `CARGO_BIN_EXE_qmd`.
 //!
 //! All output goes through the [`Io`] writers (the workspace forbids
 //! `print_stdout`/`print_stderr`), and every path returns an
-//! [`ExitCode`] instead of `process.exit` (P4-D2/T3). The
+//! [`ExitCode`] instead of `process.exit`. The
 //! [`qmd::Qmd`] handle must not outlive `main` — llama.cpp asserts in a static
 //! destructor on macOS when Metal resources outlive the process — so
 //! commands hold it in a local that drops before `run` returns
-//! (parity-matrix §12 #47).
+//! (deviation 47).
 
 // Writes into `Io` go to stdout/stderr (or test buffers); upstream's
 // console.log/console.error cannot surface short-write errors either,

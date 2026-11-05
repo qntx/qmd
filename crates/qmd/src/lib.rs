@@ -2,24 +2,63 @@
 //!
 //! Rust port of [tobi/qmd](https://github.com/tobi/qmd) (v2.8.3).
 //!
-//! # P1.4 surface
+//! # Overview
 //!
-//! Storage and configuration foundation, incremental indexing, BM25
-//! full-text search, and the document read surface:
-//! [`Qmd::builder`] opens a SQLite index (WAL, busy timeout, schema
-//! versioning, sqlite-vec), configuration comes from a YAML file, an
-//! inline [`Config`], or the database mirror, [`Qmd::update`] scans
-//! collections into `documents`/`content`/`documents_fts`, and
-//! [`Qmd::search_lex`] answers BM25-ranked keyword queries with
-//! [`extract_snippet`] excerpts. Documents are fetched by
-//! `qmd://` virtual path, `#docid`, or filesystem path via
-//! [`Qmd::get`], [`Qmd::document_body`], [`Qmd::multi_get`] and
-//! [`Qmd::list_documents`]; [`Qmd::status`]/[`Qmd::index_health`] report
-//! index state and [`Qmd::maintenance`] performs cleanup.
+//! [`Qmd::builder`] opens a SQLite index (WAL, busy timeout,
+//! sqlite-vec); collections come from a YAML config, an inline
+//! [`Config`], or the database mirror. [`Qmd::update`] scans and indexes
+//! collections, and [`Qmd::embed`] builds chunk vectors. Search runs
+//! through [`Qmd::search_lex`] (BM25), [`Qmd::search_vector`], and
+//! [`Qmd::search`] (hybrid: query expansion → BM25 + vector → RRF →
+//! rerank — [`Qmd::expand_query`] and [`Qmd::vector_query`] expose the
+//! steps). Documents are fetched by `qmd://` virtual path, `#docid`, or
+//! filesystem path via [`Qmd::get`], [`Qmd::document_body`],
+//! [`Qmd::multi_get`] and [`Qmd::list_documents`]; [`MetadataFilter`]
+//! gates results on front-matter scalars. [`Qmd::status`],
+//! [`Qmd::index_health`] and [`Qmd::maintenance`] report and clean up.
+//!
+//! # Inference backends
+//!
+//! Embedding, reranking and query expansion go through the
+//! [`Embedder`]/[`Reranker`]/[`Generator`] traits. With the `llama`
+//! feature (default) the backends are built lazily from the
+//! configured/env models; custom implementations plug in through
+//! [`QmdBuilder::embedder`]/[`QmdBuilder::reranker`]/
+//! [`QmdBuilder::generator`]. The `testing` feature provides
+//! [`FakeEmbedder`]/[`FakeReranker`]/[`FakeGenerator`].
+//!
+//! # Cargo features
+//!
+//! | feature | purpose |
+//! |---------|---------|
+//! | `llama` (default) | llama.cpp inference + Hugging Face model download; needs cmake and clang/libclang |
+//! | `ast` (default) | tree-sitter AST break points for [`ChunkStrategy::Auto`] |
+//! | `testing` | deterministic in-memory `Fake*` backends |
+//! | `metal`/`cuda`/`vulkan` | GPU passthroughs, opt-in per machine — `--all-features` is not supported |
+//!
+//! # Process exit on macOS
+//!
+//! Drop every `Qmd` handle (and backend `Arc`s) before the process
+//! exits — llama.cpp's Metal static destructor asserts while contexts
+//! are alive; a signal handler should use `_exit`, not
+//! `std::process::exit` (deviation 47, audit C-2).
+//!
+//! # API stability
+//!
+//! 0.x. The modules `js`, `paths`, `doctor`, `trust`, `update_hook`,
+//! `vpath` and `docid` exist mainly to serve `qmd-cli`/`qmd-mcp` and
+//! may change in minor releases.
+//!
+//! # Upstream differences
+//!
+//! Behavior deliberately differs from upstream in a few places; see the
+//! [Notable upstream differences](https://github.com/qntx/qmd#notable-upstream-differences)
+//! section of the README and `CHANGELOG.md`.
 //!
 //! ```
 //! # fn main() -> qmd::Result<()> {
-//! let qmd = qmd::Qmd::builder("/tmp/example-rs.sqlite").build()?;
+//! let db = std::env::temp_dir().join("qmd-example.sqlite");
+//! let qmd = qmd::Qmd::builder(&db).build()?;
 //! qmd.add_collection(
 //!     "notes",
 //!     &qmd::CollectionSpec {
@@ -29,9 +68,9 @@
 //! )?;
 //! assert_eq!(qmd.collections()?.len(), 1);
 //! qmd.close()?;
-//! # std::fs::remove_file("/tmp/example-rs.sqlite").ok();
-//! # std::fs::remove_file("/tmp/example-rs.sqlite-wal").ok();
-//! # std::fs::remove_file("/tmp/example-rs.sqlite-shm").ok();
+//! # std::fs::remove_file(&db).ok();
+//! # std::fs::remove_file(db.with_extension("sqlite-wal")).ok();
+//! # std::fs::remove_file(db.with_extension("sqlite-shm")).ok();
 //! # Ok(())
 //! # }
 //! ```
