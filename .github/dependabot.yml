@@ -14,3 +14,18 @@ updates:
       # (`cargo test --features llama,testing -- --ignored`) before landing.
       - dependency-name: "llama-cpp-2"
       - dependency-name: "llama-cpp-sys-2"
+      # The tree-sitter runtime tracks upstream's web-tree-sitter 0.26;
+      # 0.27+ lands only in a deliberate, coordinated bump. 0.26.x
+      # patches are still proposed.
+      - dependency-name: "tree-sitter"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      # Grammar crates and sqlite-vec are =-pinned to the exact upstream
+      # (wasm grammar / FFI registration) versions — every bump is a
+      # deliberate parity re-verification, never a routine update.
+      - dependency-name: "tree-sitter-typescript"
+      - dependency-name: "tree-sitter-python"
+      - dependency-name: "tree-sitter-go"
+      - dependency-name: "tree-sitter-rust"
+      - dependency-name: "sqlite-vec"
