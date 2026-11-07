@@ -21,7 +21,11 @@ import { mkdtempSync, writeFileSync, mkdirSync, cpSync, readFileSync } from "fs"
 import { execSync } from "child_process";
 import { join } from "path";
 
-const UPSTREAM = process.env.QMD_UPSTREAM ?? "/Users/fjh/code/github/tobi/qmd";
+const UPSTREAM = process.env.QMD_UPSTREAM;
+if (!UPSTREAM) {
+  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  process.exit(1);
+}
 const OUT = "crates/qmd-cli/tests/fixtures/bench_golden.json";
 
 // Isolate EVERYTHING the recorder or upstream CLI touches — a stray
