@@ -11,11 +11,18 @@ FEATURES := "--features llama,testing"
 
 # `clippy-fix` exits 0 even when warnings it cannot fix remain, so the
 # plain `clippy` pass after it is the actual lint gate (same as CI).
-all: fmt clippy-fix clippy deny test doc-check lint-docs
+all: fmt clippy-fix clippy deny test doc-check lint-docs toml
 
-# Docs lint mirrors the shared ci-docs workflow (markdownlint-cli2).
+# Docs lint mirrors the shared ci-docs workflow (markdownlint-cli2)
+# plus the handwritten markdownlint CI job (root and per-crate READMEs;
+# crates/*/skills/** stays byte-verbatim upstream).
 lint-docs:
-    npx --yes markdownlint-cli2 "docs/*.mdx"
+    npx --yes markdownlint-cli2@0.23.3 "docs/*.mdx"
+    npx --yes markdownlint-cli2@0.23.3 "*.md" "crates/*/README.md"
+
+# TOML formatting gate — same invocation as the CI `taplo` job.
+toml:
+    npx --yes @taplo/cli@0.7.0 fmt --check
 
 list:
     @just --list
