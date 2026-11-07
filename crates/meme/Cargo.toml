@@ -38,29 +38,29 @@ cuda   = ["llama", "llama-cpp-2/cuda"]
 vulkan = ["llama", "llama-cpp-2/vulkan"]
 
 [dependencies]
-rusqlite      = { version = "0.40.2", features = ["bundled"] }
+rusqlite      = { version = "0.41", features = ["bundled"] }
 sqlite-vec    = "=0.1.9"
 serde         = { version = "1.0.229", features = ["derive"] }
 serde_yaml_bw = "2.5.8"
 # preserve_order: object keys keep document order, matching JS
 # `Object.keys`/`JSON.parse` semantics used by upstream filter
 # validation and metadata reads.
-serde_json    = { version = "1.0.151", features = ["preserve_order"] }
+serde_json    = { version = "1.0.154", features = ["preserve_order"] }
 indexmap      = { version = "2.14.2", features = ["serde"] }
 thiserror     = "2.0.21"
-sha2          = "0.11.0"
+sha2          = "0.11.1"
 walkdir       = "2.5.0"
-globset       = "0.4.20"
+globset       = "0.4.21"
 regex         = "1.13.1"
-granit-parser = "2.0"
+granit-parser = "~2.0"
 strsim        = "0.11.1"
-time          = { version = "0.3.36", features = ["formatting", "macros", "parsing"] }
+time          = { version = "0.3.55", features = ["formatting", "macros", "parsing"] }
 # `common` is required (grammar sampler shim, try_accept); `openmp` is
 # dropped (D10): it pulls libgomp.so.1 (Linux) / VCOMP140.DLL (MSVC)
 # runtime deps, and is a no-op under AppleClang anyway — ggml uses its
 # own thread pool.
 llama-cpp-2 = { version = "=0.1.158", optional = true, default-features = false, features = ["common"] }
-ureq        = { version = "3.4.2", optional = true }
+ureq        = { version = "3.5", optional = true }
 tracing     = "0.1.44"
 tree-sitter = { version = "0.26.13", optional = true }
 # Grammar crates pinned `=` to the exact upstream versions
@@ -73,7 +73,7 @@ tree-sitter-rust       = { version = "=0.24.0", optional = true }
 dunce                  = "1.0.5"
 
 [dev-dependencies]
-tempfile = "3.23.0"
+tempfile = "3.27.0"
 
 [lints]
 workspace = true
