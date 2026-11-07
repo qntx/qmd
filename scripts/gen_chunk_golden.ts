@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/chunk_golden.json` by running the
+ * Regenerate `crates/meme/tests/fixtures/chunk_golden.json` by running the
  * upstream (tobi/qmd) chunking pipeline on the vendored corpus.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_chunk_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_chunk_golden.ts
  *
  * Records `scanBreakPoints`/`findCodeFences`/`chunkDocument` outputs per
  * fixture file plus canned `findBestCutoff`/`mergeBreakPoints` cases, so
@@ -15,9 +15,9 @@
  * `chunk_document_with_break_points` against these chunks.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -27,7 +27,7 @@ const path = await import("node:path");
 const { execSync } = await import("node:child_process");
 
 const commit = execSync(`git -C "${upstream}" rev-parse HEAD`).toString().trim();
-const fixturesDir = new URL("../crates/qmd/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme/tests/fixtures/", import.meta.url).pathname;
 
 const dirs = ["eval-docs", "chunk-docs"];
 const files: string[] = [];
@@ -111,6 +111,6 @@ const out = {
   })),
 };
 
-const fixture = new URL("../crates/qmd/tests/fixtures/chunk_golden.json", import.meta.url).pathname;
+const fixture = new URL("../crates/meme/tests/fixtures/chunk_golden.json", import.meta.url).pathname;
 await fs.writeFile(fixture, JSON.stringify(out, null, 2) + "\n");
 console.log(`wrote ${fixture}`);

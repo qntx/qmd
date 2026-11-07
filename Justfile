@@ -6,7 +6,7 @@ default: all
 # (CPU-only on Linux; Metal is always built on Apple) plus the deterministic
 # test backends. GPU passthroughs (metal/cuda/vulkan) are opt-in — add them
 # here per machine, e.g. `just FEATURES="--features llama,testing,metal" all`.
-# `--all-features` is not a supported configuration (see crates/qmd/Cargo.toml).
+# `--all-features` is not a supported configuration (see crates/meme/Cargo.toml).
 FEATURES := "--features llama,testing"
 
 # `clippy-fix` exits 0 even when warnings it cannot fix remain, so the
@@ -40,8 +40,8 @@ test:
     cargo test --workspace {{FEATURES}}
 
 # Real-model tests (`#[ignore]`): need the three default GGUFs in the model
-# cache (`qmd pull`); `config_interop_upstream_round_trip` also needs bun
-# and QMD_UPSTREAM pointing at an upstream tobi/qmd checkout. Run before
+# cache (`meme pull`); `config_interop_upstream_round_trip` also needs bun
+# and MEME_UPSTREAM pointing at an upstream tobi/qmd checkout. Run before
 # every release (audit F-2).
 test-models:
     cargo test --workspace {{FEATURES}} -- --ignored
@@ -55,8 +55,8 @@ clippy:
         --all-targets \
         {{FEATURES}} \
         -- -D warnings
-    # Storage/BM25-only embedders build qmd without llama.cpp (audit D-4).
-    cargo +nightly clippy -p qmd --all-targets --no-default-features --features testing -- -D warnings
+    # Storage/BM25-only embedders build meme without llama.cpp (audit D-4).
+    cargo +nightly clippy -p meme --all-targets --no-default-features --features testing -- -D warnings
 
 # Prerequisites: `rustup toolchain install nightly --component clippy`
 clippy-fix:

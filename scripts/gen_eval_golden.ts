@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/eval_bm25_golden.json` for the
+ * Regenerate `crates/meme/tests/fixtures/eval_bm25_golden.json` for the
  * AC3 acceptance check: upstream `test/eval-docs` (vendored in
  * `fixtures/eval-docs/` with its LICENSE) indexed via
  * `insertContent`/`insertDocument` exactly like
@@ -8,14 +8,14 @@
  * eval queries — parsed out of the upstream test file.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_eval_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_eval_golden.ts
  */
 
 import { execSync } from "node:child_process";
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -35,14 +35,14 @@ if (queries.length !== 24) {
   process.exit(1);
 }
 
-const docsDir = new URL("../crates/qmd/tests/fixtures/eval-docs/", import.meta.url).pathname;
+const docsDir = new URL("../crates/meme/tests/fixtures/eval-docs/", import.meta.url).pathname;
 
 const tmp = await import("node:fs/promises");
 const os = await import("node:os");
 const path = await import("node:path");
 const { createHash } = await import("node:crypto");
 
-const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "qmd-eval-golden-"));
+const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "meme-eval-golden-"));
 const s = store.createStore(path.join(dir, "index.sqlite"));
 const db = s.db;
 
@@ -69,7 +69,7 @@ const out = {
   })),
 };
 
-const fixture = new URL("../crates/qmd/tests/fixtures/eval_bm25_golden.json", import.meta.url).pathname;
+const fixture = new URL("../crates/meme/tests/fixtures/eval_bm25_golden.json", import.meta.url).pathname;
 await tmp.writeFile(fixture, JSON.stringify(out, null, 2) + "\n");
 s.close();
 await tmp.rm(dir, { recursive: true, force: true });

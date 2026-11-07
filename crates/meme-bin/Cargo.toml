@@ -1,0 +1,55 @@
+[package]
+name                   = "meme-bin"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+description            = "Command-line interface for meme."
+keywords               = ["search", "markdown", "cli", "rag"]
+categories             = ["command-line-utilities"]
+
+# Default features only: the GPU passthroughs need toolkits docs.rs lacks (audit G-1).
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[bin]]
+name = "meme"
+path = "src/main.rs"
+doc  = false         # bin `meme` and lib `meme` would collide under target/doc/
+
+[lints]
+workspace = true
+
+[features]
+default = ["mcp", "ast"]
+mcp     = ["dep:meme-mcp", "dep:tokio"]
+ast     = ["meme/ast"]
+# GPU backend passthroughs (D9): opt-in per machine, same caveats as
+# the `meme` crate features — `cargo install meme-bin --features cuda`.
+metal  = ["meme/metal"]
+cuda   = ["meme/cuda"]
+vulkan = ["meme/vulkan"]
+
+[dependencies]
+clap       = { version = "4.6.7", features = ["derive"] }
+meme       = { version = "1.0.0", path = "../meme", default-features = false, features = ["llama"] }
+meme-mcp   = { version = "1.0.0", path = "../meme-mcp", optional = true }
+serde      = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+time       = { version = "0.3.55", features = ["local-offset", "formatting", "parsing"] }
+tokio      = { version = "1.53.3", features = ["rt-multi-thread"], optional = true }
+
+# signal-hook's `iterator` module is `cfg(not(windows))`; Windows uses
+# `ctrlc` for the same cursor-restore + exit(130) handler (P7.2).
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.4.4"
+
+[target.'cfg(windows)'.dependencies]
+ctrlc = "3.5.2"
+
+[dev-dependencies]
+meme     = { version = "1.0.0", path = "../meme", default-features = false, features = ["llama", "testing"] }
+regex    = "1.13.1"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+tempfile = "3.27.0"

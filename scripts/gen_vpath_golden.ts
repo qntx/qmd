@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/vpath_golden.json` by running
+ * Regenerate `crates/meme/tests/fixtures/vpath_golden.json` by running
  * the upstream (tobi/qmd) virtual-path, docid, glob and comma-list
  * resolvers on fixed inputs.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_vpath_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_vpath_golden.ts
  *
  * The fixture records upstream outputs verbatim so the Rust test can
  * assert identical normalization/parsing/matching without needing the
  * TS runtime at test time.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -27,22 +27,22 @@ const path = await import("node:path");
 // --- pure functions ---------------------------------------------------------
 
 const PATH_INPUTS = [
-  "qmd://notes/a.md",
-  "qmd:////notes/a.md",
-  "qmd:notes/a.md",
+  "meme://notes/a.md",
+  "meme:////notes/a.md",
+  "meme:notes/a.md",
   "//notes/a.md",
-  "  qmd://notes/a.md  ",
+  "  meme://notes/a.md  ",
   "notes/a.md",
   "/abs/a.md",
-  "qmd://notes",
-  "qmd://notes/",
-  "qmd://",
-  "qmd:///a.md",
-  "qmd://notes/a.md?index=main",
-  "qmd://notes/a.md?index=my%20idx",
-  "qmd://notes/a.md?index=a+b",
-  "qmd://notes/a.md?other=1&index=i",
-  "qmd://notes/a.md?index=",
+  "meme://notes",
+  "meme://notes/",
+  "meme://",
+  "meme:///a.md",
+  "meme://notes/a.md?index=main",
+  "meme://notes/a.md?index=my%20idx",
+  "meme://notes/a.md?index=a+b",
+  "meme://notes/a.md?other=1&index=i",
+  "meme://notes/a.md?index=",
   "a.md:10",
   "a.md:10:20",
 ];
@@ -76,8 +76,8 @@ const LINE_INPUTS = [
   "a.md:100",
   "a.md:100:40",
   "a.md:10:x",
-  "qmd://notes/a.md:5",
-  "qmd://notes/a.md:5:6",
+  "meme://notes/a.md:5",
+  "meme://notes/a.md:5:6",
 ];
 
 // Upstream CLI inline regexes (cli/qmd.ts:1261-1282).
@@ -103,7 +103,7 @@ function parseLineSuffix(input: string) {
 
 // --- DB-backed resolvers -----------------------------------------------------
 
-const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "qmd-vpath-golden-"));
+const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "meme-vpath-golden-"));
 const dbPath = path.join(dir, "index.sqlite");
 const s = store.createStore(dbPath);
 const db = s.db;
@@ -140,7 +140,7 @@ const GLOB_PATTERNS = [
   "sub/**",
   "**/b.md",
   "docs/*.md",
-  "qmd://docs/*.md",
+  "meme://docs/*.md",
   "same.md",
   "!hello.md",
   "**/*.xyz",
@@ -149,7 +149,7 @@ const GLOB_PATTERNS = [
 const COMMA_NAMES = [
   "hello.md",
   "docs/hello.md",
-  "qmd://docs/hello.md",
+  "meme://docs/hello.md",
   "b.md",          // path-boundary suffix match
   "NTAX.md",       // must NOT match SYNTAX.md
   "same.md",       // ambiguous across collections
@@ -192,7 +192,7 @@ const out = {
 };
 
 const fixture = new URL(
-  "../crates/qmd/tests/fixtures/vpath_golden.json",
+  "../crates/meme/tests/fixtures/vpath_golden.json",
   import.meta.url,
 ).pathname;
 await tmp.writeFile(fixture, JSON.stringify(out, null, 2) + "\n");

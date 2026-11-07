@@ -20,8 +20,8 @@ jobs:
     permissions:
       contents: read
     with:
-      # Dependency order: qmd → qmd-mcp → qmd-cli.
-      packages: "qmd qmd-mcp qmd-cli"
+      # Dependency order: meme → meme-mcp → meme-bin.
+      packages: "meme meme-mcp meme-bin"
       # llama-cpp-sys-2 builds llama.cpp with cmake and runs bindgen
       # against libclang during the publish verify build.
       apt-packages: cmake clang libclang-dev

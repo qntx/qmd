@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd-cli/tests/fixtures/cli_golden.json` by running the
+ * Regenerate `crates/meme-bin/tests/fixtures/cli_golden.json` by running the
  * upstream (tobi/qmd) CLI — `bun src/cli/qmd.ts` — over a fixed corpus and a
  * fixed list of invocations (P4-D3).
  *
  * Isolation (the reason this script exists in this shape):
  *   - every child runs with an explicit, minimal environment — nothing is
  *     inherited from this process except the directory holding `bun`;
- *   - HOME, XDG_CONFIG_HOME, XDG_CACHE_HOME, QMD_CONFIG_DIR, INDEX_PATH and
+ *   - HOME, XDG_CONFIG_HOME, XDG_CACHE_HOME, MEME_CONFIG_DIR, INDEX_PATH and
  *     TMPDIR all point inside a throwaway root under /tmp; bun's transpiler
  *     cache is disabled;
- *   - before/after the run, the real `~/.cache/qmd` / `~/.config/qmd` files
+ *   - before/after the run, the real `~/.cache/meme` / `~/.config/meme` files
  *     are sha256-compared and the watched directories plus the upstream
  *     checkout are scanned for anything modified after the start marker.
- *     A qmd-related change outside the root aborts without writing the
+ *     A meme-related change outside the root aborts without writing the
  *     fixture; unrelated noise (other apps touching ~/Library/Caches) is
  *     listed for review.
  *
@@ -29,13 +29,13 @@
  * P4.2 additions: `env` overrides per scenario; `write`/`delete` mutate the
  * corpus before the invocation (content writes get the current mtime, which
  * `update` detects); `post_state` lists root-relative files captured after
- * the run as `{path, exists, content}` (`config/*.yml`, `.qmd/*`,
+ * the run as `{path, exists, content}` (`config/*.yml`, `.meme/*`,
  * `trusted.json`) — `"trustedAt"` timestamps normalize to `<TS>`.
  *
  * P4.4 additions: `links` creates root-relative symlinks before the run;
  * `post_state` entries capture `link` targets when the path is a symlink
  * (`exists:true, content:null`); scenario `env` substitutes `<ROOT>`
- * in-place (e.g. `QMD_SKILLS_DIR` pointing at a fixture dir); the skills
+ * in-place (e.g. `MEME_SKILLS_DIR` pointing at a fixture dir); the skills
  * groups are `noSetup` — they never touch the index.
  *
  * `check`: `exact` — stdout, stderr and exit code byte-identical;
@@ -47,7 +47,7 @@
  * for reference only (help/version text differs by design, P4-D2/D8).
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_cli_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_cli_golden.ts
  */
 
 import { spawnSync } from "node:child_process";
@@ -60,15 +60,15 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 const BUN = process.execPath;
-const QMD_TS = join(upstream, "src", "cli", "qmd.ts");
+const MEME_TS = join(upstream, "src", "cli", "qmd.ts");
 const REAL_HOME = homedir();
-const fixturesDir = new URL("../crates/qmd-cli/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme-bin/tests/fixtures/", import.meta.url).pathname;
 
 // ---------------------------------------------------------------------------
 // Isolation guard
@@ -76,9 +76,9 @@ const fixturesDir = new URL("../crates/qmd-cli/tests/fixtures/", import.meta.url
 
 const sha256File = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
 
-function realQmdState(): Record<string, string> {
+function realMemeState(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const dir of [join(REAL_HOME, ".cache", "qmd"), join(REAL_HOME, ".config", "qmd")]) {
+  for (const dir of [join(REAL_HOME, ".cache", "meme"), join(REAL_HOME, ".config", "meme")]) {
     if (!existsSync(dir)) continue;
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
@@ -125,7 +125,7 @@ const faq = [
   "# FAQ",
   "",
   "## How do I search?",
-  "Run qmd search with a keyword.",
+  "Run meme search with a keyword.",
   "Search ranks results with BM25.",
   "",
   "## Does search work offline?",
@@ -145,11 +145,11 @@ const bigHead = "# Big Reference\n\nThis big search reference exists to exceed s
 const big = bigHead + "x".repeat(1280 - bigHead.length - 1) + "\n";
 
 const CORPUS: Record<string, string> = {
-  "docs/readme.md": "# QMD Readme\n\nQMD indexes markdown notes for search.\nSearch works offline and stays local.\n",
+  "docs/readme.md": "# MEME Readme\n\nMEME indexes markdown notes for search.\nSearch works offline and stays local.\n",
   "docs/guide/install.md": "# Install Guide\n\nInstall the binary, then run search once to verify.\n",
   "docs/guide/search-tips.md": "# Search \"Tips\", Tricks\n\nSearch tips: quote phrases to search exact text.\nSearch, search, search — repetition raises the score.\n",
-  "docs/api.md": "---\nqmd:\n  metadata:\n    status: published\n    priority: 2\n    tags: [api, reference]\n---\n\n# API Reference\n\nThe search API returns ranked documents.\n",
-  "docs/changelog.md": "---\nqmd:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n",
+  "docs/api.md": "---\nmeme:\n  metadata:\n    status: published\n    priority: 2\n    tags: [api, reference]\n---\n\n# API Reference\n\nThe search API returns ranked documents.\n",
+  "docs/changelog.md": "---\nmeme:\n  metadata:\n    status: draft\n    priority: 1\n---\n\n# Changelog\n\nAdded faster search and a new index format.\n",
   "docs/faq.md": faq,
   "docs/big.md": big,
   "docs/cjk.md": "# 中文文档\n\n这是一个关于搜索的中文文档。\n全文搜索支持中文。\n",
@@ -208,14 +208,14 @@ type Scenario = {
   argv: string[];
   cwd?: Cwd;
   check?: Check;
-  // Per-scenario env overrides (e.g. QMD_TRUST_LOCAL_CONFIG).
+  // Per-scenario env overrides (e.g. MEME_TRUST_LOCAL_CONFIG).
   env?: Record<string, string>;
   // Corpus mutations applied before the invocation (P4.2 `update` tests).
   write?: Record<string, string>;
   delete?: string[];
   // Command run silently before the scenario (e.g. set an update hook).
   pre?: string[];
-  // Root-relative files captured after the run (config, trusted.json, .qmd/*).
+  // Root-relative files captured after the run (config, trusted.json, .meme/*).
   post_state?: string[];
   // Root-relative symlinks to create before the invocation (P4.4 skills —
   // e.g. `.claude/skills` already pointing at `.agents/skills`).
@@ -276,18 +276,18 @@ const mainScenarios: Scenario[] = [
 
   // get
   { name: "get bare", argv: ["get", "docs/readme.md"] },
-  { name: "get qmd uri", argv: ["get", "qmd://docs/readme.md"] },
+  { name: "get meme uri", argv: ["get", "meme://docs/readme.md"] },
   { name: "get collection path", argv: ["get", "docs/guide/install.md"] },
   { name: "get double slash", argv: ["get", "//docs/readme.md"] },
-  { name: "get extra slashes", argv: ["get", "qmd:////docs/readme.md"] },
+  { name: "get extra slashes", argv: ["get", "meme:////docs/readme.md"] },
   { name: "get :line", argv: ["get", "docs/faq.md:5"] },
-  { name: "get qmd :from:count", argv: ["get", "qmd://docs/faq.md:5:3"] },
+  { name: "get meme :from:count", argv: ["get", "meme://docs/faq.md:5:3"] },
   { name: "get :from:count -l override", argv: ["get", "docs/faq.md:5:3", "-l", "1"] },
   { name: "get --from -l", argv: ["get", "docs/faq.md", "--from", "3", "-l", "2"] },
   { name: "get negative --from", argv: ["get", "docs/faq.md", "--from", "-5", "-l", "2"] },
   { name: "get --no-line-numbers", argv: ["get", "docs/faq.md", "--no-line-numbers"] },
   { name: "get context", argv: ["get", "notes/meeting.md"] },
-  { name: "get nested context", argv: ["get", "qmd://docs/guide/search-tips.md"] },
+  { name: "get nested context", argv: ["get", "meme://docs/guide/search-tips.md"] },
   { name: "get #docid", argv: ["get", `#${docid("docs/readme.md")}`] },
   { name: "get docid bare", argv: ["get", docid("notes/todo.md")] },
   { name: "get missing", argv: ["get", "docs/missing.md"] },
@@ -295,12 +295,12 @@ const mainScenarios: Scenario[] = [
   { name: "get ignored", argv: ["get", "drafts/secret.md"], cwd: "docs" },
   { name: "get no arg", argv: ["get"] },
   { name: "get full-path under pwd", argv: ["get", "docs/readme.md", "--full-path", "-l", "2"] },
-  { name: "get full-path outside pwd", argv: ["get", "qmd://docs/readme.md", "--full-path", "-l", "2"], cwd: "outside" },
+  { name: "get full-path outside pwd", argv: ["get", "meme://docs/readme.md", "--full-path", "-l", "2"], cwd: "outside" },
 
   // multi-get
   ...each("multi-get glob", ["multi-get", "docs/guide/*.md"]),
   { name: "multi-get comma json", argv: ["multi-get", "docs/readme.md, notes/todo.md", "--json"] },
-  { name: "multi-get comma prefixed md", argv: ["multi-get", "docs/readme.md,qmd://notes/todo.md", "--md"] },
+  { name: "multi-get comma prefixed md", argv: ["multi-get", "docs/readme.md,meme://notes/todo.md", "--md"] },
   { name: "multi-get comma fragment", argv: ["multi-get", "readme,todo"] },
   { name: "multi-get docid json", argv: ["multi-get", `#${docid("docs/api.md")}`, "--json"] },
   { name: "multi-get missing docid", argv: ["multi-get", "#ffffff"] },
@@ -321,8 +321,8 @@ const mainScenarios: Scenario[] = [
   { name: "ls", argv: ["ls"] },
   { name: "ls collection", argv: ["ls", "docs"] },
   { name: "ls prefix", argv: ["ls", "docs/guide"] },
-  { name: "ls qmd uri", argv: ["ls", "qmd://docs/guide"] },
-  { name: "ls qmd extra slashes", argv: ["ls", "qmd:////docs/guide"] },
+  { name: "ls meme uri", argv: ["ls", "meme://docs/guide"] },
+  { name: "ls meme extra slashes", argv: ["ls", "meme:////docs/guide"] },
   { name: "ls empty prefix", argv: ["ls", "docs/nowhere"] },
   { name: "ls missing collection", argv: ["ls", "nope"] },
 
@@ -414,7 +414,7 @@ const workScenarios: Scenario[] = [
   { name: "index search json", argv: ["--index", "work", "search", "index", "--json", "-n", "2"] },
   { name: "index search cli", argv: ["--index", "work", "search", "index", "-n", "2"] },
   { name: "index search files", argv: ["--index", "work", "search", "index", "--files", "-n", "2"] },
-  { name: "get ?index= switches index", argv: ["get", "qmd://docs/readme.md?index=work", "-l", "2"] },
+  { name: "get ?index= switches index", argv: ["get", "meme://docs/readme.md?index=work", "-l", "2"] },
   { name: "index ls", argv: ["--index", "work", "ls", "docs/guide"] },
 ];
 
@@ -460,14 +460,14 @@ const mutateScenarios: Scenario[] = [
   { name: "collection remove missing", argv: ["collection", "remove", "nope"] },
   { name: "collection bogus sub", argv: ["collection", "bogus"] },
 
-  { name: "context add qmd uri", argv: ["context", "add", "qmd://docs/guide", "Guide files"], post_state: [CFG] },
+  { name: "context add meme uri", argv: ["context", "add", "meme://docs/guide", "Guide files"], post_state: [CFG] },
   { name: "context add global", argv: ["context", "add", "/", "Root context"], post_state: [CFG] },
   { name: "context add fs path", argv: ["context", "add", "docs/faq.md", "FAQ file"], post_state: [CFG] },
   { name: "context add not indexed", argv: ["context", "add", "nosuchdir/x.md", "x"] },
-  { name: "context add missing coll", argv: ["context", "add", "qmd://nope/x", "x"] },
+  { name: "context add missing coll", argv: ["context", "add", "meme://nope/x", "x"] },
   { name: "context list", argv: ["context", "list"], check: "normalized" },
-  { name: "context rm", argv: ["context", "rm", "qmd://docs/guide"], post_state: [CFG] },
-  { name: "context rm missing", argv: ["context", "rm", "qmd://docs/nowhere"] },
+  { name: "context rm", argv: ["context", "rm", "meme://docs/guide"], post_state: [CFG] },
+  { name: "context rm missing", argv: ["context", "rm", "meme://docs/nowhere"] },
 
   { name: "status", argv: ["status"], check: "normalized" },
   { name: "cleanup dry-run", argv: ["cleanup", "--dry-run"] },
@@ -485,35 +485,35 @@ const mutateScenarios: Scenario[] = [
   { name: "update after hook cleared", argv: ["update"], pre: ["collection", "update-cmd", "docs"], post_state: [CFG] },
 ];
 
-// Project-local `.qmd/index.yaml` gating: the config travels with a checkout,
+// Project-local `.meme/index.yaml` gating: the config travels with a checkout,
 // so `update` hooks / out-of-project paths / custom models are untrusted until
 // approved. `docs` is in-project (hook gated), `outside` points at
 // `<root>/external` (path gated). The generator never reaches the interactive
 // prompt — piped stdin is not a TTY, so upstream takes the `skip` branch.
 const localScenarios: Scenario[] = [
-  { name: "update untrusted skips gated", argv: ["update"], post_state: ["corpus/.qmd/index.yaml"] },
+  { name: "update untrusted skips gated", argv: ["update"], post_state: ["corpus/.meme/index.yaml"] },
   { name: "trust list empty", argv: ["trust", "list"] },
   { name: "trust", argv: ["trust"], post_state: [TRUSTED] },
   { name: "update trusted runs hook", argv: ["update"], check: "normalized" },
   { name: "trust list", argv: ["trust", "list"], check: "normalized" },
   { name: "trust revoke", argv: ["trust", "revoke"], post_state: [TRUSTED] },
-  { name: "update env opted-in", argv: ["update"], env: { QMD_TRUST_LOCAL_CONFIG: "1" }, check: "normalized" },
+  { name: "update env opted-in", argv: ["update"], env: { MEME_TRUST_LOCAL_CONFIG: "1" }, check: "normalized" },
   { name: "trust bogus sub", argv: ["trust", "bogus"] },
-  { name: "init existing local config", argv: ["init"], post_state: ["corpus/.qmd/index.yaml"] },
+  { name: "init existing local config", argv: ["init"], post_state: ["corpus/.meme/index.yaml"] },
   { name: "status local", argv: ["status"], check: "normalized" },
 ];
 
 // `init` on a fresh directory — cwd `proj` starts empty.
 const initScenarios: Scenario[] = [
-  { name: "init", argv: ["init"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
-  { name: "init again", argv: ["init"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
+  { name: "init", argv: ["init"], cwd: "proj", post_state: ["proj/.meme/index.yml"] },
+  { name: "init again", argv: ["init"], cwd: "proj", post_state: ["proj/.meme/index.yml"] },
   // homedir() resolves $HOME — pointing it at the cwd exercises the refusal.
   { name: "init refuses HOME", argv: ["init"], cwd: "proj", env: { HOME: "<PROJ>" } },
   // P4.3 — embed on the empty local index: 0 pending hashes → the
   // early-exit line; `--force` skips the check, prints the banner +
   // Model line, and generateEmbeddings returns 0/0 without touching
   // the model (store.ts:2004-2007).
-  { name: "embed empty index", argv: ["embed"], cwd: "proj", post_state: ["proj/.qmd/index.yml"] },
+  { name: "embed empty index", argv: ["embed"], cwd: "proj", post_state: ["proj/.meme/index.yml"] },
   { name: "embed --force empty", argv: ["embed", "--force"], cwd: "proj" },
   // P4.3 — doctor against a project-local index with no collections.
   { name: "doctor local", argv: ["doctor"], cwd: "proj", check: "normalized" },
@@ -521,22 +521,22 @@ const initScenarios: Scenario[] = [
 
 // P4.4 — `skills`/`skill`/`--skill` (qmd.ts:3457-3633, 4920-4977). Pure
 // filesystem commands: `noSetup` skips the index, installs run with
-// cwd `root` so `.agents/skills/qmd` lands under post_state's reach.
+// cwd `root` so `.agents/skills/meme` lands under post_state's reach.
 // `record` scenarios are the deliberate divergences: the port does not
 // ship `release` (P4-D7) so `list`/`--all` rows and `--full` bodies
 // differ, and `path` reports the versioned cache-materialized dir
 // instead of upstream's package tree.
 const skillsScenarios: Scenario[] = [
   // `list`/`--json` are normalized — the generator folds upstream's
-  // `release` row out so the `qmd` row compares byte-exact.
+  // `release` row out so the `meme` row compares byte-exact.
   { name: "skills list", argv: ["skills", "list"], check: "normalized" },
   { name: "skills bare", argv: ["skills"], check: "normalized" },
   { name: "skills list json", argv: ["skills", "list", "--json"], check: "normalized" },
-  { name: "skills get qmd", argv: ["skills", "get", "qmd"] },
-  { name: "skills get qmd full", argv: ["skills", "get", "qmd", "--full"] },
-  { name: "skills get qmd json", argv: ["skills", "get", "qmd", "--json"] },
-  { name: "skills get qmd json full", argv: ["skills", "get", "qmd", "--json", "--full"] },
-  { name: "skills get dup", argv: ["skills", "get", "qmd", "qmd"] },
+  { name: "skills get meme", argv: ["skills", "get", "meme"] },
+  { name: "skills get meme full", argv: ["skills", "get", "meme", "--full"] },
+  { name: "skills get meme json", argv: ["skills", "get", "meme", "--json"] },
+  { name: "skills get meme json full", argv: ["skills", "get", "meme", "--json", "--full"] },
+  { name: "skills get dup", argv: ["skills", "get", "meme", "meme"] },
   { name: "skills get none", argv: ["skills", "get"] },
   { name: "skills get missing", argv: ["skills", "get", "missing"] },
   { name: "skills get missing json", argv: ["skills", "get", "missing", "--json"] },
@@ -551,9 +551,9 @@ const skillsScenarios: Scenario[] = [
   // `path` prints upstream's package dir; ours is the cache-materialized
   // embedded dir — record both shapes, the missing-name error is exact.
   { name: "skills path", argv: ["skills", "path"], check: "record" },
-  { name: "skills path qmd", argv: ["skills", "path", "qmd"], check: "record" },
+  { name: "skills path meme", argv: ["skills", "path", "meme"], check: "record" },
   { name: "skills path json", argv: ["skills", "path", "--json"], check: "record" },
-  { name: "skills path qmd json", argv: ["skills", "path", "qmd", "--json"], check: "record" },
+  { name: "skills path meme json", argv: ["skills", "path", "meme", "--json"], check: "record" },
   { name: "skills path missing", argv: ["skills", "path", "missing"] },
   { name: "skill bare", argv: ["skill"] },
   { name: "skill help", argv: ["skill", "help"] },
@@ -563,60 +563,60 @@ const skillsScenarios: Scenario[] = [
   { name: "--skill", argv: ["--skill"] },
   { name: "--skill wins", argv: ["--skill", "search", "x"] },
   // Install sequence — order matters, state persists across scenarios.
-  // `.claude/skills/qmd` starts as a regular file (extraFiles): the
+  // `.claude/skills/meme` starts as a regular file (extraFiles): the
   // `--yes` install writes `.agents/...` then fails on the link path.
   {
     name: "skill install blocked", argv: ["skill", "install", "--yes"], cwd: "root",
     check: "normalized",
-    post_state: [".agents/skills/qmd/SKILL.md", ".agents/skills/qmd/references/mcp-setup.md"],
+    post_state: [".agents/skills/meme/SKILL.md", ".agents/skills/meme/references/mcp-setup.md"],
   },
   { name: "skill install again", argv: ["skill", "install"], cwd: "root", check: "normalized" },
   // Non-TTY stdin → the Tip line; the blocking file stays untouched
   // because the Tip path never reaches ensureClaudeSymlink.
   {
     name: "skill install force tip", argv: ["skill", "install", "-f"], cwd: "root",
-    check: "normalized", post_state: [".claude/skills/qmd"],
+    check: "normalized", post_state: [".claude/skills/meme"],
   },
   // `-f` now replaces the blocking file with the relative symlink.
   {
     name: "skill install force yes", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
-    check: "normalized", post_state: [".claude/skills/qmd"],
+    check: "normalized", post_state: [".claude/skills/meme"],
   },
   // The existing correct link returns Linked again (idempotent, no force needed).
   {
     name: "skill install relink", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
-    check: "normalized", post_state: [".claude/skills/qmd"],
+    check: "normalized", post_state: [".claude/skills/meme"],
   },
   {
     name: "skill install global", argv: ["skill", "install", "--global", "--yes"], cwd: "root",
     check: "normalized", env: { HOME: "<ROOT>/ghome" },
-    post_state: ["ghome/.agents/skills/qmd/SKILL.md", "ghome/.claude/skills/qmd"],
+    post_state: ["ghome/.agents/skills/meme/SKILL.md", "ghome/.claude/skills/meme"],
   },
-  // QMD_SKILLS_DIR scenarios — env replaces the search dirs wholesale:
+  // MEME_SKILLS_DIR scenarios — env replaces the search dirs wholesale:
   // `list`/`--all` show `custom` only, `hidden` is gettable by name,
-  // `path` echoes the env value, and install copies the fixture `qmd`.
-  { name: "dir skills list", argv: ["skills", "list"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills list json", argv: ["skills", "list", "--json"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills get custom", argv: ["skills", "get", "custom"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills get custom full", argv: ["skills", "get", "custom", "--full"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills get hidden", argv: ["skills", "get", "hidden"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills get --all", argv: ["skills", "get", "--all"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" } },
-  { name: "dir skills path", argv: ["skills", "path"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
-  { name: "dir skills path custom", argv: ["skills", "path", "custom"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
+  // `path` echoes the env value, and install copies the fixture `meme`.
+  { name: "dir skills list", argv: ["skills", "list"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills list json", argv: ["skills", "list", "--json"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get custom", argv: ["skills", "get", "custom"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get custom full", argv: ["skills", "get", "custom", "--full"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get hidden", argv: ["skills", "get", "hidden"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills get --all", argv: ["skills", "get", "--all"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" } },
+  { name: "dir skills path", argv: ["skills", "path"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
+  { name: "dir skills path custom", argv: ["skills", "path", "custom"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills" }, check: "normalized" },
   // The env value is echoed verbatim — relative stays relative.
-  { name: "dir skills path rel", argv: ["skills", "path"], cwd: "root", env: { QMD_SKILLS_DIR: "fskills" } },
-  // `skill show`/`install` with no `qmd` skill: upstream throws to an
+  { name: "dir skills path rel", argv: ["skills", "path"], cwd: "root", env: { MEME_SKILLS_DIR: "fskills" } },
+  // `skill show`/`install` with no `meme` skill: upstream throws to an
   // unhandled Bun dump — record; ours renders the message + hint.
-  { name: "dir skill show missing", argv: ["skill", "show"], env: { QMD_SKILLS_DIR: "<ROOT>/fskills/custom" }, check: "record" },
-  // The override install copies the fixture `qmd` dir — stub SKILL.md
+  { name: "dir skill show missing", argv: ["skill", "show"], env: { MEME_SKILLS_DIR: "<ROOT>/fskills/custom" }, check: "record" },
+  // The override install copies the fixture `meme` dir — stub SKILL.md
   // plus `references/ext.md`, and the embedded `mcp-setup.md` is gone.
   {
     name: "dir skill install", argv: ["skill", "install", "-f", "--yes"], cwd: "root",
-    check: "normalized", env: { QMD_SKILLS_DIR: "<ROOT>/fskills" },
+    check: "normalized", env: { MEME_SKILLS_DIR: "<ROOT>/fskills" },
     post_state: [
-      ".agents/skills/qmd/SKILL.md",
-      ".agents/skills/qmd/references/ext.md",
-      ".agents/skills/qmd/references/mcp-setup.md",
+      ".agents/skills/meme/SKILL.md",
+      ".agents/skills/meme/references/ext.md",
+      ".agents/skills/meme/references/mcp-setup.md",
     ],
   },
 ];
@@ -628,7 +628,7 @@ const skillsLinkScenarios: Scenario[] = [
     name: "skill install sees link", argv: ["skill", "install", "--yes"], cwd: "root",
     check: "normalized",
     links: [{ path: ".claude/skills", target: "../.agents/skills" }],
-    post_state: [".agents/skills/qmd/SKILL.md", ".claude/skills"],
+    post_state: [".agents/skills/meme/SKILL.md", ".claude/skills"],
   },
 ];
 
@@ -643,10 +643,10 @@ type Group = {
   scenarios: Scenario[];
   // Files under <root> outside the corpus (e.g. an out-of-project collection).
   extraFiles?: Record<string, string>;
-  // Project-local `.qmd/index.yaml` written inside the corpus instead of the
+  // Project-local `.meme/index.yaml` written inside the corpus instead of the
   // global config dir (P4.2 trust scenarios); setup runs `update`.
   localConfig?: (root: string) => string;
-  // Extra cwd root created empty (e.g. `proj` for `qmd init`).
+  // Extra cwd root created empty (e.g. `proj` for `meme init`).
   projDir?: boolean;
   // Skip the automatic `update` setup entirely.
   noSetup?: boolean;
@@ -685,22 +685,22 @@ const GROUPS: Group[] = [
     indexPath: true, deleteAfterSetup: [], scenarios: skillsScenarios,
     noSetup: true,
     extraFiles: {
-      // `.claude/skills/qmd` starts as a regular FILE so the first
+      // `.claude/skills/meme` starts as a regular FILE so the first
       // `--yes` install hits `Claude skill path already exists` — the
       // later `-f` install proves force removes it and links.
-      ".claude/skills/qmd": "blocker\n",
-      // A `QMD_SKILLS_DIR` fixture tree: one listed skill (multiline
+      ".claude/skills/meme": "blocker\n",
+      // A `MEME_SKILLS_DIR` fixture tree: one listed skill (multiline
       // frontmatter description), one `hidden:` skill (gettable by
-      // name, filtered from list/--all), and a custom `qmd` skill the
+      // name, filtered from list/--all), and a custom `meme` skill the
       // `skill install` override path copies instead of the embedded one.
       "fskills/custom/SKILL.md":
         "---\nname: custom\ndescription: A fixture skill\n  spanning two lines.\n---\n\n# Custom\n\nCustom content.\n",
       "fskills/custom/references/r.md": "# Reference\n\nCustom reference body.\n",
       "fskills/hidden/SKILL.md":
         "---\nname: hidden\ndescription: Not listed.\nhidden: true\n---\n\n# Hidden\n\n",
-      "fskills/qmd/SKILL.md":
-        "---\nname: qmd\ndescription: Fixture qmd skill.\n---\n\n# Fixture QMD\n\nFixture-specific instructions.\n",
-      "fskills/qmd/references/ext.md": "# Ext\n\nFixture reference body.\n",
+      "fskills/meme/SKILL.md":
+        "---\nname: meme\ndescription: Fixture meme skill.\n---\n\n# Fixture MEME\n\nFixture-specific instructions.\n",
+      "fskills/meme/references/ext.md": "# Ext\n\nFixture reference body.\n",
     },
   },
   {
@@ -714,9 +714,9 @@ const GROUPS: Group[] = [
 // Run
 // ---------------------------------------------------------------------------
 
-const before = realQmdState();
+const before = realMemeState();
 const gitBefore = gitStatus();
-const top = realpathSync(mkdtempSync("/tmp/qmd-cli-golden-"));
+const top = realpathSync(mkdtempSync("/tmp/meme-bin-golden-"));
 const home = join(top, "home");
 const outside = join(top, "outside");
 mkdirSync(home);
@@ -759,9 +759,9 @@ try {
     if (group.projDir) mkdirSync(join(root, "proj"), { recursive: true });
     if (group.localConfig) {
       // Project-local config inside the corpus — global config stays absent.
-      const qmdDir = join(corpus, ".qmd");
-      mkdirSync(qmdDir, { recursive: true });
-      writeFileSync(join(qmdDir, "index.yaml"), group.localConfig(root));
+      const memeDir = join(corpus, ".meme");
+      mkdirSync(memeDir, { recursive: true });
+      writeFileSync(join(memeDir, "index.yaml"), group.localConfig(root));
     } else {
       writeFileSync(join(configDir, group.configName), group.config(corpus));
     }
@@ -771,10 +771,10 @@ try {
       HOME: home,
       XDG_CONFIG_HOME: join(root, "xdg-config"),
       XDG_CACHE_HOME: join(root, "xdg-cache"),
-      QMD_CONFIG_DIR: configDir,
+      MEME_CONFIG_DIR: configDir,
       TZ: "UTC",
       NO_COLOR: "1",
-      QMD_DOCTOR_DEVICE_PROBE: "0",
+      MEME_DOCTOR_DEVICE_PROBE: "0",
       BUN_RUNTIME_TRANSPILER_CACHE_PATH: "0",
       TMPDIR: tmp,
     };
@@ -808,19 +808,19 @@ try {
       .replace(/sqlite-vec:.*$/gm, "sqlite-vec: <VER>")
       // P4.4: the port does not ship upstream's `release` skill (P4-D7 — a
       // maintainer-only release workflow). Fold it out of `skills list`
-      // output so the rows our `qmd` skill produces still compare.
+      // output so the rows our `meme` skill produces still compare.
       .replace(/^  release  .*\n/gm, "")
       .replace(/,\{"name":"release","description":"(?:[^"\\]|\\.)*"\}/g, "")
-      // ...and the `qmd` row's padding was sized for `release` — fold
+      // ...and the `meme` row's padding was sized for `release` — fold
       // the gap so the port's tighter padding still compares.
-      .replace(/^  qmd {2,}/gm, "  qmd  ");
+      .replace(/^  meme {2,}/gm, "  meme  ");
     const run = (argv: string[], cwd: string, extra?: Record<string, string>) => {
       const e = { ...env, PWD: cwd };
       // `<PROJ>` substitutes whole-value; `<ROOT>` substitutes in-place so a
       // value like `<ROOT>/fskills` stays single-token in the fixture.
       for (const [k, v] of Object.entries(extra ?? {}))
         e[k] = v === "<PROJ>" ? proj : v.split("<ROOT>").join(root);
-      const r = spawnSync(BUN, [QMD_TS, ...argv], {
+      const r = spawnSync(BUN, [MEME_TS, ...argv], {
         cwd, env: e, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 120_000,
       });
       if (r.error) throw r.error;
@@ -830,7 +830,7 @@ try {
       (paths ?? []).map(rel => {
         const p = join(root, rel);
         // lstat: a symlink to a directory is `exists` but unreadable —
-        // capture the link target instead (P4.4 `.claude/skills/qmd`).
+        // capture the link target instead (P4.4 `.claude/skills/meme`).
         if (lstatSync(p, { throwIfNoEntry: false })?.isSymbolicLink()) {
           return { path: rel, exists: true, content: null, link: readlinkSync(p) };
         }
@@ -854,7 +854,7 @@ try {
     // group end: `mutate` scenarios mutate the file further, so the
     // end-of-run bytes are not the setup input the replay needs.
     const configFile = group.localConfig
-      ? join(corpus, ".qmd", "index.yaml")
+      ? join(corpus, ".meme", "index.yaml")
       : join(configDir, group.configName);
     const postSetupConfig = readFileSync(configFile, "utf8");
 
@@ -894,7 +894,7 @@ try {
       })),
       config_name: group.localConfig ? null : group.configName,
       config_yaml: normalize(postSetupConfig, root),
-      local_config: group.localConfig ? "corpus/.qmd/index.yaml" : null,
+      local_config: group.localConfig ? "corpus/.meme/index.yaml" : null,
       proj_dir: group.projDir ?? false,
       no_setup: group.noSetup ?? false,
       index_name: group.indexName ?? null,
@@ -914,23 +914,23 @@ try {
 // Verify isolation, then clean up
 // ---------------------------------------------------------------------------
 
-const after = realQmdState();
+const after = realMemeState();
 const realChanged = [...new Set([...Object.keys(before), ...Object.keys(after)])]
   .filter(p => before[p] !== after[p]);
 const watchedChanged = WATCHED.flatMap(w => changedSince(w, marker, []));
 const upstreamChanged = changedSince(upstream, marker, [join(upstream, ".git")]);
-const tmpChanged = changedSince("/private/tmp", marker, [top]).filter(p => !p.startsWith("/private/tmp/qmd-golden-probe"));
+const tmpChanged = changedSince("/private/tmp", marker, [top]).filter(p => !p.startsWith("/private/tmp/meme-golden-probe"));
 const gitChanged = gitStatus() !== gitBefore;
-const qmdRelated = [...watchedChanged, ...tmpChanged].filter(p => /qmd/i.test(p));
+const memeRelated = [...watchedChanged, ...tmpChanged].filter(p => /meme/i.test(p));
 
 rmSync(top, { recursive: true, force: true });
 
-console.error(`isolation: real qmd files changed=${realChanged.length}, upstream files changed=${upstreamChanged.length}, upstream git status changed=${gitChanged}, qmd-related writes outside root=${qmdRelated.length}`);
-for (const p of [...realChanged, ...upstreamChanged, ...qmdRelated]) console.error(`  VIOLATION ${p}`);
-const noise = [...watchedChanged, ...tmpChanged].filter(p => !qmdRelated.includes(p));
+console.error(`isolation: real meme files changed=${realChanged.length}, upstream files changed=${upstreamChanged.length}, upstream git status changed=${gitChanged}, meme-related writes outside root=${memeRelated.length}`);
+for (const p of [...realChanged, ...upstreamChanged, ...memeRelated]) console.error(`  VIOLATION ${p}`);
+const noise = [...watchedChanged, ...tmpChanged].filter(p => !memeRelated.includes(p));
 for (const p of noise) console.error(`  note (unrelated write during run): ${p}`);
 
-if (failed || realChanged.length || upstreamChanged.length || gitChanged || qmdRelated.length) {
+if (failed || realChanged.length || upstreamChanged.length || gitChanged || memeRelated.length) {
   console.error("aborting: fixture not written");
   process.exit(1);
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/lex_golden.json` by running the
+ * Regenerate `crates/meme/tests/fixtures/lex_golden.json` by running the
  * upstream (tobi/qmd) FTS5 pipeline on a fixed corpus.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_lex_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_lex_golden.ts
  *
  * The fixture carries documents, queries, per-query upstream
  * `searchFTS` results and `validateLexQuery` outcomes, so the Rust test
@@ -12,9 +12,9 @@
  * without needing the TS runtime at test time.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -77,7 +77,7 @@ const tmp = await import("node:fs/promises");
 const os = await import("node:os");
 const path = await import("node:path");
 
-const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "qmd-golden-"));
+const dir = await tmp.mkdtemp(path.join(os.tmpdir(), "meme-golden-"));
 const dbPath = path.join(dir, "index.sqlite");
 const s = store.createStore(dbPath);
 const db = s.db;
@@ -104,7 +104,7 @@ const out = {
   })),
 };
 
-const fixture = new URL("../crates/qmd/tests/fixtures/lex_golden.json", import.meta.url).pathname;
+const fixture = new URL("../crates/meme/tests/fixtures/lex_golden.json", import.meta.url).pathname;
 await tmp.writeFile(fixture, JSON.stringify(out, null, 2) + "\n");
 s.close();
 await tmp.rm(dir, { recursive: true, force: true });

@@ -14,8 +14,8 @@ jobs:
     permissions:
       contents: write
     with:
-      bin: qmd
-      package: qmd-cli
+      bin: meme
+      package: meme-bin
       # D2: aarch64-pc-windows-msvc excluded — MSVC cannot compile ARM
       # ggml (ggml-cpu CMakeLists.txt:107-108). Deferred in the design docs.
       targets: >-

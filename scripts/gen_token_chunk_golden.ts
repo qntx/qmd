@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/token_chunk_golden.json` by
+ * Regenerate `crates/meme/tests/fixtures/token_chunk_golden.json` by
  * running the upstream (tobi/qmd) token-based chunking pipeline —
  * `chunkDocumentByTokens` with the real embeddinggemma-300M tokenizer —
  * over the vendored corpus plus two deterministic synthetic documents.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_token_chunk_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_token_chunk_golden.ts
  *
- * The first run downloads the embedding model to `~/.cache/qmd/models`
+ * The first run downloads the embedding model to `~/.cache/meme/models`
  * (upstream's shared cache, ~350MB).
  *
  * The fixture is self-contained: every doc's full input `content` is
@@ -16,9 +16,9 @@
  * so the Rust test needs neither the TS runtime nor the model.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -28,7 +28,7 @@ const path = await import("node:path");
 const { execSync } = await import("node:child_process");
 
 const commit = execSync(`git -C "${upstream}" rev-parse HEAD`).toString().trim();
-const fixturesDir = new URL("../crates/qmd/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme/tests/fixtures/", import.meta.url).pathname;
 
 const PARAMS = { max_tokens: 900, overlap_tokens: 135, window_tokens: 200 };
 

@@ -49,13 +49,13 @@ jobs:
       # must not be the first place packaging failures surface.
       package-check: true
       # GPU passthroughs (cuda/vulkan) are opt-in and would fail on this image;
-      # llama+testing is the supported set (see crates/qmd/Cargo.toml).
+      # llama+testing is the supported set (see crates/meme/Cargo.toml).
       features: '--features llama,testing'
       # llama-cpp-sys-2 builds llama.cpp with cmake and runs bindgen against
       # libclang. The image ships both; pin them anyway against label drift.
       apt-packages: 'cmake clang libclang-dev'
 
-  # The qmd crate is also usable without llama.cpp (storage/BM25 only,
+  # The meme crate is also usable without llama.cpp (storage/BM25 only,
   # audit D-4 — the Justfile clippy recipe gates it locally). A separate
   # job because ci-rust takes a single feature set per call.
   ci-minimal:
@@ -65,7 +65,7 @@ jobs:
     with:
       submodules: false
       deny: false
-      packages: 'qmd'
+      packages: 'meme'
       features: '--no-default-features --features testing'
 
   # MSRV gate: workspace rust-version = 1.95. Checking the no-llama
@@ -87,7 +87,7 @@ jobs:
       # --locked: the recorded dep set is what release builds use; a
       # future dep bump raising rust-version fails the bump's own PR.
       - name: cargo check (MSRV)
-        run: cargo +1.95 check -p qmd --no-default-features --features testing --locked
+        run: cargo +1.95 check -p meme --no-default-features --features testing --locked
 
   # D5: Windows regression gate. The reusable workflow needs
   # `contents: write`, so it cannot run on PRs — main pushes and
@@ -98,8 +98,8 @@ jobs:
     permissions:
       contents: write
     with:
-      bin: qmd
-      package: qmd-cli
+      bin: meme
+      package: meme-bin
       targets: x86_64-pc-windows-msvc
 
   # Handwritten smoke on the produced binary (deviation from the
@@ -111,7 +111,7 @@ jobs:
     runs-on: windows-latest
     env:
       NO_COLOR: '1'
-      QMD_DOCTOR_DEVICE_PROBE: '0'
+      MEME_DOCTOR_DEVICE_PROBE: '0'
     steps:
       - name: checkout (vendored corpus)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,27 +128,27 @@ jobs:
         shell: bash
         run: |
           cd "${{ runner.temp }}/dist"
-          archive=$(ls qmd-*.zip)
+          archive=$(ls meme-*.zip)
           unzip -o "$archive" -d "${{ runner.temp }}"
-          find "${{ runner.temp }}" -name 'qmd*' -type f | head -5
+          find "${{ runner.temp }}" -name 'meme*' -type f | head -5
 
       - name: smoke run
         shell: bash
         env:
-          HOME: ${{ runner.temp }}/qmd-home
-          USERPROFILE: ${{ runner.temp }}/qmd-home
-          XDG_CONFIG_HOME: ${{ runner.temp }}/qmd-home/xdg-config
-          XDG_CACHE_HOME: ${{ runner.temp }}/qmd-home/xdg-cache
-          QMD_CONFIG_DIR: ${{ runner.temp }}/qmd-home/qmdcfg
+          HOME: ${{ runner.temp }}/meme-home
+          USERPROFILE: ${{ runner.temp }}/meme-home
+          XDG_CONFIG_HOME: ${{ runner.temp }}/meme-home/xdg-config
+          XDG_CACHE_HOME: ${{ runner.temp }}/meme-home/xdg-cache
+          MEME_CONFIG_DIR: ${{ runner.temp }}/meme-home/memecfg
         run: |
           set -x
-          mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$QMD_CONFIG_DIR"
-          QMD="${{ runner.temp }}/qmd.exe"
-          CORPUS="$(pwd)/crates/qmd/tests/fixtures/eval-docs"
-          "$QMD" --version
-          "$QMD" collection add "$CORPUS" --name eval-docs
-          "$QMD" search "API versioning"
-          "$QMD" status
+          mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$MEME_CONFIG_DIR"
+          MEME="${{ runner.temp }}/meme.exe"
+          CORPUS="$(pwd)/crates/meme/tests/fixtures/eval-docs"
+          "$MEME" --version
+          "$MEME" collection add "$CORPUS" --name eval-docs
+          "$MEME" search "API versioning"
+          "$MEME" status
 
       - name: dll dependents
         if: always()
@@ -157,7 +157,7 @@ jobs:
           {
             echo '## windows dll dependents'
             echo '```'
-            llvm-objdump -p "${{ runner.temp }}/qmd.exe" | grep 'DLL Name' || \
-              dumpbin /dependents "${{ runner.temp }}/qmd.exe"
+            llvm-objdump -p "${{ runner.temp }}/meme.exe" | grep 'DLL Name' || \
+              dumpbin /dependents "${{ runner.temp }}/meme.exe"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"

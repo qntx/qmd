@@ -1,0 +1,180 @@
+//! Index and config-source resolution, plus store opening.
+//!
+//! Mirrors the tail of upstream `parseCLI` (qmd.ts:3158-3174) and
+//! `getStore` (qmd.ts:154-177):
+//!
+//! - `--index <name>` → index name normalized like `setIndexName` /
+//!   `setConfigIndexName` ([`meme::paths::normalize_index_name`]), config
+//!   `<config-dir>/<name>.yml`, database
+//!   [`meme::paths::default_db_path`] (`$INDEX_PATH` always wins).
+//! - Otherwise a project-local `.meme/index.y{a,}ml` found by
+//!   [`meme::paths::find_local_config`] keeps both the config and the
+//!   `.meme/index.sqlite` database inside the project.
+//! - Otherwise the global `index` index.
+//!
+//! The handle opens lazily — only after the command's own validation —
+//! so usage errors never touch the database. Opening runs
+//! [`Meme::ensure_models_configured`] like upstream's `getStore`
+//! (qmd.ts:159): the resolved model triple is pinned into the config
+//! file, and any failure is swallowed upstream-style.
+
+use std::path::{Path, PathBuf};
+
+use meme::{Environment, Meme, Result, paths};
+
+/// Resolved index context — index name, config source and db path.
+/// `?index=` switching (upstream getDocument, qmd.ts:1284-1291) mutates
+/// [`CliContext::set_index`], used by `get`/`multi-get` in stage B.
+pub(crate) struct CliContext {
+    /// `process.cwd()` — `renderFullPath`'s anchor and the
+    /// `--index`/`?index=` name-normalization base.
+    cwd: PathBuf,
+    /// Normalized active index name — feeds `?index=` in `meme://` links
+    /// (upstream `buildVirtualPath` skips it for `"index"`).
+    index_name: String,
+    /// Database path (`$INDEX_PATH` already folded in).
+    db_path: PathBuf,
+    /// Explicit config file — `Some` only when the source is a
+    /// project-local `.meme/index.y{a,}ml` or a path the caller pinned.
+    /// `None` → derived `<config-dir>/<index-name>.yml` at open time.
+    config_file: Option<PathBuf>,
+}
+
+impl CliContext {
+    /// Resolve like upstream's `parseCLI` tail (qmd.ts:3158-3174).
+    pub(crate) fn resolve(env: &Environment, cwd: &Path, index: Option<&str>) -> Self {
+        if let Some(name) = index {
+            // setIndexName + setConfigIndexName + setConfigSource()
+            let normalized = paths::normalize_index_name(name, cwd);
+            let index_name = if normalized.is_empty() {
+                "index".to_owned()
+            } else {
+                normalized
+            };
+            return Self {
+                cwd: cwd.to_path_buf(),
+                index_name: index_name.clone(),
+                db_path: paths::default_db_path(env, &index_name),
+                config_file: None,
+            };
+        }
+        // A project-local config overrides the global index.
+        if let Some(local) = paths::find_local_config(cwd) {
+            return Self {
+                cwd: cwd.to_path_buf(),
+                index_name: "index".to_owned(),
+                db_path: paths::local_db_path(&local),
+                config_file: Some(local),
+            };
+        }
+        Self {
+            cwd: cwd.to_path_buf(),
+            index_name: "index".to_owned(),
+            db_path: paths::default_db_path(env, "index"),
+            config_file: None,
+        }
+    }
+
+    /// `process.cwd()` — used by `--full-path` rendering.
+    pub(crate) fn cwd(&self) -> &Path {
+        &self.cwd
+    }
+
+    /// Active index name (upstream `getActiveIndexName`).
+    pub(crate) fn index_name(&self) -> &str {
+        &self.index_name
+    }
+
+    /// Config file the store loads (upstream `getConfigFilePath` when
+    /// the source is the default file, the explicit path otherwise).
+    pub(crate) fn config_path(&self, env: &Environment) -> PathBuf {
+        self.config_file
+            .clone()
+            .unwrap_or_else(|| paths::config_file(env, &self.index_name))
+    }
+
+    /// Database path (upstream `getDbPath`).
+    pub(crate) fn db_path(&self) -> &Path {
+        &self.db_path
+    }
+
+    /// Switch the active index — upstream `setIndexName` +
+    /// `setConfigIndexName` (qmd.ts:1284-1291): the db path moves to
+    /// the new name and a derived config path follows it, while an
+    /// explicit (project-local) config file is left alone.
+    pub(crate) fn set_index(&mut self, env: &Environment, name: &str) {
+        let normalized = paths::normalize_index_name(name, &self.cwd);
+        self.index_name = if normalized.is_empty() {
+            "index".to_owned()
+        } else {
+            normalized
+        };
+        self.db_path = paths::default_db_path(env, &self.index_name);
+    }
+
+    /// Open the store — upstream `getStore` (qmd.ts:154-177): build the
+    /// `Meme` handle, then pin resolved models into the config; its
+    /// failure is ignored like upstream's `catch`.
+    ///
+    /// Mirrors `modelsForLlm = localConfigIsFullyTrusted() ? active :
+    /// resolveModels()` (qmd.ts:164): an untrusted project-local config's
+    /// declared `models:` URIs are dropped from *runtime* resolution via
+    /// [`MemeBuilder::use_config_models`]. The pin itself
+    /// (`ensure_models_configured`) still resolves the declared triple,
+    /// like `ensureModelsConfiguredForCli`.
+    ///
+    /// # Errors
+    /// [`meme::Error`] from `Meme::builder(...).build()`.
+    pub(crate) fn open_store(&self, env: &Environment) -> Result<Meme> {
+        self.open_store_with_models(env, self.config_fully_trusted(env))
+    }
+
+    /// `localConfigIsFullyTrusted` (qmd.ts:759-767) — the runtime gate for
+    /// the config's declared `models:`, and the pre-mutation check that
+    /// decides whether `collection add`/`update-cmd` may re-record trust
+    /// (deviation 85).
+    pub(crate) fn config_fully_trusted(&self, env: &Environment) -> bool {
+        let config_path = self.config_path(env);
+        // `localConfigIsFullyTrusted` throws upstream only through
+        // `loadConfig` — a missing/broken file there lands in getStore's
+        // catch and leaves the default models; fail closed the same way.
+        meme::config::load(&config_path)
+            .is_ok_and(|config| meme::trust::local_config_fully_trusted(&config_path, &config, env))
+    }
+
+    /// Build the `Meme` handle with the given `use_config_models` gate
+    /// and no side effects on the config file.
+    fn build_store(&self, env: &Environment, allow: bool) -> Result<Meme> {
+        Meme::builder(&self.db_path)
+            .environment(env.clone())
+            .config_file(self.config_path(env))
+            .use_config_models(allow)
+            .build()
+    }
+
+    /// [`open_store`] with an explicit `use_config_models` flag —
+    /// `status` passes `true` because upstream deliberately displays the
+    /// declared YAML values (`resolveModelsForCli`, qmd.ts:543+675-678)
+    /// even when the runtime models are gated.
+    ///
+    /// # Errors
+    /// [`meme::Error`] from `Meme::builder(...).build()`.
+    pub(crate) fn open_store_with_models(&self, env: &Environment, allow: bool) -> Result<Meme> {
+        let meme = self.build_store(env, allow)?;
+        let _ = meme.ensure_models_configured();
+        Ok(meme)
+    }
+
+    /// [`open_store`] minus the `models:` pin — for read-only commands
+    /// like `bench` (upstream's SDK `createStore`, index.ts:385+, never
+    /// writes the config). Keeps the trust gate
+    /// (`use_config_models(allow)` computed identically); a missing
+    /// config file stays missing (`config::load` defaults it, `build`
+    /// only reads).
+    ///
+    /// # Errors
+    /// [`meme::Error`] from `Meme::builder(...).build()`.
+    pub(crate) fn open_store_no_models_pin(&self, env: &Environment) -> Result<Meme> {
+        self.build_store(env, self.config_fully_trusted(env))
+    }
+}

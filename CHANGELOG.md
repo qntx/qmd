@@ -1,10 +1,29 @@
 # Changelog
 
-All notable changes to the `qmd` workspace are documented in this file.
+All notable changes to the `meme` workspace are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.0]
+
+### Breaking
+
+- The project is renamed from `qmd` to `meme` throughout — there is no
+  compatibility layer. Crates are `meme`, `meme-mcp` and `meme-bin`
+  (the `meme` binary); the Rust API type is `Meme` (was `Qmd`).
+- `QMD_*` environment variables are `MEME_*`; `.qmd/` config dirs are
+  `.meme/`; the global index lives at `~/.cache/meme/<name>.sqlite`
+  (the `-rs` suffix is gone — the directory itself is the namespace)
+  and project-local indexes at `.meme/index.sqlite`.
+- `qmd://` document URIs are `meme://`; frontmatter metadata moves
+  from the `qmd:` namespace to `meme:`; the MCP server name, the
+  `meme-mcp` pidfile and the `MEME` stderr warning prefix all change
+  accordingly.
+- The embedded skill is `meme` (`cargo install meme-bin`,
+  `mcp__meme__*` tool names) rather than a verbatim copy of
+  upstream's `qmd` skill.
 
 ## [0.6.0] - 2026-11-07
 

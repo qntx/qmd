@@ -1,0 +1,9 @@
+[
+  {
+    "name": "document",
+    "uriTemplate": "meme://{+path}",
+    "title": "MEME Document",
+    "description": "A markdown document from your MEME knowledge base. Use search tools to discover documents.",
+    "mimeType": "text/markdown"
+  }
+]
