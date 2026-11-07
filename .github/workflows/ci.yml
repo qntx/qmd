@@ -18,12 +18,51 @@ jobs:
     with:
       submodules: false
       deny: true
+      # rustdoc -D warnings: broken intra-doc links must not reach docs.rs.
+      doc: true
+      # `cargo publish --workspace --dry-run --locked`: the tag-time publish
+      # must not be the first place packaging failures surface.
+      package-check: true
       # GPU passthroughs (cuda/vulkan) are opt-in and would fail on this image;
       # llama+testing is the supported set (see crates/qmd/Cargo.toml).
       features: '--features llama,testing'
       # llama-cpp-sys-2 builds llama.cpp with cmake and runs bindgen against
       # libclang. The image ships both; pin them anyway against label drift.
       apt-packages: 'cmake clang libclang-dev'
+
+  # The qmd crate is also usable without llama.cpp (storage/BM25 only,
+  # audit D-4 — the Justfile clippy recipe gates it locally). A separate
+  # job because ci-rust takes a single feature set per call.
+  ci-minimal:
+    uses: qntx/workflows/.github/workflows/ci-rust.yml@v2
+    permissions:
+      contents: read
+    with:
+      submodules: false
+      deny: false
+      packages: 'qmd'
+      features: '--no-default-features --features testing'
+
+  # MSRV gate: workspace rust-version = 1.95. Checking the no-llama
+  # feature set keeps the job free of the cmake/clang C++ build while
+  # still covering the full dependency resolution.
+  msrv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.95
+        run: rustup toolchain install 1.95 --profile minimal
+
+      # --locked: the recorded dep set is what release builds use; a
+      # future dep bump raising rust-version fails the bump's own PR.
+      - name: cargo check (MSRV)
+        run: cargo +1.95 check -p qmd --no-default-features --features testing --locked
 
   # D5: Windows regression gate. The reusable workflow needs
   # `contents: write`, so it cannot run on PRs — main pushes and
