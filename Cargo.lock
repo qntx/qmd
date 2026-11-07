@@ -1109,6 +1109,71 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "meme"
+version = "1.0.0"
+dependencies = [
+ "dunce",
+ "globset",
+ "granit-parser 2.0.0",
+ "indexmap",
+ "llama-cpp-2",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "serde_yaml_bw",
+ "sha2",
+ "sqlite-vec",
+ "strsim",
+ "tempfile",
+ "thiserror",
+ "time",
+ "tracing",
+ "tree-sitter",
+ "tree-sitter-go",
+ "tree-sitter-python",
+ "tree-sitter-rust",
+ "tree-sitter-typescript",
+ "ureq",
+ "walkdir",
+]
+
+[[package]]
+name = "meme-bin"
+version = "1.0.0"
+dependencies = [
+ "clap",
+ "ctrlc",
+ "meme",
+ "meme-mcp",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "signal-hook",
+ "tempfile",
+ "time",
+ "tokio",
+]
+
+[[package]]
+name = "meme-mcp"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "meme",
+ "regex",
+ "rmcp",
+ "rustix",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1270,71 +1335,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "qmd"
-version = "0.6.0"
-dependencies = [
- "dunce",
- "globset",
- "granit-parser 2.0.0",
- "indexmap",
- "llama-cpp-2",
- "regex",
- "rusqlite",
- "serde",
- "serde_json",
- "serde_yaml_bw",
- "sha2",
- "sqlite-vec",
- "strsim",
- "tempfile",
- "thiserror",
- "time",
- "tracing",
- "tree-sitter",
- "tree-sitter-go",
- "tree-sitter-python",
- "tree-sitter-rust",
- "tree-sitter-typescript",
- "ureq",
- "walkdir",
-]
-
-[[package]]
-name = "qmd-cli"
-version = "0.6.0"
-dependencies = [
- "clap",
- "ctrlc",
- "qmd",
- "qmd-mcp",
- "regex",
- "rusqlite",
- "serde",
- "serde_json",
- "signal-hook",
- "tempfile",
- "time",
- "tokio",
-]
-
-[[package]]
-name = "qmd-mcp"
-version = "0.6.0"
-dependencies = [
- "axum",
- "qmd",
- "regex",
- "rmcp",
- "rustix",
- "serde_json",
- "tempfile",
- "thiserror",
- "time",
- "tokio",
- "url",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 ---
-title: qmd
+title: meme
 description: Rust port of tobi/qmd — local markdown search engine with BM25, vector similarity and LLM-assisted hybrid search.
 ---
 
-`qmd` is a local search engine for markdown documents: SQLite FTS5 for
+`meme` is a local search engine for markdown documents: SQLite FTS5 for
 keyword search, sqlite-vec for vector similarity, and llama.cpp models
 for embeddings, query expansion and reranking.
 
@@ -17,7 +17,7 @@ for the full list; the two most visible:
   parser (unknown/extra flags are tolerated); this port uses `clap`
   and rejects them.
 - **Local index filename.** A project-local index lives at
-  `.qmd/index-rs.sqlite` (upstream: `index.sqlite`) so the two
+  `.meme/index.sqlite` (upstream: `index.sqlite`) so the two
   implementations can share a directory without clobbering each other.
 
 ## Getting started
@@ -26,14 +26,14 @@ See [Install](/docs/install) for prebuilt binaries, `cargo install`,
 the platform matrix and the bundled model defaults.
 
 ```bash
-qmd collection add . --name notes   # index a folder of markdown
-qmd embed                           # generate vector embeddings
-qmd query "rate limiting"           # expansion + hybrid search (recommended)
-qmd search "rate limiting"          # BM25 keyword search (no LLM)
-qmd doctor                          # diagnose config, index and models
+meme collection add . --name notes   # index a folder of markdown
+meme embed                           # generate vector embeddings
+meme query "rate limiting"           # expansion + hybrid search (recommended)
+meme search "rate limiting"          # BM25 keyword search (no LLM)
+meme doctor                          # diagnose config, index and models
 ```
 
 The index, config and model cache follow XDG conventions
-(`QMD_CONFIG_DIR`, `INDEX_PATH`, `XDG_CACHE_HOME` and friends are all
-honored). Run `qmd --help` for the command list or see
+(`MEME_CONFIG_DIR`, `INDEX_PATH`, `XDG_CACHE_HOME` and friends are all
+honored). Run `meme --help` for the command list or see
 [Commands](/docs/commands).

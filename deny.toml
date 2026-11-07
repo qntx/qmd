@@ -1,4 +1,4 @@
-# cargo-deny policy for the qmd workspace.
+# cargo-deny policy for the meme workspace.
 # Run: cargo deny check all
 
 [graph]

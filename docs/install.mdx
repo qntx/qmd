@@ -11,15 +11,15 @@ Prebuilt binaries are attached to each
 | `x86_64-unknown-linux-gnu` | glibc ≥ 2.39 (Ubuntu 24.04+, Debian 13+); x86 CPU needs AVX2 (Haswell 2013 or newer) |
 | `aarch64-unknown-linux-gnu` | same glibc ≥ 2.39 baseline |
 | `aarch64-apple-darwin` | Apple Silicon; Metal acceleration built in |
-| `x86_64-pc-windows-msvc` | Windows x64 — second-tier support: builds and ships, release-smoke verified, but the test suite is Unix-oriented and `qmd mcp stop` cannot kill a live daemon (same as upstream; use `taskkill`). ARM64 Windows is not built — MSVC cannot compile llama.cpp's ARM kernels |
+| `x86_64-pc-windows-msvc` | Windows x64 — second-tier support: builds and ships, release-smoke verified, but the test suite is Unix-oriented and `meme mcp stop` cannot kill a live daemon (same as upstream; use `taskkill`). ARM64 Windows is not built — MSVC cannot compile llama.cpp's ARM kernels |
 
 Older Linux systems (glibc lower than 2.39, pre-AVX2 CPUs) can still
 build from source:
 
 ```text
-cargo install qmd-cli          # crates.io
+cargo install meme-bin          # crates.io
 # or from a checkout:
-cargo install --path crates/qmd-cli
+cargo install --path crates/meme-bin
 ```
 
 The default `llama` feature compiles llama.cpp with cmake and runs
@@ -33,13 +33,13 @@ Windows; Vulkan build-verified only).
 Upgrading from the pre-rewrite 0.3.x releases? See *Upgrading from
 0.3.x* in [CHANGELOG.md](https://github.com/qntx/meme/blob/main/CHANGELOG.md).
 
-The index lives at `~/.cache/qmd/<index>-rs.sqlite` (global) or
-`.qmd/index-rs.sqlite` next to a project-local `.qmd/index.y{a,}ml`.
+The index lives at `~/.cache/meme/<index>.sqlite` (global) or
+`.meme/index.sqlite` next to a project-local `.meme/index.y{a,}ml`.
 `--index <name>` switches indexes; `INDEX_PATH` overrides the db path.
 
 ## Models
 
-`qmd` fetches GGUF models on demand (`qmd pull`, or lazily the first
+`meme` fetches GGUF models on demand (`meme pull`, or lazily the first
 time a search path needs them); nothing is bundled into the binary.
 The upstream defaults are:
 
@@ -50,7 +50,7 @@ The upstream defaults are:
 | Query expansion | [qmd-query-expansion-1.7B](https://huggingface.co/tobil/qmd-query-expansion-1.7B-gguf) (Qwen3-1.7B fine-tune) | MIT |
 
 Set `HF_ENDPOINT=https://hf-mirror.com` to download through the
-mirror. A project's `.qmd/index.y{a,}ml` may declare different
+mirror. A project's `.meme/index.y{a,}ml` may declare different
 `models:` entries — they only take effect in trusted directories, and
 their licenses are the user's responsibility (this project only
 fetches the files you configure).

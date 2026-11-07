@@ -13,14 +13,14 @@ All commands share the search/output options where applicable:
 
 | Command | Purpose |
 | --- | --- |
-| `qmd search <query>` | BM25 keyword search — no LLM involved |
-| `qmd query <query>` (alias `deep-search`) | Query expansion + hybrid RRF + reranking — recommended |
-| `qmd vsearch <query>` (alias `vector-search`) | Pure vector similarity — no reranking |
-| `qmd get <file>[:from[:count]]` | Fetch a document by path or `#docid` |
-| `qmd multi-get <pattern>` | Fetch many docs by glob or comma list |
-| `qmd ls [collection[/path]]` | List collections or files |
+| `meme search <query>` | BM25 keyword search — no LLM involved |
+| `meme query <query>` (alias `deep-search`) | Query expansion + hybrid RRF + reranking — recommended |
+| `meme vsearch <query>` (alias `vector-search`) | Pure vector similarity — no reranking |
+| `meme get <file>[:from[:count]]` | Fetch a document by path or `#docid` |
+| `meme multi-get <pattern>` | Fetch many docs by glob or comma list |
+| `meme ls [collection[/path]]` | List collections or files |
 
-### `qmd query`
+### `meme query`
 
 `query` accepts either a plain question or a multi-line structured
 document of `lex:`/`vec:`/`hyde:`/`intent:`/`expand:` lines — see
@@ -32,7 +32,7 @@ document of `lex:`/`vec:`/`hyde:`/`intent:`/`expand:` lines — see
 - `--chunk-strategy auto|regex` selects the document chunking strategy
   (`auto` merges tree-sitter AST breakpoints for code files)
 
-### `qmd vsearch`
+### `meme vsearch`
 
 Pure vector search — embeds the query, runs sqlite-vec kNN, no
 expansion and no reranking. Useful as a quick semantic probe; `query`
@@ -42,24 +42,24 @@ is the better default.
 
 | Command | Purpose |
 | --- | --- |
-| `qmd collection add <path>` | Create/update a collection |
-| `qmd collection list/remove/rename/show` | Manage collections |
-| `qmd init` | Create a project-local `.qmd` index (refuses `$HOME`) |
-| `qmd context add/list/rm` | Manage path contexts shown in results |
-| `qmd update` | Re-index collections (runs update hooks first) |
-| `qmd status` | Index status and collection summary |
-| `qmd trust` | Approve a checked-in `.qmd` config's hooks/paths/models |
-| `qmd ls` / `qmd cleanup` | File listing / index maintenance |
+| `meme collection add <path>` | Create/update a collection |
+| `meme collection list/remove/rename/show` | Manage collections |
+| `meme init` | Create a project-local `.meme` index (refuses `$HOME`) |
+| `meme context add/list/rm` | Manage path contexts shown in results |
+| `meme update` | Re-index collections (runs update hooks first) |
+| `meme status` | Index status and collection summary |
+| `meme trust` | Approve a checked-in `.meme` config's hooks/paths/models |
+| `meme ls` / `meme cleanup` | File listing / index maintenance |
 
 ## Models
 
-### `qmd embed`
+### `meme embed`
 
 Generates vector embeddings for all documents whose content hash lacks
 one — the step that makes `vsearch`/`query` produce vector results.
 
 ```bash
-qmd embed [options]
+meme embed [options]
   --force                  # clear all vectors and re-embed from scratch
   -c, --collection <name>  # embed only this collection
   --max-docs-per-batch <n> # docs per embedding batch
@@ -74,29 +74,29 @@ Skipping.` and exits 0. With no pending work it exits early —
 `✓ All content hashes already have embeddings.` — without touching
 the model.
 
-### `qmd pull`
+### `meme pull`
 
 Downloads (or re-validates) the three configured models — embed,
 generate and rerank — into the model cache. Never opens the index.
 
 ```bash
-qmd pull [--refresh] [--progress]
+meme pull [--refresh] [--progress]
   --refresh   # delete cached files and re-download
   --progress  # byte-progress line on stderr (TTY only)
 ```
 
 `pull` re-downloads a model only on `--refresh` or when the Hub reports
 a newer etag; if the Hub is unreachable, cached models are kept as-is.
-Commands that load models (`embed`, `vsearch`, `query`, `qmd mcp`) use
+Commands that load models (`embed`, `vsearch`, `query`, `meme mcp`) use
 the cached file directly and only download a model that is missing.
 Network requests time out after 30 s of no connection or no response.
 
 Model selection order, like upstream: `models:` pinned in `index.yml` >
-`QMD_*_MODEL` environment > built-in defaults. Local file paths are
+`MEME_*_MODEL` environment > built-in defaults. Local file paths are
 accepted as model URIs (handy for air-gapped setups); anything starting
 with `hf:` resolves through the Hugging Face cache layout.
 
-### `qmd bench`
+### `meme bench`
 
 Runs search-quality benchmarks: each fixture query is scored through
 the `bm25`, `vector`, `hybrid` and `full` backends and compared
@@ -104,7 +104,7 @@ against its `expected_files` (precision@k, recall@1/3/5, MRR, F1,
 latency).
 
 ```bash
-qmd bench <fixture.json> [--json] [-c collection]
+meme bench <fixture.json> [--json] [-c collection]
 ```
 
 The fixture is a JSON object with a `queries` array; each query has
@@ -114,46 +114,47 @@ lines), optional `type`, `expected_files` and `expected_in_top_k`.
 results table and a per-backend `Summary:` go to stdout; `--json`
 emits the full result envelope (`timestamp`, `fixture`, `results`,
 `summary`). A bench where every backend scores 0.00 prints a warning
-pointing at `qmd ls`; a missing or empty collection fails before any
-query runs. See `crates/qmd-cli/tests/fixtures/bench/example.json` for the format.
+pointing at `meme ls`; a missing or empty collection fails before any
+query runs. See `crates/meme-bin/tests/fixtures/bench/example.json` for the format.
 
 ## Diagnostics
 
-### `qmd doctor`
+### `meme doctor`
 
 Runs the full health report: SQLite/sqlite-vec versions, `index.yml`
 validity and collection count, environment overrides with their
 consequences, model defaults vs. configured models, model-cache GGUF
 validation, device mode and a native GPU probe (skip with
-`QMD_DOCTOR_DEVICE_PROBE=0`, force CPU mode display with
-`QMD_FORCE_CPU=1`), embedding freshness/fingerprint groups and a
+`MEME_DOCTOR_DEVICE_PROBE=0`, force CPU mode display with
+`MEME_FORCE_CPU=1`), embedding freshness/fingerprint groups and a
 vector-sample reproduction check. Findings end in a deduplicated
 `Recommended next steps` list.
 
 ## Skills
 
-`qmd skills` and `qmd skill` expose the bundled QMD skill — agent
-instructions for driving the CLI — byte-identical to upstream's copy.
-The tree is embedded in the binary; set `QMD_SKILLS_DIR` to point at a
+`meme skills` and `meme skill` expose the bundled MEME skill — agent
+instructions for driving the CLI — rewritten for this product
+(`cargo install meme-bin`, `mcp__meme__*` tool names).
+The tree is embedded in the binary; set `MEME_SKILLS_DIR` to point at a
 real directory instead.
 
 | Command | Purpose |
 | --- | --- |
-| `qmd skills list` | List bundled runtime skills (`hidden:` entries are excluded) |
-| `qmd skills get <name>` | Print a skill's `SKILL.md` |
-| `qmd skills get <name> --full` | Also print `references/`/`templates/`/`scripts/` files |
-| `qmd skills get --all` | Print every runtime skill |
-| `qmd skills path [name]` | Print the skills search dir, or one skill's dir |
-| `qmd skill show` | Print the `qmd` skill (also `qmd --skill`) |
-| `qmd skill install [--global] [--yes] [-f]` | Install under `./.agents/skills/qmd` (or `~` with `--global`) |
+| `meme skills list` | List bundled runtime skills (`hidden:` entries are excluded) |
+| `meme skills get <name>` | Print a skill's `SKILL.md` |
+| `meme skills get <name> --full` | Also print `references/`/`templates/`/`scripts/` files |
+| `meme skills get --all` | Print every runtime skill |
+| `meme skills path [name]` | Print the skills search dir, or one skill's dir |
+| `meme skill show` | Print the `meme` skill (also `meme --skill`) |
+| `meme skill install [--global] [--yes] [-f]` | Install under `./.agents/skills/meme` (or `~` with `--global`) |
 
 `skills` accepts `--json` — errors return `{"success":false,"error":...}`
 on stdout. `skills path` and `skill install` materialize the embedded
-tree under `<cache>/qmd/skills/<version>` (the port has no package
+tree under `<cache>/meme/skills/<version>` (the port has no package
 directory; upstream resolves it next to the binary).
 
-`skill install` writes a bootstrap `SKILL.md` that defers to `qmd skill
-show`, then offers to create `.claude/skills/qmd` as a relative symlink:
+`skill install` writes a bootstrap `SKILL.md` that defers to `meme skill
+show`, then offers to create `.claude/skills/meme` as a relative symlink:
 `--yes` accepts immediately, a TTY prompts `[y/N]`, and non-interactive
 runs print a `Tip:` line instead. `-f/--force` replaces an existing
 install or link path; if `.claude/skills` already resolves to
@@ -161,7 +162,7 @@ install or link path; if `.claude/skills` already resolves to
 
 ## MCP server
 
-`qmd mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
+`meme mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
 server over stdio for agents and IDEs. It speaks both the 2025 protocol
 (initialize handshake) and 2026-07-28 (no handshake, `server/discover`),
 and exposes the same surface as upstream:
@@ -172,18 +173,18 @@ and exposes the same surface as upstream:
 | `get` | One document by path or `#docid`, optional `:from[:count]` suffix |
 | `multi_get` | Many documents by glob, comma list or docids, capped by `maxBytes` |
 | `status` | Index and collection summary |
-| `qmd://{+path}` | Read a document as a resource |
+| `meme://{+path}` | Read a document as a resource |
 
 stdout carries JSON-RPC only; logs go to stderr. When stdin closes the
 server prints `Shutting down (stdin closed)...`, waits up to 5 s for
-in-flight calls and exits 0. `qmd mcp <anything>` other than `stop` is
+in-flight calls and exits 0. `meme mcp <anything>` other than `stop` is
 rejected with exit 1 (upstream would start a server).
 
 ## MCP over HTTP
 
-`qmd mcp --http [--port N] [--host H]` serves the same protocol surface
+`meme mcp --http [--port N] [--host H]` serves the same protocol surface
 over HTTP — port defaults to `8181`, the host comes from `--host`, then
-`QMD_HOST`, then `localhost`. Endpoints, matching upstream:
+`MEME_HOST`, then `localhost`. Endpoints, matching upstream:
 
 | Route | Purpose |
 | --- | --- |
@@ -192,7 +193,7 @@ over HTTP — port defaults to `8181`, the host comes from `--host`, then
 | `POST /query`, `POST /search` | REST structured search — `{"searches":[...]}` → `{"results":[...]}` |
 
 Origin and Host headers are checked before routing
-(`QMD_ALLOWED_ORIGINS` / `QMD_ALLOWED_HOSTS` — a wildcard bind without a
+(`MEME_ALLOWED_ORIGINS` / `MEME_ALLOWED_HOSTS` — a wildcard bind without a
 host allowlist prints upstream's warning and skips Host validation);
 rejections are `403` with a `-32003` body. SIGINT/SIGTERM print
 `Shutting down (SIGINT|SIGTERM)...` and exit 0; an occupied port prints
@@ -200,16 +201,16 @@ rejections are `403` with a `-32003` body. SIGINT/SIGTERM print
 
 ### Daemon mode
 
-`qmd mcp --http --daemon` re-launches the server detached: the launcher
+`meme mcp --http --daemon` re-launches the server detached: the launcher
 prints `Started on http://<host>:<port>/mcp (PID <n>)` plus `Logs:
 <path>` and exits; the child writes its stdout/stderr to
-`$XDG_CACHE_HOME/qmd/mcp[-<index>].log` (`~/.cache/qmd` without XDG) and
+`$XDG_CACHE_HOME/meme/mcp[-<index>].log` (`~/.cache/meme` without XDG) and
 its PID to the sibling `.pid` file. A live pidfile refuses with
 `Already running (PID <n>)`; a stale or recycled one is removed.
-`qmd mcp stop` reports `Not running (no PID file).`, cleans a stale
-file, or SIGTERMs a verified qmd PID (`Stopped QMD MCP server (PID
+`meme mcp stop` reports `Not running (no PID file).`, cleans a stale
+file, or SIGTERMs a verified meme PID (`Stopped MEME MCP server (PID
 <n>).`) — identity is confirmed by the process command line so a
-reused PID is never signalled. `qmd status` adds a green `MCP:
+reused PID is never signalled. `meme status` adds a green `MCP:
 running (PID <n>)` line while the daemon is alive.
 
 ## CI behavior

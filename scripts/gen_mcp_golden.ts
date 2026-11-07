@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd-cli/tests/fixtures/mcp_golden.json` by driving
+ * Regenerate `crates/meme-bin/tests/fixtures/mcp_golden.json` by driving
  * the upstream (tobi/qmd) MCP server — `bun src/cli/qmd.ts mcp` — over
  * stdio with scripted JSON-RPC sessions (P5.2), and
- * `qmd mcp --http --port N` with scripted HTTP requests (P5.3).
+ * `meme mcp --http --port N` with scripted HTTP requests (P5.3).
  *
  * Isolation mirrors scripts/gen_cli_golden.ts: minimal env, HOME/
- * XDG dirs, QMD_CONFIG_DIR, INDEX_PATH, TMPDIR inside a throwaway /tmp root,
- * nothing touches the real ~/.cache/qmd or ~/.config/qmd.
+ * XDG dirs, MEME_CONFIG_DIR, INDEX_PATH, TMPDIR inside a throwaway /tmp root,
+ * nothing touches the real ~/.cache/meme or ~/.config/meme.
  *
  * Fixture shape:
  *   { generated, upstream, corpus: { files: [{path, content}], config_yaml },
@@ -17,19 +17,19 @@
  * `stderr`/`exit_code` are recorded on every session (they matter for
  * the EOF case); `<ROOT>` stands in for the corpus root inside output.
  *
- * Usage: QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_mcp_golden.ts
+ * Usage: MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_mcp_golden.ts
  */
 import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-const upstream = process.env.QMD_UPSTREAM;
-if (!upstream) { console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required"); process.exit(1); }
-const QMD_TS = join(upstream, "src", "cli", "qmd.ts");
-const OUT = new URL("../crates/qmd-cli/tests/fixtures/mcp_golden.json", import.meta.url).pathname;
+const upstream = process.env.MEME_UPSTREAM;
+if (!upstream) { console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required"); process.exit(1); }
+const MEME_TS = join(upstream, "src", "cli", "qmd.ts");
+const OUT = new URL("../crates/meme-bin/tests/fixtures/mcp_golden.json", import.meta.url).pathname;
 
-const root = mkdtempSync(join(tmpdir(), "qmd-mcp-golden-"));
+const root = mkdtempSync(join(tmpdir(), "meme-mcp-golden-"));
 const corpus = join(root, "corpus");
 mkdirSync(join(corpus, "docs"), { recursive: true });
 mkdirSync(join(corpus, "notes"), { recursive: true });
@@ -69,15 +69,15 @@ const env = {
   HOME: join(root, "home"),
   XDG_CONFIG_HOME: join(root, "config"),
   XDG_CACHE_HOME: join(root, "cache"),
-  QMD_CONFIG_DIR: join(root, "config"),
+  MEME_CONFIG_DIR: join(root, "config"),
   INDEX_PATH: join(root, "index.sqlite"),
   TMPDIR: join(root, "tmp"),
   TZ: "UTC",
   NO_COLOR: "1",
-  QMD_DOCTOR_DEVICE_PROBE: "0",
+  MEME_DOCTOR_DEVICE_PROBE: "0",
 };
 
-const idx = spawnSync(process.execPath, [QMD_TS, "update"], { env, encoding: "utf8" });
+const idx = spawnSync(process.execPath, [MEME_TS, "update"], { env, encoding: "utf8" });
 if (idx.status !== 0) { console.error("index failed:", idx.stderr); process.exit(1); }
 
 const META26 = { "io.modelcontextprotocol/protocolVersion": "2026-07-28",
@@ -95,7 +95,7 @@ const m26 = (id: number, method: string, params: unknown = {}) =>
 
 // Learn docs/readme.md's docid from upstream `qmd get` (docids are
 // content-hash deterministic, so ours matches byte-for-byte).
-const getOut = spawnSync(process.execPath, [QMD_TS, "get", "docs/readme.md"], { env, cwd: corpus, encoding: "utf8" });
+const getOut = spawnSync(process.execPath, [MEME_TS, "get", "docs/readme.md"], { env, cwd: corpus, encoding: "utf8" });
 const docid = (getOut.stdout || "").match(/#[0-9a-f]{6}/)?.[0] || "#000000";
 
 const sessions = [
@@ -105,8 +105,8 @@ const sessions = [
       { jsonrpc: "2.0", id: 3, method: "resources/templates/list" },
       { jsonrpc: "2.0", id: 4, method: "resources/list" },
       tc(5, "status", {}),
-      { jsonrpc: "2.0", id: 6, method: "resources/read", params: { uri: "qmd://docs/readme.md" } },
-      { jsonrpc: "2.0", id: 7, method: "resources/read", params: { uri: "qmd://docs/nope.md" } },
+      { jsonrpc: "2.0", id: 6, method: "resources/read", params: { uri: "meme://docs/readme.md" } },
+      { jsonrpc: "2.0", id: 7, method: "resources/read", params: { uri: "meme://docs/nope.md" } },
       { jsonrpc: "2.0", id: 8, method: "no/such.method" },
       tc(9, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }),
       tc(10, "query", { searches: [{ type: "lex", query: "install" }], rerank: false, collections: ["docs"] }),
@@ -133,14 +133,14 @@ const sessions = [
       // resources/read — encoded paths + malformed escapes
       // (mcp.test.ts:647-742); JS decodeURIComponent throws URIError on
       // the malformed forms.
-      { jsonrpc: "2.0", id: 32, method: "resources/read", params: { uri: "qmd://notes%2Fmeeting.md" } },
-      { jsonrpc: "2.0", id: 33, method: "resources/read", params: { uri: "qmd://notes/External%20Podcast/2023%20April%20-%20Interview.md" } },
-      { jsonrpc: "2.0", id: 34, method: "resources/read", params: { uri: "qmd://notes%252Fmeeting.md" } },
-      { jsonrpc: "2.0", id: 35, method: "resources/read", params: { uri: "qmd://meeting.md" } },
-      { jsonrpc: "2.0", id: 36, method: "resources/read", params: { uri: "qmd://docs%ZZ.md" } },
-      { jsonrpc: "2.0", id: 37, method: "resources/read", params: { uri: "qmd://docs%2.md" } },
-      { jsonrpc: "2.0", id: 38, method: "resources/read", params: { uri: "qmd://%FF.md" } },
-      { jsonrpc: "2.0", id: 39, method: "resources/read", params: { uri: "qmd://%E2%82.md" } },
+      { jsonrpc: "2.0", id: 32, method: "resources/read", params: { uri: "meme://notes%2Fmeeting.md" } },
+      { jsonrpc: "2.0", id: 33, method: "resources/read", params: { uri: "meme://notes/External%20Podcast/2023%20April%20-%20Interview.md" } },
+      { jsonrpc: "2.0", id: 34, method: "resources/read", params: { uri: "meme://notes%252Fmeeting.md" } },
+      { jsonrpc: "2.0", id: 35, method: "resources/read", params: { uri: "meme://meeting.md" } },
+      { jsonrpc: "2.0", id: 36, method: "resources/read", params: { uri: "meme://docs%ZZ.md" } },
+      { jsonrpc: "2.0", id: 37, method: "resources/read", params: { uri: "meme://docs%2.md" } },
+      { jsonrpc: "2.0", id: 38, method: "resources/read", params: { uri: "meme://%FF.md" } },
+      { jsonrpc: "2.0", id: 39, method: "resources/read", params: { uri: "meme://%E2%82.md" } },
       // get — bare filename (mcp.test.ts:463) + near-miss suggestions (:476)
       tc(40, "get", { file: "readme.md" }),
       tc(41, "get", { file: "readmee.md" }),
@@ -158,7 +158,7 @@ const sessions = [
   { name: "2026-07-28", requests: [
       m26(1, "server/discover"), m26(2, "tools/list"), tc26(3, "status", {}),
       m26(4, "resources/templates/list"),
-      m26(5, "resources/read", { uri: "qmd://docs/readme.md" }),
+      m26(5, "resources/read", { uri: "meme://docs/readme.md" }),
       m26(6, "no/such.method"),
       tc26(7, "query", { searches: [{ type: "lex", query: "index" }], rerank: false }),
       tc26(8, "get", { file: "docs/readme.md" }),
@@ -172,7 +172,7 @@ const sessions = [
 ];
 
 async function runSession(requests: unknown[]) {
-  const proc = spawn(process.execPath, [QMD_TS, "mcp"], { env, stdio: ["pipe", "pipe", "pipe"] });
+  const proc = spawn(process.execPath, [MEME_TS, "mcp"], { env, stdio: ["pipe", "pipe", "pipe"] });
   let stderr = "";
   proc.stderr.on("data", (d) => (stderr += d));
   proc.stdout.setEncoding("utf8");
@@ -222,7 +222,7 @@ for (const s of sessions) {
 }
 
 // ---------------------------------------------------------------------------
-// HTTP transport (P5.3): `qmd mcp --http --port N` + scripted fetch requests.
+// HTTP transport (P5.3): `meme mcp --http --port N` + scripted fetch requests.
 // ---------------------------------------------------------------------------
 
 const HTTP_ACCEPT = { Accept: "application/json, text/event-stream" };
@@ -258,7 +258,7 @@ const httpCases: HttpCase[] = [
     body: tc(3, "status", {}) },
   { name: "res-read-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
     body: { jsonrpc: "2.0", id: 5, method: "resources/read",
-            params: { uri: "qmd://docs/readme.md" } } },
+            params: { uri: "meme://docs/readme.md" } } },
   { name: "discover-2026", method: "POST", path: "/mcp", ...m26h(6, "server/discover") },
   { name: "tools-list-2026", method: "POST", path: "/mcp", ...m26h(7, "tools/list") },
   { name: "call-status-2026", method: "POST", path: "/mcp", ...tc26h(8, "status", {}) },
@@ -267,7 +267,7 @@ const httpCases: HttpCase[] = [
   { name: "call-get-2025", method: "POST", path: "/mcp", headers: HTTP_ACCEPT,
     body: tc(90, "get", { file: "docs/readme.md" }) },
   { name: "res-read-2026", method: "POST", path: "/mcp",
-    ...m26h(10, "resources/read", { uri: "qmd://docs/readme.md" }) },
+    ...m26h(10, "resources/read", { uri: "meme://docs/readme.md" }) },
   { name: "no-method-hdr", method: "POST", path: "/mcp", headers: H26,
     body: m26(11, "tools/list") },
   { name: "method-hdr-mismatch", method: "POST", path: "/mcp",
@@ -368,7 +368,7 @@ const httpCases: HttpCase[] = [
 
 async function runHttp(): Promise<unknown> {
   const port = 18200 + (process.pid % 2000);
-  const proc = spawn(process.execPath, [QMD_TS, "mcp", "--http", "--port", String(port)],
+  const proc = spawn(process.execPath, [MEME_TS, "mcp", "--http", "--port", String(port)],
     { env, stdio: ["ignore", "pipe", "pipe"] });
   let stderr = "";
   proc.stderr.on("data", (d) => (stderr += d));

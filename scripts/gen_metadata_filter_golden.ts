@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/metadata_filter_golden.json` by
+ * Regenerate `crates/meme/tests/fixtures/metadata_filter_golden.json` by
  * running upstream (tobi/qmd) `parseMetadataFilter` +
  * `compileMetadataFilter` (src/metadata-filter.ts) — the functions P3.2
  * ports — over a fixed corpus of filter inputs.
@@ -13,14 +13,14 @@
  *     embeds the failing JSON path (`Invalid metadata filter at $.x: …`).
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_metadata_filter_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_metadata_filter_golden.ts
  *
  * Pure function calls only — deterministic, no database, no models.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -32,7 +32,7 @@ const { execSync } = await import("node:child_process");
 
 const commit = execSync(`git -C "${upstream}" rev-parse HEAD`).toString().trim();
 const version = JSON.parse(await fs.readFile(`${upstream}/package.json`, "utf8")).version;
-const fixturesDir = new URL("../crates/qmd/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme/tests/fixtures/", import.meta.url).pathname;
 
 const eq = (key: string, value: unknown) => ({ key, operator: "eq", value });
 const cond = (key: string, operator: string, value: unknown) => ({ key, operator, value });

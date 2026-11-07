@@ -4,16 +4,16 @@
  * `loadConfig` and re-serialize it with upstream `saveConfig`.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/interop_yaml.ts <in.yaml> <out.yaml>
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/interop_yaml.ts <in.yaml> <out.yaml>
  *
  * Prints the upstream-parsed config as JSON on stdout. Driven by the
  * `config_interop` test (`cargo test -- --ignored config_interop`).
  */
 
 const [input, output] = process.argv.slice(2);
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream || !input || !output) {
-  console.error("QMD_UPSTREAM=<upstream checkout> and <in.yaml> <out.yaml> are required");
+  console.error("MEME_UPSTREAM=<upstream checkout> and <in.yaml> <out.yaml> are required");
   process.exit(1);
 }
 

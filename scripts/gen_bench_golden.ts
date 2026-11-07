@@ -1,5 +1,5 @@
 /**
- * gen_bench_golden.ts — record upstream `qmd bench` internals for the
+ * gen_bench_golden.ts — record upstream `meme bench` internals for the
  * Rust golden replay (P7.1, issue #103).
  *
  * Three sections, all upstream-authoritative:
@@ -13,20 +13,20 @@
  *   3. `guard` — `assertBenchCollectionReady` message text for the
  *      four guard branches.
  *
- * Run: QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_bench_golden.ts
- * Output: crates/qmd-cli/tests/fixtures/bench_golden.json
+ * Run: MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_bench_golden.ts
+ * Output: crates/meme-bin/tests/fixtures/bench_golden.json
  */
 
 import { mkdtempSync, writeFileSync, mkdirSync, cpSync, readFileSync } from "fs";
 import { execSync } from "child_process";
 import { join } from "path";
 
-const UPSTREAM = process.env.QMD_UPSTREAM;
+const UPSTREAM = process.env.MEME_UPSTREAM;
 if (!UPSTREAM) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
-const OUT = "crates/qmd-cli/tests/fixtures/bench_golden.json";
+const OUT = "crates/meme-bin/tests/fixtures/bench_golden.json";
 
 // Isolate EVERYTHING the recorder or upstream CLI touches — a stray
 // default path writes to the real index/config. All four env vars
@@ -42,14 +42,14 @@ const _db = _cfg + "/index.sqlite";
 import { mkdirSync as _md } from "fs";
 for (const d of [_cfg, _home, _xdgC, _xdgCa]) _md(d, { recursive: true });
 Object.assign(process.env, {
-  QMD_CONFIG_DIR: _cfg,
+  MEME_CONFIG_DIR: _cfg,
   INDEX_PATH: _db,
   HOME: _home,
   XDG_CONFIG_HOME: _xdgC,
   XDG_CACHE_HOME: _xdgCa,
 });
 const _expected: [string, string][] = [
-  ["QMD_CONFIG_DIR", _cfg],
+  ["MEME_CONFIG_DIR", _cfg],
   ["INDEX_PATH", _db],
   ["HOME", _home],
   ["XDG_CONFIG_HOME", _xdgC],
@@ -74,7 +74,7 @@ const scoreCases: { name: string; results: string[]; expected: string[]; topK: n
   { name: "mrr-rank2", results: ["x.md", "a.md"], expected: ["a.md"], topK: 2 },
   { name: "recall-at-n-matched", results: ["x.md", "concepts/a.md", "y.md", "b.md", "z.md"], expected: ["concepts/a.md", "b.md"], topK: 5 },
   // Edge cases.
-  { name: "qmd-uri-both-sides", results: ["qmd://col/docs/a.md"], expected: ["qmd://other/docs/a.md"], topK: 1 },
+  { name: "meme-uri-both-sides", results: ["meme://col/docs/a.md"], expected: ["meme://other/docs/a.md"], topK: 1 },
   { name: "case-differs", results: ["Docs/A.md"], expected: ["docs/a.md"], topK: 1 },
   { name: "suffix-expected-longer", results: ["a.md"], expected: ["docs/a.md"], topK: 1 },
   { name: "duplicates-in-results", results: ["a.md", "a.md", "a.md"], expected: ["a.md"], topK: 2 },
@@ -84,7 +84,7 @@ const scoreCases: { name: string; results: string[]; expected: string[]; topK: n
 ];
 const normalizeCases = [
   "Resources/Concepts/Context Engineering.md",
-  "qmd://collection/docs/readme.md",
+  "meme://collection/docs/readme.md",
   "/docs/readme.md/",
   "readme.md",
 ];
@@ -93,7 +93,7 @@ const pathsMatchCases: [string, string][] = [
   ["Docs/README.md", "docs/readme.md"],
   ["/full/path/docs/readme.md", "docs/readme.md"],
   ["readme.md", "docs/readme.md"],
-  ["qmd://col/docs/readme.md", "docs/readme.md"],
+  ["meme://col/docs/readme.md", "docs/readme.md"],
   ["docs/readme.md", "docs/other.md"],
 ];
 const score = {
@@ -104,16 +104,16 @@ const score = {
 
 // ---- 2. bm25 runBenchmark over a temp eval-docs index ----------------------
 const tmp = mkdtempSync(_root + "/corpus-");
-const corpusSrc = "crates/qmd/tests/fixtures/eval-docs";
+const corpusSrc = "crates/meme/tests/fixtures/eval-docs";
 const indexDir = join(tmp, "eval-docs");
 mkdirSync(indexDir, { recursive: true });
 cpSync(corpusSrc, indexDir, { recursive: true });
 const cfgDir = _cfg;
 const dbPath = _db;
 
-// Build the index via upstream's own `qmd` CLI (collection add +
+// Build the index via upstream's own `meme` CLI (collection add +
 // update) so the store is exactly what upstream creates.
-execSync(`cd ${UPSTREAM} && QMD_CONFIG_DIR=${cfgDir} INDEX_PATH=${dbPath} bun src/cli/qmd.ts collection add ${indexDir} --name eval-docs`, { stdio: "inherit" });
+execSync(`cd ${UPSTREAM} && MEME_CONFIG_DIR=${cfgDir} INDEX_PATH=${dbPath} bun src/cli/qmd.ts collection add ${indexDir} --name eval-docs`, { stdio: "inherit" });
 
 function capture(fn: () => Promise<unknown>) {
   const out: string[] = [];
@@ -178,15 +178,15 @@ const edge = {
     { id: "tie-125", query: "API versioning", expected_files: ["api-design-principles.md","fa.md","fb.md","fc.md","fd.md","fe.md","ff.md","fg.md"], expected_in_top_k: 8 },
   ],
 };
-const edgePath = "crates/qmd-cli/tests/fixtures/bench/edge.json";
+const edgePath = "crates/meme-bin/tests/fixtures/bench/edge.json";
 writeFileSync(edgePath, JSON.stringify(edge, null, 2) + "\n");
 
-const examplePath = "crates/qmd-cli/tests/fixtures/bench/example.json";
+const examplePath = "crates/meme-bin/tests/fixtures/bench/example.json";
 
 // A 5th run whose bm25 search finds nothing → the all-zero warning
 // lands in the captured stderr (upstream writes it inside
 // runBenchmark, so it is part of the recorded stream).
-const zeroPath = "crates/qmd-cli/tests/fixtures/bench/zero.json";
+const zeroPath = "crates/meme-bin/tests/fixtures/bench/zero.json";
 writeFileSync(zeroPath, JSON.stringify({
   collection: "eval-docs",
   queries: [{ id: "zero", query: "zzz-no-such-term-qqq", expected_files: ["missing.md"], expected_in_top_k: 1 }],

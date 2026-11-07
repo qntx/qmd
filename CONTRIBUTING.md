@@ -1,4 +1,4 @@
-# Contributing to qmd
+# Contributing to meme
 
 This document covers what you need before opening a pull request.
 
@@ -50,8 +50,8 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --features llama,testing -- -D warnings
 cargo test --workspace --features llama,testing
 # No-llama configuration (the ci-minimal job; needs no cmake/clang):
-cargo check -p qmd --no-default-features --features testing
-cargo test -p qmd --no-default-features --features testing
+cargo check -p meme --no-default-features --features testing
+cargo test -p meme --no-default-features --features testing
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features llama,testing
 cargo publish --workspace --dry-run --locked
 ```
@@ -104,7 +104,7 @@ Follow [Conventional Commits][cc]. Subject lines stay under 50
 characters and use the imperative mood:
 
 ```text
-feat(cli): add `qmd mcp` subcommand
+feat(cli): add `meme mcp` subcommand
 fix(search): return BM25 results in descending score order
 docs(readme): document hybrid search usage
 ```

@@ -1,9 +1,9 @@
 ---
 title: Query syntax
-description: Structured query documents for `qmd query` — lex/vec/hyde/intent/expand. Ported from upstream docs/SYNTAX.md.
+description: Structured query documents for `meme query` — lex/vec/hyde/intent/expand. Ported from upstream docs/SYNTAX.md.
 ---
 
-QMD queries are structured documents with typed sub-queries. Each line
+MEME queries are structured documents with typed sub-queries. Each line
 specifies a search type and query text.
 
 ## Grammar
@@ -155,30 +155,30 @@ ranks web-performance content.
 Restrict queries to specific collections with `-c`:
 
 ```bash
-# By collection name (see `qmd collection list`)
-qmd query -c docs "how does auth work"
-qmd query -c docs -c notes $'lex: auth\nvec: authentication flow'
+# By collection name (see `meme collection list`)
+meme query -c docs "how does auth work"
+meme query -c docs -c notes $'lex: auth\nvec: authentication flow'
 ```
 
 Multiple `-c` values are OR-combined. Without scoping, all
 default-included collections are searched; collections marked excluded
-(`qmd collection exclude <name>`) are skipped unless explicitly named.
+(`meme collection exclude <name>`) are skipped unless explicitly named.
 
 ## CLI examples
 
 ```bash
 # Single line (implicit expand)
-qmd query "how does auth work"
+meme query "how does auth work"
 
 # Multi-line with types
-qmd query $'lex: auth token\nvec: how does authentication work'
+meme query $'lex: auth token\nvec: how does authentication work'
 
 # Structured
-qmd query $'lex: keywords\nvec: question\nhyde: hypothetical answer...'
+meme query $'lex: keywords\nvec: question\nhyde: hypothetical answer...'
 
 # With intent (inline)
-qmd query $'intent: web performance and latency\nlex: performance\nvec: how to improve performance'
+meme query $'intent: web performance and latency\nlex: performance\nvec: how to improve performance'
 
 # With intent (flag)
-qmd query --intent "web performance and latency" "performance"
+meme query --intent "web performance and latency" "performance"
 ```

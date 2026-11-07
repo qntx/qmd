@@ -1,13 +1,13 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-# qmd
+# meme
 
 Rust port of [tobi/qmd](https://github.com/tobi/qmd) (v2.8.3) — search
 local markdown knowledge bases with BM25, vector similarity and hybrid
 query expansion, from a single binary. Ships on crates.io as
-[`qmd`](https://crates.io/crates/qmd) /
-[`qmd-cli`](https://crates.io/crates/qmd-cli) /
-[`qmd-mcp`](https://crates.io/crates/qmd-mcp) and as prebuilt binaries
+[`meme`](https://crates.io/crates/meme) /
+[`meme-bin`](https://crates.io/crates/meme-bin) /
+[`meme-mcp`](https://crates.io/crates/meme-mcp) and as prebuilt binaries
 on [GitHub Releases](https://github.com/qntx/meme/releases).
 
 User documentation lives in [docs/](docs/); changes are tracked in

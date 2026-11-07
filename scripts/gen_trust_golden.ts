@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/trust_golden.json` by running
+ * Regenerate `crates/meme/tests/fixtures/trust_golden.json` by running
  * upstream (tobi/qmd) `src/trust.ts` over a fixed corpus of inputs —
  * the functions P3.3 ports.
  *
@@ -20,22 +20,22 @@
  * and not ported (P3-D3), so they are not covered here.
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_trust_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_trust_golden.ts
  *
  * Pure function calls only — deterministic, no database, no models.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
 const { execSync } = await import("node:child_process");
 const fs = await import("node:fs/promises");
 
-// Pin HOME before importing trust.ts — `qmdHomedir` reads it per call.
-const GOLDEN_HOME = "/home/qmd-golden";
+// Pin HOME before importing trust.ts — `memeHomedir` reads it per call.
+const GOLDEN_HOME = "/home/meme-golden";
 const origHome = process.env.HOME;
 process.env.HOME = GOLDEN_HOME;
 
@@ -51,10 +51,10 @@ const {
 
 const commit = execSync(`git -C "${upstream}" rev-parse HEAD`).toString().trim();
 const version = JSON.parse(await fs.readFile(`${upstream}/package.json`, "utf8")).version;
-const fixturesDir = new URL("../crates/qmd/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme/tests/fixtures/", import.meta.url).pathname;
 
-const PROJECT = "/home/me/project/.qmd/index.yml";
-const GLOBAL = "/home/me/.config/qmd/index.yml";
+const PROJECT = "/home/me/project/.meme/index.yml";
+const GLOBAL = "/home/me/.config/meme/index.yml";
 const builtins = {
   embed: "hf:default/embed/model.gguf",
   rerank: "hf:default/rerank/model.gguf",
@@ -69,18 +69,18 @@ const add = (name: string, kind: string, input: unknown, run: () => unknown) =>
 // ── isLocalConfigPath ──
 for (const p of [
   PROJECT,
-  "/home/me/project/.qmd/index.yaml",
+  "/home/me/project/.meme/index.yaml",
   GLOBAL,
-  "/home/me/.config/qmd/work.yml",
+  "/home/me/.config/meme/work.yml",
   "<inline>",
   "",
-  "/x/y/../project/.qmd/index.yml",
+  "/x/y/../project/.meme/index.yml",
 ]) {
   add(`localPath ${p || "<empty>"}`, "localPath", [p], () => isLocalConfigPath(p));
 }
 
 // ── projectRootFromConfig ──
-for (const p of [PROJECT, "/x/y/../project/.qmd/index.yml"]) {
+for (const p of [PROJECT, "/x/y/../project/.meme/index.yml"]) {
   add(`projectRoot ${p}`, "projectRoot", [p], () => projectRootFromConfig(p));
 }
 
@@ -237,11 +237,11 @@ for (const [name, configPath, snapshot] of digestInputs) {
 add("store write format", "storeFormat", null, () =>
   `${JSON.stringify(
     {
-      "/home/me/project/.qmd/index.yml": {
+      "/home/me/project/.meme/index.yml": {
         hooks: "abcdef0123456789",
         trustedAt: "2026-01-02T03:04:05.006Z",
       },
-      "/home/me/other/.qmd/index.yaml": {
+      "/home/me/other/.meme/index.yaml": {
         hooks: "0011223344556677",
         trustedAt: "2026-02-03T04:05:06.007Z",
       },

@@ -18,16 +18,16 @@
  * `chunk_document_with_strategy` verbatim.
  *
  * Run:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_ast_golden.ts
- * Output: crates/qmd/tests/fixtures/ast_golden.json
- *         crates/qmd/tests/fixtures/ast_chunk_golden.json
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_ast_golden.ts
+ * Output: crates/meme/tests/fixtures/ast_golden.json
+ *         crates/meme/tests/fixtures/ast_chunk_golden.json
  */
 
 import { writeFileSync } from "fs";
 
-const UPSTREAM = process.env.QMD_UPSTREAM;
+const UPSTREAM = process.env.MEME_UPSTREAM;
 if (!UPSTREAM) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 const { getASTBreakPoints } = await import(`${UPSTREAM}/src/ast.ts`);
@@ -223,7 +223,7 @@ class Ünïcödé:
   // non-code
   { path: "readme.md", content: "# Hello World" },
   { path: "data.xyz", content: "not code" },
-  { path: "qmd://virtual/doc.py", content: `def v(): pass` },
+  { path: "meme://virtual/doc.py", content: `def v(): pass` },
 ];
 
 const cases = [] as any[];
@@ -239,10 +239,10 @@ const out = {
   cases,
 };
 writeFileSync(
-  "crates/qmd/tests/fixtures/ast_golden.json",
+  "crates/meme/tests/fixtures/ast_golden.json",
   JSON.stringify(out, null, 2) + "\n",
 );
-console.log("wrote crates/qmd/tests/fixtures/ast_golden.json");
+console.log("wrote crates/meme/tests/fixtures/ast_golden.json");
 
 // =============================================================================
 // P6.2 — chunkDocumentAsync corpus (auto-strategy chunk golden)
@@ -475,7 +475,7 @@ const chunkOut = {
   cases: chunkCases,
 };
 writeFileSync(
-  "crates/qmd/tests/fixtures/ast_chunk_golden.json",
+  "crates/meme/tests/fixtures/ast_chunk_golden.json",
   JSON.stringify(chunkOut, null, 2) + "\n",
 );
-console.log("wrote crates/qmd/tests/fixtures/ast_chunk_golden.json");
+console.log("wrote crates/meme/tests/fixtures/ast_chunk_golden.json");

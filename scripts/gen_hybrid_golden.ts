@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Regenerate `crates/qmd/tests/fixtures/hybrid_golden.json` by running
+ * Regenerate `crates/meme/tests/fixtures/hybrid_golden.json` by running
  * the upstream (tobi/qmd) pure functions that P2.4 ports:
  *
  *   - getCacheKey (store.ts)
@@ -10,15 +10,15 @@
  *     Bun.Transpiler type-stripping and evaluated in isolation)
  *
  * Usage:
- *   QMD_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_hybrid_golden.ts
+ *   MEME_UPSTREAM=/path/to/tobi/qmd bun scripts/gen_hybrid_golden.ts
  *
  * No models and no database are involved — every case is a pure
  * function call, so the fixture is deterministic.
  */
 
-const upstream = process.env.QMD_UPSTREAM;
+const upstream = process.env.MEME_UPSTREAM;
 if (!upstream) {
-  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  console.error("MEME_UPSTREAM=<path to tobi/qmd checkout> is required");
   process.exit(1);
 }
 
@@ -31,7 +31,7 @@ const commit = execSync(`git -C "${upstream}" rev-parse HEAD`).toString().trim()
 const version = JSON.parse(
   await fs.readFile(`${upstream}/package.json`, "utf8"),
 ).version;
-const fixturesDir = new URL("../crates/qmd/tests/fixtures/", import.meta.url).pathname;
+const fixturesDir = new URL("../crates/meme/tests/fixtures/", import.meta.url).pathname;
 
 // ── parseStructuredQuery (not exported — lift from cli/qmd.ts) ────────
 const cliSrc = await fs.readFile(`${upstream}/src/cli/qmd.ts`, "utf8");
@@ -49,7 +49,7 @@ const parseStructuredQuery: (q: string) => unknown = new Function(stripped)() as
 
 const rr = (file: string, score: number) => ({
   file,
-  displayPath: file.replace("qmd://", ""),
+  displayPath: file.replace("meme://", ""),
   title: file,
   body: `body of ${file}`,
   score,
@@ -64,7 +64,7 @@ const rrfInputs: {
 }[] = [
   {
     name: "single_list",
-    lists: [[rr("qmd://docs/a.md", 0.9), rr("qmd://docs/b.md", 0.8), rr("qmd://docs/c.md", 0.7)]],
+    lists: [[rr("meme://docs/a.md", 0.9), rr("meme://docs/b.md", 0.8), rr("meme://docs/c.md", 0.7)]],
     weights: [2.0],
     metas: [{ source: "fts", queryType: "original", query: "alpha" }],
     k: 60,
@@ -72,9 +72,9 @@ const rrfInputs: {
   {
     name: "merge_across_lists_original_2x",
     lists: [
-      [rr("qmd://docs/a.md", 0.92), rr("qmd://docs/b.md", 0.81)],
-      [rr("qmd://docs/b.md", 0.77), rr("qmd://docs/a.md", 0.65)],
-      [rr("qmd://docs/c.md", 0.7)],
+      [rr("meme://docs/a.md", 0.92), rr("meme://docs/b.md", 0.81)],
+      [rr("meme://docs/b.md", 0.77), rr("meme://docs/a.md", 0.65)],
+      [rr("meme://docs/c.md", 0.7)],
     ],
     weights: [2.0, 1.0, 2.0],
     metas: [
@@ -86,7 +86,7 @@ const rrfInputs: {
   },
   {
     name: "missing_weight_defaults_to_one",
-    lists: [[rr("qmd://docs/a.md", 0.9)], [rr("qmd://docs/b.md", 0.9)]],
+    lists: [[rr("meme://docs/a.md", 0.9)], [rr("meme://docs/b.md", 0.9)]],
     weights: [],
     metas: [
       { source: "fts", queryType: "original", query: "q" },
@@ -96,7 +96,7 @@ const rrfInputs: {
   },
   {
     name: "custom_k",
-    lists: [[rr("qmd://docs/a.md", 0.9), rr("qmd://docs/b.md", 0.5)]],
+    lists: [[rr("meme://docs/a.md", 0.9), rr("meme://docs/b.md", 0.5)]],
     weights: [1.0],
     metas: [{ source: "fts", queryType: "original", query: "q" }],
     k: 30,
@@ -105,10 +105,10 @@ const rrfInputs: {
     name: "rank_bonus_boundary",
     lists: [
       [
-        rr("qmd://docs/r1.md", 0.9),
-        rr("qmd://docs/r2.md", 0.8),
-        rr("qmd://docs/r3.md", 0.7),
-        rr("qmd://docs/r4.md", 0.6),
+        rr("meme://docs/r1.md", 0.9),
+        rr("meme://docs/r2.md", 0.8),
+        rr("meme://docs/r3.md", 0.7),
+        rr("meme://docs/r4.md", 0.6),
       ],
     ],
     weights: [1.0],
