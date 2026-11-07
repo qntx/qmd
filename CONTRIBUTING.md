@@ -12,15 +12,21 @@ issues and pull requests.
 ## Development Setup
 
 ```bash
-git clone https://github.com/qntx/qmd
-cd qmd
+git clone https://github.com/qntx/meme
+cd meme
 
-# Build the entire workspace with all features.
-cargo build --workspace --all-features
+# Build the entire workspace with the supported feature set
+# (llama.cpp inference + deterministic test backends).
+cargo build --workspace --features llama,testing
 
 # Run unit + integration + doc tests across the workspace.
-cargo test --workspace --all-features
+cargo test --workspace --features llama,testing
 ```
+
+`--all-features` is intentionally unsupported: the `metal`/`cuda`/`vulkan`
+passthroughs need their platform toolkits. The supported set is
+`llama,testing` (see `FEATURES` in the `Justfile`); GPU backends are
+opt-in per machine, e.g. `--features llama,testing,metal`.
 
 The MSRV is **Rust 1.95** (`workspace.package.rust-version` in `Cargo.toml`).
 CI builds on stable; match that locally with `rustup`.
@@ -41,16 +47,21 @@ CI-equivalent cargo invocations:
 
 ```bash
 cargo fmt --all --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
+cargo clippy --workspace --all-targets --features llama,testing -- -D warnings
+cargo test --workspace --features llama,testing
+# No-llama configuration (the ci-minimal job; needs no cmake/clang):
+cargo check -p qmd --no-default-features --features testing
+cargo test -p qmd --no-default-features --features testing
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --features llama,testing
+cargo publish --workspace --dry-run --locked
 ```
 
 Local Justfile equivalents (`+nightly`, not CI):
 
 ```bash
 cargo +nightly fmt --all --check
-cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo +nightly doc --workspace --all-features --no-deps
+cargo +nightly clippy --workspace --all-targets --features llama,testing -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo +nightly doc --workspace --features llama,testing --no-deps
 ```
 
 For dependency hygiene:
@@ -63,12 +74,16 @@ cargo deny check all
 
 ## TOML style
 
-Match kobe’s grouped `=` alignment. Inside one table, a contiguous run of
-`key = value` lines (no blank line) is a group; pad keys so every `=` in
-that group shares a column. One space on each side of `=`. Keep the
-file’s existing trailing-comma style. Do not reorder keys to make
-padding easier. There is no taplo/dprint gate; rustfmt remains the only
-format check.
+TOML is formatted by taplo (`.taplo.toml`, aligned `=` entries) — the
+`taplo` CI job and `just toml` both run:
+
+```bash
+npx --yes @taplo/cli@0.7.0 fmt --check
+```
+
+Inside one table, a contiguous run of `key = value` lines (no blank
+line) is a group; taplo pads keys so every `=` in that group shares a
+column. Do not reorder keys to make padding easier.
 
 ## Pull Request Workflow
 

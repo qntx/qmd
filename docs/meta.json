@@ -1,5 +1,5 @@
 {
   "title": "qmd",
   "description": "Rust port of tobi/qmd — local markdown search engine.",
-  "pages": ["index", "commands", "query-syntax"]
+  "pages": ["index", "install", "commands", "query-syntax", "upstream-differences"]
 }

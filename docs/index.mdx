@@ -10,7 +10,8 @@ for embeddings, query expansion and reranking.
 This repository is a Rust port of
 [tobi/qmd](https://github.com/tobi/qmd) targeting CLI behavioral
 parity. Deviations from upstream are deliberate and documented in the
-source — the two most visible:
+source — see [Notable upstream differences](/docs/upstream-differences)
+for the full list; the two most visible:
 
 - **Strict argument parsing.** Upstream uses a permissive option
   parser (unknown/extra flags are tolerated); this port uses `clap`
@@ -20,6 +21,9 @@ source — the two most visible:
   implementations can share a directory without clobbering each other.
 
 ## Getting started
+
+See [Install](/docs/install) for prebuilt binaries, `cargo install`,
+the platform matrix and the bundled model defaults.
 
 ```bash
 qmd collection add . --name notes   # index a folder of markdown

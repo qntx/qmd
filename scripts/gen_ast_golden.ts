@@ -25,7 +25,11 @@
 
 import { writeFileSync } from "fs";
 
-const UPSTREAM = process.env.QMD_UPSTREAM ?? "/Users/fjh/code/github/tobi/qmd";
+const UPSTREAM = process.env.QMD_UPSTREAM;
+if (!UPSTREAM) {
+  console.error("QMD_UPSTREAM=<path to tobi/qmd checkout> is required");
+  process.exit(1);
+}
 const { getASTBreakPoints } = await import(`${UPSTREAM}/src/ast.ts`);
 const { chunkDocumentAsync } = await import(`${UPSTREAM}/src/store.ts`);
 
@@ -235,7 +239,7 @@ const out = {
   cases,
 };
 writeFileSync(
-  "/Users/fjh/code/github/qntx/qmd/crates/qmd/tests/fixtures/ast_golden.json",
+  "crates/qmd/tests/fixtures/ast_golden.json",
   JSON.stringify(out, null, 2) + "\n",
 );
 console.log("wrote crates/qmd/tests/fixtures/ast_golden.json");
@@ -471,7 +475,7 @@ const chunkOut = {
   cases: chunkCases,
 };
 writeFileSync(
-  "/Users/fjh/code/github/qntx/qmd/crates/qmd/tests/fixtures/ast_chunk_golden.json",
+  "crates/qmd/tests/fixtures/ast_chunk_golden.json",
   JSON.stringify(chunkOut, null, 2) + "\n",
 );
 console.log("wrote crates/qmd/tests/fixtures/ast_chunk_golden.json");
