@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-07
+
 ### Upgrading from 0.3.x
 
 0.6.0 is a ground-up rewrite as a port of tobi/qmd v2.8.3; nothing from the 0.3.x implementation carries over.
