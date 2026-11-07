@@ -53,7 +53,7 @@
 //! # Upstream differences
 //!
 //! Behavior deliberately differs from upstream in a few places; see the
-//! [Notable upstream differences](https://github.com/qntx/qmd#notable-upstream-differences)
+//! [Notable upstream differences](https://github.com/qntx/meme#notable-upstream-differences)
 //! section of the README and `CHANGELOG.md`.
 //!
 //! ```

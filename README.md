@@ -17,7 +17,7 @@ See [docs/](docs/) for the full reference.
 ## Install
 
 Prebuilt binaries are attached to each
-[GitHub Release](https://github.com/qntx/qmd/releases):
+[GitHub Release](https://github.com/qntx/meme/releases):
 
 | Target | Notes |
 | --- | --- |
