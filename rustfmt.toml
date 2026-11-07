@@ -8,7 +8,7 @@ use_small_heuristics = "Default"
 # Import organization (stable)
 reorder_imports = true
 reorder_modules = true
-group_imports   = "StdExternalCrate"  # nightly-only; enforce manually: std → external → crate
+group_imports   = "StdExternalCrate" # nightly-only; enforce manually: std → external → crate
 
 # Code style
 newline_style            = "Auto"
@@ -17,4 +17,3 @@ use_try_shorthand        = true
 
 # Function formatting
 fn_params_layout = "Tall"
-

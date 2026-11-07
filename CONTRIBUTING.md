@@ -74,12 +74,16 @@ cargo deny check all
 
 ## TOML style
 
-Match kobe’s grouped `=` alignment. Inside one table, a contiguous run of
-`key = value` lines (no blank line) is a group; pad keys so every `=` in
-that group shares a column. One space on each side of `=`. Keep the
-file’s existing trailing-comma style. Do not reorder keys to make
-padding easier. There is no taplo/dprint gate; rustfmt remains the only
-format check.
+TOML is formatted by taplo (`.taplo.toml`, aligned `=` entries) — the
+`taplo` CI job and `just toml` both run:
+
+```bash
+npx --yes @taplo/cli@0.7.0 fmt --check
+```
+
+Inside one table, a contiguous run of `key = value` lines (no blank
+line) is a group; taplo pads keys so every `=` in that group shares a
+column. Do not reorder keys to make padding easier.
 
 ## Pull Request Workflow
 
